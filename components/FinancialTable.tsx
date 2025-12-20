@@ -392,8 +392,8 @@ export default function FinancialTable({
 
                 {/* 월별 값 (토글에 따라 표시/숨김) */}
                 {!monthsCollapsed && row.values.map((value, colIndex) => {
-                  // CF: 합계 컬럼(index 12)은 여기서 제외 (나중에 따로 렌더링)
-                  if (isCashFlow && colIndex === 12) {
+                  // CF: 합계 컬럼(index 12)과 YoY(index 13)는 여기서 제외 (나중에 따로 렌더링)
+                  if (isCashFlow && colIndex >= 12) {
                     return null;
                   }
                   // 2026년 재무상태표: 1~6월만 표시 (index 0~5)
