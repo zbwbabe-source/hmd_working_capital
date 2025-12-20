@@ -23,6 +23,10 @@ export default function Home() {
   const [creditData, setCreditData] = useState<CreditData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // 비고 데이터 관리
+  const [bsRemarks, setBsRemarks] = useState<Map<string, string>>(new Map());
+  const [wcRemarks, setWcRemarks] = useState<Map<string, string>>(new Map());
 
   const tabs = ['손익계산서', '재무상태표', '현금흐름표', '여신사용현황'];
   const tabTypes: TabType[] = ['PL', 'BS', 'CF', 'CREDIT'];
@@ -171,6 +175,13 @@ export default function Home() {
                     currentYear={bsYear}
                     monthsCollapsed={bsMonthsCollapsed}
                     onMonthsToggle={() => setBsMonthsCollapsed(!bsMonthsCollapsed)}
+                    showRemarks={bsYear === 2025 || bsYear === 2026}
+                    remarks={bsRemarks}
+                    onRemarkChange={(account, remark) => {
+                      const newRemarks = new Map(bsRemarks);
+                      newRemarks.set(account, remark);
+                      setBsRemarks(newRemarks);
+                    }}
                   />
                 </div>
                 
@@ -189,6 +200,13 @@ export default function Home() {
                       currentYear={bsYear}
                       monthsCollapsed={bsMonthsCollapsed}
                       onMonthsToggle={() => setBsMonthsCollapsed(!bsMonthsCollapsed)}
+                      showRemarks={bsYear === 2025 || bsYear === 2026}
+                      remarks={wcRemarks}
+                      onRemarkChange={(account, remark) => {
+                        const newRemarks = new Map(wcRemarks);
+                        newRemarks.set(account, remark);
+                        setWcRemarks(newRemarks);
+                      }}
                     />
                   </div>
                 )}

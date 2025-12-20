@@ -71,3 +71,27 @@ export interface CreditData {
   };
 }
 
+// 재무 분석 타입
+export interface FinancialAnalysis {
+  ratios: {
+    부채비율: { current: number; previous: number };
+    차입금비율: { current: number; previous: number };
+    유동비율: { current: number };
+    ROE: { current: number };
+    rawData: {
+      유동자산: number;
+      유동부채: number;
+      자본증가: number;
+    };
+  };
+  wcRemarksAuto: { [key: string]: string }; // 자동 생성된 운전자본 비고
+}
+
+// 차입 한도 타입
+export interface LoanLimitsData {
+  [bank: string]: {
+    current: number;
+    total: number;
+  };
+}
+

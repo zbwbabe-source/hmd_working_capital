@@ -16,6 +16,10 @@ interface FinancialTableProps {
   monthsCollapsed?: boolean; // 월별 데이터 접기 상태 (외부 제어)
   onMonthsToggle?: () => void; // 월별 데이터 토글 핸들러
   compactLayout?: boolean; // CF 전용 컴팩트 레이아웃 활성화
+  showRemarks?: boolean; // 비고 열 표시 여부
+  remarks?: Map<string, string>; // 비고 데이터
+  onRemarkChange?: (account: string, remark: string) => void; // 비고 변경 핸들러
+  autoRemarks?: { [key: string]: string }; // 자동 생성된 비고 (운전자본용)
 }
 
 export default function FinancialTable({ 
@@ -30,6 +34,10 @@ export default function FinancialTable({
   monthsCollapsed: externalMonthsCollapsed,
   onMonthsToggle,
   compactLayout = false,
+  showRemarks = false,
+  remarks,
+  onRemarkChange,
+  autoRemarks,
 }: FinancialTableProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
@@ -352,6 +360,13 @@ export default function FinancialTable({
                   </th>
                 );
               })}
+              
+              {/* 비고 열 헤더 */}
+              {showRemarks && (
+                <th className="border border-gray-300 py-3 px-4 text-center font-semibold text-white bg-navy min-w-[200px]">
+                  비고
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -546,6 +561,19 @@ export default function FinancialTable({
                       </>
                     )}
                   </>
+                )}
+
+                {/* 비고 열 */}
+                {showRemarks && (
+                  <td className={`border border-gray-300 px-3 py-2 ${getHighlightClass(row.isHighlight)}`}>
+                    <input
+                      type="text"
+                      value={remarks?.get(row.account) || autoRemarks?.[row.account] || ''}
+                      onChange={(e) => onRemarkChange?.(row.account, e.target.value)}
+                      placeholder="비고 입력..."
+                      className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    />
+                  </td>
                 )}
               </tr>
               );
