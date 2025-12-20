@@ -23,36 +23,57 @@ function generateWCRemarks(
   
   // 변동 계산 및 포맷팅
   const formatChange = (label: string, current: number, previous: number) => {
-    const diff = current - previous;
-    const diffK = Math.round(diff / 1000); // K 단위로 반올림
+    const diff = current - previous; // 이미 K 단위
+    const diffM = Math.round(diff / 1000); // M 단위로 변환 (÷1000 추가)
     
-    if (Math.abs(diffK) < 1) return null; // 1K 미만은 무시
+    if (Math.abs(diffM) < 1) return null; // 1M 미만은 무시
     
-    const sign = diffK > 0 ? '+' : '△';
-    const absValue = Math.abs(diffK);
-    return `${label} ${sign}${absValue}m`;
+    const sign = diffM > 0 ? '+' : '△';
+    const absValue = Math.abs(diffM);
+    return `${label} ${sign}${absValue}M`; // m → M (대문자)
   };
   
   const remarks: { [key: string]: string } = {};
   const yearLabel = currentYear === 2026 ? '26.6월 vs 25.12월' : '25.12월 vs 24.12월';
   
   // 1. 운전자본
-  const wcAccounts = [
-    { key: '직영AR', label: 'AR' },
-    { key: '대리상AR', label: 'AR' },
-    { key: '재고자산', label: '재고' },
-    { key: '본사선급금', label: 'AP' }, // 캡처에서 AP로 표시됨
-    { key: '본사 AP', label: 'AP' },
-    { key: '제품 AP', label: 'AP' }
-  ];
-  
   const wcChanges: string[] = [];
-  wcAccounts.forEach(({ key, label }) => {
-    const curr = getValue(currentBSData, key, currentMonth);
-    const prev = getValue(previousBSData, key, previousMonth);
-    const change = formatChange(label, curr, prev);
-    if (change) wcChanges.push(change);
-  });
+  
+  // AR = 직영AR + 대리상AR 통합
+  const 직영ARCurr = getValue(currentBSData, '직영AR', currentMonth);
+  const 대리상ARCurr = getValue(currentBSData, '대리상AR', currentMonth);
+  const ARCurr = 직영ARCurr + 대리상ARCurr;
+  
+  const 직영ARPrev = getValue(previousBSData, '직영AR', previousMonth);
+  const 대리상ARPrev = getValue(previousBSData, '대리상AR', previousMonth);
+  const ARPrev = 직영ARPrev + 대리상ARPrev;
+  
+  const ARChange = formatChange('AR', ARCurr, ARPrev);
+  if (ARChange) wcChanges.push(ARChange);
+  
+  // 재고자산
+  const 재고Curr = getValue(currentBSData, '재고자산', currentMonth);
+  const 재고Prev = getValue(previousBSData, '재고자산', previousMonth);
+  const 재고Change = formatChange('재고', 재고Curr, 재고Prev);
+  if (재고Change) wcChanges.push(재고Change);
+  
+  // 본사선급금
+  const 선급금Curr = getValue(currentBSData, '선급금(본사)', currentMonth);
+  const 선급금Prev = getValue(previousBSData, '선급금(본사)', previousMonth);
+  const 선급금Change = formatChange('선급금', 선급금Curr, 선급금Prev);
+  if (선급금Change) wcChanges.push(선급금Change);
+  
+  // AP = 본사 AP + 제품 AP 통합
+  const 본사APCurr = getValue(currentBSData, '본사 AP', currentMonth);
+  const 제품APCurr = getValue(currentBSData, '제품 AP', currentMonth);
+  const APCurr = 본사APCurr + 제품APCurr;
+  
+  const 본사APPrev = getValue(previousBSData, '본사 AP', previousMonth);
+  const 제품APPrev = getValue(previousBSData, '제품 AP', previousMonth);
+  const APPrev = 본사APPrev + 제품APPrev;
+  
+  const APChange = formatChange('AP', APCurr, APPrev);
+  if (APChange) wcChanges.push(APChange);
   
   if (wcChanges.length > 0) {
     remarks['운전자본'] = `${yearLabel}: ${wcChanges.join(', ')}`;

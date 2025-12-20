@@ -6,6 +6,7 @@ import YearTabs from '@/components/YearTabs';
 import BaseMonthSelector from '@/components/BaseMonthSelector';
 import FinancialTable from '@/components/FinancialTable';
 import CreditStatus from '@/components/CreditStatus';
+import BSAnalysis from '@/components/BSAnalysis';
 import { TableRow, CreditData, TabType } from '@/lib/types';
 
 export default function Home() {
@@ -18,6 +19,7 @@ export default function Home() {
   const [cfMonthsCollapsed, setCfMonthsCollapsed] = useState<boolean>(false); // 현금흐름표 월별 접기
   const [plData, setPlData] = useState<TableRow[] | null>(null);
   const [bsData, setBsData] = useState<TableRow[] | null>(null);
+  const [previousBsData, setPreviousBsData] = useState<TableRow[] | null>(null);
   const [workingCapitalData, setWorkingCapitalData] = useState<TableRow[] | null>(null);
   const [cfData, setCfData] = useState<TableRow[] | null>(null);
   const [creditData, setCreditData] = useState<CreditData | null>(null);
@@ -68,6 +70,23 @@ export default function Home() {
         setBsData(result.rows);
         setWorkingCapitalData(result.workingCapital || null);
         setWcRemarksAuto(result.wcRemarksAuto || null);
+        
+        // 전년도 데이터 로드 (2025, 2026년일 경우)
+        if (year === 2025 || year === 2026) {
+          const prevYear = year - 1;
+          try {
+            const prevResponse = await fetch(`/api/fs/bs?year=${prevYear}`);
+            if (prevResponse.ok) {
+              const prevResult = await prevResponse.json();
+              setPreviousBsData(prevResult.rows);
+            }
+          } catch (err) {
+            console.error('전년도 BS 데이터 로드 실패:', err);
+            setPreviousBsData(null);
+          }
+        } else {
+          setPreviousBsData(null);
+        }
       } else if (type === 'CF') {
         setCfData(result.rows);
       } else if (type === 'CREDIT') {
@@ -213,6 +232,15 @@ export default function Home() {
                     />
                   </div>
                 )}
+                
+                {/* 재무분석 (2025년, 2026년만) */}
+                {workingCapitalData && bsData && (bsYear === 2025 || bsYear === 2026) && (
+                  <BSAnalysis 
+                    bsData={bsData}
+                    year={bsYear}
+                    previousYearData={previousBsData || undefined}
+                  />
+                )}
               </>
             )}
           </div>
@@ -227,7 +255,7 @@ export default function Home() {
                 <BaseMonthSelector baseMonth={cfBaseMonth} onChange={setCfBaseMonth} />
                 <button
                   onClick={() => setCfMonthsCollapsed(!cfMonthsCollapsed)}
-                  className="px-4 py-2 text-sm font-medium rounded bg-navy text-white hover:bg-navy-light transition-colors"
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
                 >
                   {cfMonthsCollapsed ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
                 </button>

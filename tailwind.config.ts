@@ -19,7 +19,7 @@ const config: Config = {
         },
         highlight: {
           sky: '#e0f2fe',
-          yellow: '#fef9c3',
+          yellow: '#fffbeb',
           gray: '#f5f5f5',
         },
       },

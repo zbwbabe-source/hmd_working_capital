@@ -286,7 +286,7 @@ export default function FinancialTable({
           <>
             <button
               onClick={toggleMonths}
-              className="px-4 py-2 text-sm font-medium rounded bg-navy text-white hover:bg-navy-light transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
             >
               {monthsCollapsed ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
             </button>
@@ -297,12 +297,13 @@ export default function FinancialTable({
         )}
       </div>
 
-      <div 
-        className={`relative overflow-auto ${compactLayout ? 'flex justify-center' : ''}`} 
-        style={{ maxHeight: 'calc(100vh - 250px)' }}
-      >
-        <table 
-          className={`border-collapse text-sm ${compactLayout ? '' : 'w-full'}`}
+      <div className="overflow-hidden rounded-lg border border-gray-300 shadow-sm">
+        <div 
+          className={`relative overflow-auto ${compactLayout ? 'flex justify-center' : ''}`} 
+          style={{ maxHeight: 'calc(100vh - 250px)' }}
+        >
+          <table 
+            className={`border-collapse text-sm ${compactLayout ? '' : 'w-full'}`}
           style={compactLayout ? { 
             tableLayout: 'fixed',
             width: 'fit-content'
@@ -571,7 +572,7 @@ export default function FinancialTable({
                       value={remarks?.get(row.account) || autoRemarks?.[row.account] || ''}
                       onChange={(e) => onRemarkChange?.(row.account, e.target.value)}
                       placeholder="비고 입력..."
-                      className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      className="w-full px-2 py-1 text-xs bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 focus:rounded transition-colors"
                     />
                   </td>
                 )}
@@ -580,6 +581,7 @@ export default function FinancialTable({
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
