@@ -301,13 +301,20 @@ export default function FinancialTable({
                 
                 const isComparisonCol = showComparisons && comparisonColumns.includes(col);
                 
+                // CF: 기준월 외의 월 헤더는 진한 회색으로 표시
+                const isMonthCol = col.includes('월') && !col.includes('합계');
+                const isBaseMonthCol = isCashFlow && isMonthCol && col === `${baseMonth}월`;
+                const isNonBaseMonthCol = isCashFlow && isMonthCol && col !== `${baseMonth}월`;
+                
                 return (
                   <th
                     key={index}
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
                       ${isAccountCol ? 'sticky left-0 z-20 bg-navy min-w-[200px] px-4' : 'min-w-[100px] px-4'}
-                      ${isComparisonCol ? 'bg-navy-light' : !isAccountCol ? 'bg-navy' : ''}
+                      ${isNonBaseMonthCol ? 'bg-gray-600' : ''}
+                      ${!isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
+                      ${!isNonBaseMonthCol && !isComparisonCol && !isAccountCol ? 'bg-navy' : ''}
                     `}
                   >
                     {col}

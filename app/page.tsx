@@ -14,6 +14,7 @@ export default function Home() {
   const [plYear, setPlYear] = useState<number>(2025);
   const [bsYear, setBsYear] = useState<number>(2025);
   const [baseMonth, setBaseMonth] = useState<number>(11); // 기준월 (기본 11월)
+  const [cfBaseMonth, setCfBaseMonth] = useState<number>(11); // 현금흐름표 기준월
   const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(false); // 재무상태표 & 운전자본 월별 접기
   const [cfMonthsCollapsed, setCfMonthsCollapsed] = useState<boolean>(false); // 현금흐름표 월별 접기
   const [plData, setPlData] = useState<TableRow[] | null>(null);
@@ -196,6 +197,7 @@ export default function Home() {
             <div className="bg-gray-100 border-b border-gray-300">
               <div className="flex items-center gap-4 px-6 py-3">
                 <span className="text-sm font-medium text-gray-700">2025년</span>
+                <BaseMonthSelector baseMonth={cfBaseMonth} onChange={setCfBaseMonth} />
                 <button
                   onClick={() => setCfMonthsCollapsed(!cfMonthsCollapsed)}
                   className="px-4 py-2 text-sm font-medium rounded bg-navy text-white hover:bg-navy-light transition-colors"
@@ -213,6 +215,7 @@ export default function Home() {
                   columns={cfColumns} 
                   showTotal 
                   isCashFlow={true}
+                  baseMonth={cfBaseMonth}
                   monthsCollapsed={cfMonthsCollapsed}
                   onMonthsToggle={() => setCfMonthsCollapsed(!cfMonthsCollapsed)}
                 />
