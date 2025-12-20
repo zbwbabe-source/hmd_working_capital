@@ -39,8 +39,8 @@ export async function GET() {
       순여신: others.reduce((sum, d) => sum + d.순여신, 0),
     };
 
-    // 총 순여신
-    const total순여신 = totalRow.외상매출금 - totalRow.선수금;
+    // 총 순여신 (모든 대리상의 순여신 합계)
+    const total순여신 = dealerList.reduce((sum: number, d) => sum + d.순여신, 0);
 
     // 분석 데이터
     const top17Sum = top17.reduce((sum, d) => sum + d.순여신, 0);

@@ -10,6 +10,12 @@ interface CreditStatusProps {
 
 export default function CreditStatus({ data }: CreditStatusProps) {
   const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [wuhanMemo, setWuhanMemo] = useState<string>('생태니스로 에스크로 계좌 운용중');
+  const [editingWuhan, setEditingWuhan] = useState<boolean>(false);
+  const [recoveryPlan, setRecoveryPlan] = useState<string>(
+    '여신회수: 11월 390m(회수 실적 388m), 12월 258m, 1월 62m, 2월 179m, 3월 81m'
+  );
+  const [editingRecovery, setEditingRecovery] = useState<boolean>(false);
 
   return (
     <div className="space-y-6">
@@ -25,19 +31,19 @@ export default function CreditStatus({ data }: CreditStatusProps) {
             <div className="flex justify-between items-center">
               <span className="text-gray-700">외상매출금:</span>
               <span className="text-lg font-semibold text-gray-900">
-                {formatNumber(data.total.외상매출금 / 1000)}
+                {formatNumber(data.total.외상매출금)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-700">선수금:</span>
               <span className="text-lg font-semibold text-gray-900">
-                {formatNumber(data.total.선수금 / 1000)}
+                {formatNumber(data.total.선수금)}
               </span>
             </div>
             <div className="flex justify-between items-center pt-3 border-t border-sky-300">
               <span className="text-gray-700 font-semibold">순여신:</span>
               <span className="text-xl font-bold text-red-600">
-                {formatNumber(data.total.순여신 / 1000)}
+                {formatNumber(data.total.순여신)}
               </span>
             </div>
           </div>
@@ -100,76 +106,126 @@ export default function CreditStatus({ data }: CreditStatusProps) {
             </tr>
           </thead>
           <tbody>
+            {/* 1. 합계 행 (맨 위, 노란색) */}
+            <tr className="bg-yellow-100 font-bold">
+              <td className="border border-gray-300 py-3 px-4 text-center sticky left-0 z-10 bg-yellow-100">
+                ▼ 합계
+              </td>
+              <td className="border border-gray-300 py-3 px-4"></td>
+              <td className="border border-gray-300 py-3 px-4 text-right">
+                {formatNumber(data.total.외상매출금)}
+              </td>
+              <td className="border border-gray-300 py-3 px-4 text-right">
+                {formatNumber(data.total.선수금)}
+              </td>
+              <td className="border border-gray-300 py-3 px-4 text-right text-red-600">
+                {formatNumber(data.total.순여신)}
+              </td>
+            </tr>
+
+            {/* 2. 여신회수계획 행 (편집 가능, 노란색) */}
+            <tr className="bg-yellow-50">
+              <td 
+                colSpan={5} 
+                className="border border-gray-300 py-3 px-4 text-sm"
+              >
+                {editingRecovery ? (
+                  <input
+                    type="text"
+                    value={recoveryPlan}
+                    onChange={(e) => setRecoveryPlan(e.target.value)}
+                    onBlur={() => setEditingRecovery(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') setEditingRecovery(false);
+                    }}
+                    className="w-full px-2 py-1 border border-yellow-400 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-yellow-50"
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    onClick={() => setEditingRecovery(true)}
+                    className="cursor-pointer hover:bg-yellow-100 px-2 py-1 rounded inline-block"
+                    title="클릭하여 편집"
+                  >
+                    {recoveryPlan}
+                  </span>
+                )}
+              </td>
+            </tr>
+
+            {/* 3. 상위 17개 대리상 (접기/펼치기 가능) */}
             {!collapsed && data.top17.map((dealer, index) => {
-              // Wuhan Moding 강조
-              const isHighlight = dealer.name.includes('Wuhan Moding');
+              const isWuhanModing = dealer.name.includes('Wuhan Moding');
               
               return (
                 <tr 
                   key={index} 
-                  className={`hover:bg-gray-50 ${isHighlight ? 'bg-red-50' : ''}`}
+                  className={`${isWuhanModing ? 'bg-red-50' : ''} hover:bg-gray-50`}
                 >
                   <td className="border border-gray-300 py-2 px-4 text-center sticky left-0 z-10 bg-white">
                     {index + 1}
                   </td>
                   <td className="border border-gray-300 py-2 px-4">
                     {dealer.name}
-                    {isHighlight && (
-                      <span className="ml-2 text-xs text-red-600">(생태니스로 에스크로 계좌 운용중)</span>
+                    {isWuhanModing && (
+                      <span className="ml-2 text-xs text-red-600">
+                        (
+                        {editingWuhan ? (
+                          <input
+                            type="text"
+                            value={wuhanMemo}
+                            onChange={(e) => setWuhanMemo(e.target.value)}
+                            onBlur={() => setEditingWuhan(false)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') setEditingWuhan(false);
+                            }}
+                            className="inline-block w-64 px-1 border-b border-red-400 focus:outline-none bg-red-50"
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            onClick={() => setEditingWuhan(true)}
+                            className="cursor-pointer hover:underline"
+                            title="클릭하여 편집"
+                          >
+                            {wuhanMemo}
+                          </span>
+                        )}
+                        )
+                      </span>
                     )}
                   </td>
                   <td className="border border-gray-300 py-2 px-4 text-right">
-                    {formatNumber(dealer.외상매출금 / 1000)}
+                    {formatNumber(dealer.외상매출금)}
                   </td>
                   <td className="border border-gray-300 py-2 px-4 text-right">
-                    {formatNumber(dealer.선수금 / 1000)}
+                    {formatNumber(dealer.선수금)}
                   </td>
                   <td className="border border-gray-300 py-2 px-4 text-right font-semibold">
-                    {formatNumber(dealer.순여신 / 1000)}
+                    {formatNumber(dealer.순여신)}
                   </td>
                 </tr>
               );
             })}
 
-            {/* 기타 행 */}
+            {/* 4. 기타 행 (접기/펼치기 가능) */}
             {!collapsed && (
               <tr className="bg-gray-100">
-                <td className="border border-gray-300 py-2 px-4 text-center sticky left-0 z-10 bg-gray-100">
-                  
-                </td>
+                <td className="border border-gray-300 py-2 px-4 text-center sticky left-0 z-10 bg-gray-100"></td>
                 <td className="border border-gray-300 py-2 px-4 font-semibold">
                   기타 {data.others.count}개
                 </td>
                 <td className="border border-gray-300 py-2 px-4 text-right">
-                  {formatNumber(data.others.외상매출금 / 1000)}
+                  {formatNumber(data.others.외상매출금)}
                 </td>
                 <td className="border border-gray-300 py-2 px-4 text-right">
-                  {formatNumber(data.others.선수금 / 1000)}
+                  {formatNumber(data.others.선수금)}
                 </td>
                 <td className="border border-gray-300 py-2 px-4 text-right font-semibold">
-                  {formatNumber(data.others.순여신 / 1000)}
+                  {formatNumber(data.others.순여신)}
                 </td>
               </tr>
             )}
-
-            {/* 합계 행 */}
-            <tr className="bg-yellow-100 font-bold">
-              <td className="border border-gray-300 py-3 px-4 text-center sticky left-0 z-10 bg-yellow-100">
-                
-              </td>
-              <td className="border border-gray-300 py-3 px-4">
-                합계
-              </td>
-              <td className="border border-gray-300 py-3 px-4 text-right">
-                {formatNumber(data.total.외상매출금 / 1000)}
-              </td>
-              <td className="border border-gray-300 py-3 px-4 text-right">
-                {formatNumber(data.total.선수금 / 1000)}
-              </td>
-              <td className="border border-gray-300 py-3 px-4 text-right text-red-600">
-                {formatNumber(data.total.순여신 / 1000)}
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -184,14 +240,14 @@ export default function CreditStatus({ data }: CreditStatusProps) {
               <h4 className="font-semibold text-orange-900 mb-2">여신 현황 요약</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                 <li>
-                  <strong>총 외상매출금:</strong> {formatNumber(data.total.외상매출금 / 1000)} 
+                  <strong>총 외상매출금:</strong> {formatNumber(data.total.외상매출금)} 
                   (전체 {data.dealers.length + 1}개 대리상)
                 </li>
                 <li>
-                  <strong>총 선수금:</strong> {formatNumber(data.total.선수금 / 1000)}
+                  <strong>총 선수금:</strong> {formatNumber(data.total.선수금)}
                 </li>
                 <li>
-                  <strong>순여신:</strong> {formatNumber(data.total.순여신 / 1000)} 
+                  <strong>순여신:</strong> {formatNumber(data.total.순여신)} 
                   <span className="text-red-600 font-semibold"> (= 외상매출금 - 선수금)</span>
                 </li>
                 <li>
