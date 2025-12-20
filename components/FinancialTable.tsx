@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { TableRow } from '@/lib/types';
 import { formatNumber, formatPercent } from '@/lib/utils';
 
@@ -33,11 +33,17 @@ export default function FinancialTable({
 }: FinancialTableProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(false);
-  const [allRowsCollapsed, setAllRowsCollapsed] = useState<boolean>(false);
+  const [allRowsCollapsed, setAllRowsCollapsed] = useState<boolean>(true);
   
   // 외부에서 monthsCollapsed를 제어하는 경우와 내부에서 제어하는 경우 모두 지원
   const monthsCollapsed = externalMonthsCollapsed !== undefined ? externalMonthsCollapsed : internalMonthsCollapsed;
   const toggleMonths = onMonthsToggle || (() => setInternalMonthsCollapsed(!internalMonthsCollapsed));
+
+  // 초기 마운트 시 모든 그룹 행 접기
+  useEffect(() => {
+    const allGroups = data.filter(row => row.isGroup).map(row => row.account);
+    setCollapsed(new Set(allGroups));
+  }, []); // 빈 의존성 배열로 초기 마운트 시에만 실행
 
   // 그룹 접기/펼치기 토글
   const toggleCollapse = (account: string) => {
