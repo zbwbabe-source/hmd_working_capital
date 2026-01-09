@@ -631,7 +631,7 @@ export default function FinancialTable({
                     const cells: JSX.Element[] = [];
                     
                     // 2026년 재무상태표: 월별 비교 없이 기말 비교만
-                    if (isBalanceSheet && currentYear === 2026) {
+                    if (isBalanceSheet && currentYear === 2026 && row.comparisons) {
                       // 빈 컬럼이 있으면 먼저 렌더링
                       if (!monthsCollapsed && startIndex < displayColumns.length && displayColumns[startIndex] === '') {
                         cells.push(
@@ -658,6 +658,11 @@ export default function FinancialTable({
                     }
                     
                     // displayColumns를 순회하면서 비교 컬럼 렌더링
+                    // row.comparisons가 존재하는지 확인
+                    if (!row.comparisons) {
+                      return cells;
+                    }
+                    
                     for (let i = startIndex; i < displayColumns.length; i++) {
                       const col = displayColumns[i];
                       
@@ -679,7 +684,7 @@ export default function FinancialTable({
                         // 브랜드별 컬럼
                         if (showBrandBreakdown && row.brandComparisons && !brandMonthCollapsed) {
                           brands.forEach(brand => {
-                            const value = row.brandComparisons.month.prevYear[brand];
+                            const value = row.brandComparisons!.month.prevYear[brand];
                             cells.push(
                               <td key={`prev-month-${brand}`} className={`border border-gray-300 px-4 py-2 text-right bg-gray-50 ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(value) ? 'text-red-600' : ''}`}>
                                 {formatValue(value, row.format, false, isBalanceSheet ? true : !row.isCalculated)}
@@ -698,7 +703,7 @@ export default function FinancialTable({
                         // 브랜드별 컬럼
                         if (showBrandBreakdown && row.brandComparisons && !brandMonthCollapsed) {
                           brands.forEach(brand => {
-                            const value = row.brandComparisons.month.currYear[brand];
+                            const value = row.brandComparisons!.month.currYear[brand];
                             cells.push(
                               <td key={`curr-month-${brand}`} className={`border border-gray-300 px-4 py-2 text-right bg-gray-50 ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(value) ? 'text-red-600' : ''}`}>
                                 {formatValue(value, row.format, false, isBalanceSheet ? true : !row.isCalculated)}
@@ -733,7 +738,7 @@ export default function FinancialTable({
                           // 브랜드별 컬럼
                           if (showBrandBreakdown && row.brandComparisons && !brandYtdCollapsed) {
                             brands.forEach(brand => {
-                              const value = row.brandComparisons.ytd.prevYear[brand];
+                              const value = row.brandComparisons!.ytd.prevYear[brand];
                               cells.push(
                                 <td key={`prev-ytd-${brand}`} className={`border border-gray-300 px-4 py-2 text-right bg-gray-50 ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(value) ? 'text-red-600' : ''}`}>
                                   {formatValue(value, row.format, false, false)}
@@ -762,7 +767,7 @@ export default function FinancialTable({
                           // 브랜드별 컬럼
                           if (showBrandBreakdown && row.brandComparisons && !brandYtdCollapsed) {
                             brands.forEach(brand => {
-                              const value = row.brandComparisons.ytd.currYear[brand];
+                              const value = row.brandComparisons!.ytd.currYear[brand];
                               cells.push(
                                 <td key={`curr-ytd-${brand}`} className={`border border-gray-300 px-4 py-2 text-right bg-gray-50 ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(value) ? 'text-red-600' : ''}`}>
                                   {formatValue(value, row.format, false, false)}
@@ -799,7 +804,7 @@ export default function FinancialTable({
                         // 브랜드별 컬럼
                         if (showBrandBreakdown && row.brandComparisons && !brandAnnualCollapsed) {
                           brands.forEach(brand => {
-                            const value = row.brandComparisons.annual.prevYear[brand];
+                            const value = row.brandComparisons!.annual.prevYear[brand];
                             cells.push(
                               <td key={`prev-annual-${brand}`} className={`border border-gray-300 px-4 py-2 text-right bg-gray-50 ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(value) ? 'text-red-600' : ''}`}>
                                 {formatValue(value, row.format, false, isBalanceSheet)}
@@ -818,7 +823,7 @@ export default function FinancialTable({
                         // 브랜드별 컬럼
                         if (showBrandBreakdown && row.brandComparisons && !brandAnnualCollapsed) {
                           brands.forEach(brand => {
-                            const value = row.brandComparisons.annual.currYear[brand];
+                            const value = row.brandComparisons!.annual.currYear[brand];
                             cells.push(
                               <td key={`curr-annual-${brand}`} className={`border border-gray-300 px-4 py-2 text-right bg-gray-50 ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(value) ? 'text-red-600' : ''}`}>
                                 {formatValue(value, row.format, false, isBalanceSheet)}
