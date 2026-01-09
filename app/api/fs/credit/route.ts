@@ -8,15 +8,36 @@ export async function GET() {
     const filePath = path.join(process.cwd(), 'credit', '2025.csv');
     const dealers = await readCreditCSV(filePath);
 
-    // 첫 번째는 "합계" 행
-    const totalRow = dealers.find(d => d.name === '합계');
+    // 합계 행 찾기 또는 자동 계산
+    let totalRow = dealers.find(d => {
+      const name = d.name.trim();
+      return name === '합계';
+    });
+    
+    // 합계 행이 없으면 자동 계산
     if (!totalRow) {
-      throw new Error('합계 행을 찾을 수 없습니다.');
+      const calculatedTotal = dealers
+        .filter(d => {
+          const name = d.name.trim();
+          return name !== '합계' && name !== '';
+        })
+        .reduce(
+          (sum, dealer) => ({
+            name: '합계',
+            외상매출금: sum.외상매출금 + dealer.외상매출금,
+            선수금: sum.선수금 + dealer.선수금,
+          }),
+          { name: '합계', 외상매출금: 0, 선수금: 0 }
+        );
+      totalRow = calculatedTotal;
     }
 
     // 나머지 대리상 (합계 제외)
     const dealerList = dealers
-      .filter(d => d.name !== '합계')
+      .filter(d => {
+        const name = d.name.trim();
+        return name !== '합계' && name !== '';
+      })
       .map(d => ({
         name: d.name,
         외상매출금: d.외상매출금,

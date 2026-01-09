@@ -174,13 +174,13 @@ export default function FinancialTable({
       return [
         `전년(${baseMonth}월)`,
         `당년(${baseMonth}월)`,
-        'YoY',
+        'YoY(기준월)',
         '전년YTD',
         '당년YTD',
-        'YoY',
+        'YoY(YTD)',
         '24년연간',
         '25년연간',
-        'YoY',
+        'YoY(연간)',
       ];
     }
   }, [showComparisons, isBalanceSheet, baseMonth, currentYear]);
@@ -638,8 +638,25 @@ export default function FinancialTable({
                   
                   const renderComparisonCells = () => {
                     const cells: JSX.Element[] = [];
-                    // 현재 그룹 추적 (월별, YTD, 연간)
-                    let currentGroup: 'month' | 'ytd' | 'annual' | null = null;
+                    
+                    // 브랜드 컬럼의 섹션을 판별하는 헬퍼 함수 (명시적 앵커 기반 역순 탐색)
+                    const getSectionForBrand = (colIndex: number, displayColumns: string[]): 'month' | 'ytd' | 'annual' => {
+                      // colIndex 이전의 컬럼을 역순으로 탐색
+                      for (let i = colIndex - 1; i >= 0; i--) {
+                        const prevCol = displayColumns[i];
+                        // 앵커: 당년 컬럼만 사용 (YoY 컬럼은 제외)
+                        if (prevCol === comparisonColumns[1]) {
+                          return 'month'; // 당년(기준월)
+                        }
+                        if (prevCol === comparisonColumns[4]) {
+                          return 'ytd'; // 당년YTD
+                        }
+                        if (prevCol === comparisonColumns[7]) {
+                          return 'annual'; // 25년연간
+                        }
+                      }
+                      return 'month'; // 기본값 (안전장치)
+                    };
                     
                     // 2026년 재무상태표: 월별 비교 없이 기말 비교만
                     if (isBalanceSheet && currentYear === 2026 && row.comparisons) {
@@ -693,18 +710,17 @@ export default function FinancialTable({
                         );
                       } else if (col === comparisonColumns[1]) {
                         // 당년(12월)
-                        currentGroup = 'month';
                         cells.push(
                           <td key={`curr-month-${i}`} className={`border border-gray-300 px-4 py-2 text-right ${isBalanceCheck ? (row.comparisons.currYearMonth === null || Math.abs(row.comparisons.currYearMonth) < 10 ? 'bg-green-100' : 'bg-red-100') : getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.currYearMonth) ? 'text-red-600' : ''}`}>
                           {formatValue(row.comparisons.currYearMonth, row.format, false, true)}
                         </td>
                         );
-                      } else if (col === comparisonColumns[2]) {
+                      } else if (col === comparisonColumns[2] || col === 'YoY(기준월)') {
                         // YoY (월별)
                         cells.push(
                           <td key={`month-yoy-${i}`} className={`border border-gray-300 px-4 py-2 text-right ${isBalanceCheck ? (row.comparisons.monthYoY === null || Math.abs(row.comparisons.monthYoY) < 10 ? 'bg-green-100' : 'bg-red-100') : getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.monthYoY) ? 'text-red-600' : ''}`}>
-                          {formatValue(row.comparisons.monthYoY, row.format, true, false)}
-                        </td>
+                            {formatValue(row.comparisons.monthYoY, row.format, true, false)}
+                          </td>
                         );
                       } else if (col === comparisonColumns[3]) {
                         // 재무상태표: 24년기말 또는 손익계산서: 전년YTD
@@ -734,14 +750,13 @@ export default function FinancialTable({
                           );
                         } else if (!hideYtd) {
                           // 손익계산서: 당년YTD
-                          currentGroup = 'ytd';
                           cells.push(
                             <td key={`curr-ytd-${i}`} className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.currYearYTD) ? 'text-red-600' : ''}`}>
                               {formatValue(row.comparisons.currYearYTD, row.format, false, true)}
                             </td>
                           );
                         }
-                      } else if (col === comparisonColumns[5]) {
+                      } else if (col === comparisonColumns[5] || col === 'YoY(YTD)') {
                         // 재무상태표: YoY (기말) 또는 손익계산서: YoY (YTD)
                         if (isBalanceSheet) {
                           // 재무상태표: YoY (기말)
@@ -760,7 +775,6 @@ export default function FinancialTable({
                         }
                       } else if (col === comparisonColumns[isBalanceSheet ? (hideYtd ? 3 : 6) : 6]) {
                         // 24년연간 (손익계산서는 항상 [6], 재무상태표는 기존 로직 유지)
-                        currentGroup = 'annual';
                         cells.push(
                           <td key={`prev-annual-${i}`} className={`border border-gray-300 px-4 py-2 text-right ${isBalanceCheck ? (row.comparisons.prevYearAnnual === null || Math.abs(row.comparisons.prevYearAnnual) < 10 ? 'bg-green-100' : 'bg-red-100') : getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.prevYearAnnual) ? 'text-red-600' : ''}`}>
                           {formatValue(row.comparisons.prevYearAnnual, row.format, false, true)}
@@ -768,18 +782,17 @@ export default function FinancialTable({
                         );
                       } else if (col === comparisonColumns[isBalanceSheet ? (hideYtd ? 4 : 7) : 7]) {
                         // 25년연간 (손익계산서는 항상 [7], 재무상태표는 기존 로직 유지)
-                        currentGroup = 'annual';
                         cells.push(
                           <td key={`curr-annual-${i}`} className={`border border-gray-300 px-4 py-2 text-right ${isBalanceCheck ? (row.comparisons.currYearAnnual === null || Math.abs(row.comparisons.currYearAnnual) < 10 ? 'bg-green-100' : 'bg-red-100') : getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.currYearAnnual) ? 'text-red-600' : ''}`}>
                           {formatValue(row.comparisons.currYearAnnual, row.format, false, true)}
                         </td>
                         );
-                      } else if (col === comparisonColumns[isBalanceSheet ? (hideYtd ? 5 : 8) : 8]) {
+                      } else if (col === comparisonColumns[isBalanceSheet ? (hideYtd ? 5 : 8) : 8] || col === 'YoY(연간)') {
                         // YoY (연간) (손익계산서는 항상 [8], 재무상태표는 기존 로직 유지)
                         cells.push(
                           <td key={`annual-yoy-${i}`} className={`border border-gray-300 px-4 py-2 text-right ${isBalanceCheck ? (row.comparisons.annualYoY === null || Math.abs(row.comparisons.annualYoY) < 10 ? 'bg-green-100' : 'bg-red-100') : getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.annualYoY) ? 'text-red-600' : ''}`}>
-                          {formatValue(row.comparisons.annualYoY, row.format, true, false)}
-                        </td>
+                            {formatValue(row.comparisons.annualYoY, row.format, true, false)}
+                          </td>
                         );
                       } else if (brands.includes(col)) {
                         // 브랜드별 통합 컬럼 (금액 + YoY 한 셀에 두 줄)
@@ -787,16 +800,19 @@ export default function FinancialTable({
                         let currValue: number | null = null;
                         let prevValue: number | null = null;
                         
-                        // currentGroup을 기반으로 데이터 가져오기
-                        if (currentGroup === 'month' && row.brandComparisons) {
-                          currValue = row.brandComparisons.month.currYear[brand.toLowerCase()] ?? null;
-                          prevValue = row.brandComparisons.month.prevYear[brand.toLowerCase()] ?? null;
-                        } else if (currentGroup === 'ytd' && row.brandComparisons) {
-                          currValue = row.brandComparisons.ytd.currYear[brand.toLowerCase()] ?? null;
-                          prevValue = row.brandComparisons.ytd.prevYear[brand.toLowerCase()] ?? null;
-                        } else if (currentGroup === 'annual' && row.brandComparisons) {
-                          currValue = row.brandComparisons.annual.currYear[brand.toLowerCase()] ?? null;
-                          prevValue = row.brandComparisons.annual.prevYear[brand.toLowerCase()] ?? null;
+                        // 명시적 앵커 기반으로 섹션 판별
+                        const section = getSectionForBrand(i, displayColumns);
+                        if (row.brandComparisons) {
+                          if (section === 'month') {
+                            currValue = row.brandComparisons.month.currYear[brand.toLowerCase()] ?? null;
+                            prevValue = row.brandComparisons.month.prevYear[brand.toLowerCase()] ?? null;
+                          } else if (section === 'ytd') {
+                            currValue = row.brandComparisons.ytd.currYear[brand.toLowerCase()] ?? null;
+                            prevValue = row.brandComparisons.ytd.prevYear[brand.toLowerCase()] ?? null;
+                          } else if (section === 'annual') {
+                            currValue = row.brandComparisons.annual.currYear[brand.toLowerCase()] ?? null;
+                            prevValue = row.brandComparisons.annual.prevYear[brand.toLowerCase()] ?? null;
+                          }
                         }
                         
                         // YoY 계산

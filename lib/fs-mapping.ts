@@ -217,9 +217,29 @@ export function calculateComparisonData(
     prevAccountMap.set(row.account, row);
   });
   
+  // 관련 계정 데이터를 Map으로 저장 (비율 재계산용)
+  const currAccountMap = new Map<string, TableRow>();
+  currentYearData.forEach(row => {
+    currAccountMap.set(row.account, row);
+  });
+  
   const calculateYoY = (curr: number | null, prev: number | null): number | null => {
     if (curr === null || prev === null) return null;
     return curr - prev;
+  };
+  
+  // YTD 합계 계산 헬퍼
+  const calculateYTD = (values: (number | null)[]): number => {
+    let sum = 0;
+    for (let i = 0; i < baseMonth; i++) {
+      sum += values[i] || 0;
+    }
+    return sum;
+  };
+  
+  // 연간 합계 계산 헬퍼
+  const calculateAnnual = (values: (number | null)[]): number => {
+    return values.reduce((sum: number, v) => sum + (v || 0), 0);
   };
   
   const result = currentYearData.map(row => {
@@ -250,18 +270,78 @@ export function calculateComparisonData(
     const currYearMonth = curr2025[baseMonth - 1] ?? null;
     const monthYoY = calculateYoY(currYearMonth, prevYearMonth);
     
-    // YTD 비교
-    let prevYearYTD = 0;
-    let currYearYTD = 0;
-    for (let i = 0; i < baseMonth; i++) {
-      prevYearYTD += prev2024[i] || 0;
-      currYearYTD += curr2025[i] || 0;
-    }
-    const ytdYoY = calculateYoY(currYearYTD, prevYearYTD);
+    // 비율 항목인지 확인
+    const isRatioAccount = row.account === '(Tag 대비 원가율)' || row.account === '영업이익률';
     
-    // 연간 합계
-    const prevYearAnnual = prev2024.reduce((sum: number, v) => sum + (v || 0), 0);
-    const currYearAnnual = curr2025.reduce((sum: number, v) => sum + (v || 0), 0);
+    let prevYearYTD: number | null = null;
+    let currYearYTD: number | null = null;
+    let prevYearAnnual: number | null = null;
+    let currYearAnnual: number | null = null;
+    
+    if (isRatioAccount) {
+      // 비율 항목은 재계산 필요
+      if (row.account === '(Tag 대비 원가율)') {
+        // Tag 대비 원가율 = 매출원가 x 1.13 / Tag매출
+        const curr매출원가 = currAccountMap.get('매출원가');
+        const prev매출원가 = prevAccountMap.get('매출원가');
+        const currTag매출 = currAccountMap.get('Tag매출');
+        const prevTag매출 = prevAccountMap.get('Tag매출');
+        
+        if (curr매출원가 && prev매출원가 && currTag매출 && prevTag매출) {
+          // YTD 재계산
+          const currYTD매출원가 = calculateYTD(curr매출원가.values);
+          const prevYTD매출원가 = calculateYTD(prev매출원가.values);
+          const currYTDTag매출 = calculateYTD(currTag매출.values);
+          const prevYTDTag매출 = calculateYTD(prevTag매출.values);
+          
+          currYearYTD = currYTDTag매출 !== 0 ? (currYTD매출원가 * 1.13) / currYTDTag매출 : null;
+          prevYearYTD = prevYTDTag매출 !== 0 ? (prevYTD매출원가 * 1.13) / prevYTDTag매출 : null;
+          
+          // 연간 재계산
+          const currAnnual매출원가 = calculateAnnual(curr매출원가.values);
+          const prevAnnual매출원가 = calculateAnnual(prev매출원가.values);
+          const currAnnualTag매출 = calculateAnnual(currTag매출.values);
+          const prevAnnualTag매출 = calculateAnnual(prevTag매출.values);
+          
+          currYearAnnual = currAnnualTag매출 !== 0 ? (currAnnual매출원가 * 1.13) / currAnnualTag매출 : null;
+          prevYearAnnual = prevAnnualTag매출 !== 0 ? (prevAnnual매출원가 * 1.13) / prevAnnualTag매출 : null;
+        }
+      } else if (row.account === '영업이익률') {
+        // 영업이익률 = 영업이익 / 실판매출
+        const curr영업이익 = currAccountMap.get('영업이익');
+        const prev영업이익 = prevAccountMap.get('영업이익');
+        const curr실판매출 = currAccountMap.get('실판매출');
+        const prev실판매출 = prevAccountMap.get('실판매출');
+        
+        if (curr영업이익 && prev영업이익 && curr실판매출 && prev실판매출) {
+          // YTD 재계산
+          const currYTD영업이익 = calculateYTD(curr영업이익.values);
+          const prevYTD영업이익 = calculateYTD(prev영업이익.values);
+          const currYTD실판매출 = calculateYTD(curr실판매출.values);
+          const prevYTD실판매출 = calculateYTD(prev실판매출.values);
+          
+          currYearYTD = currYTD실판매출 !== 0 ? currYTD영업이익 / currYTD실판매출 : null;
+          prevYearYTD = prevYTD실판매출 !== 0 ? prevYTD영업이익 / prevYTD실판매출 : null;
+          
+          // 연간 재계산
+          const currAnnual영업이익 = calculateAnnual(curr영업이익.values);
+          const prevAnnual영업이익 = calculateAnnual(prev영업이익.values);
+          const currAnnual실판매출 = calculateAnnual(curr실판매출.values);
+          const prevAnnual실판매출 = calculateAnnual(prev실판매출.values);
+          
+          currYearAnnual = currAnnual실판매출 !== 0 ? currAnnual영업이익 / currAnnual실판매출 : null;
+          prevYearAnnual = prevAnnual실판매출 !== 0 ? prevAnnual영업이익 / prevAnnual실판매출 : null;
+        }
+      }
+    } else {
+      // 일반 항목은 단순 합산
+      prevYearYTD = calculateYTD(prev2024);
+      currYearYTD = calculateYTD(curr2025);
+      prevYearAnnual = calculateAnnual(prev2024);
+      currYearAnnual = calculateAnnual(curr2025);
+    }
+    
+    const ytdYoY = calculateYoY(currYearYTD, prevYearYTD);
     const annualYoY = calculateYoY(currYearAnnual, prevYearAnnual);
     
     const comparisons: ComparisonData = {

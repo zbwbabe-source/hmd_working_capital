@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Tabs from '@/components/Tabs';
 import YearTabs from '@/components/YearTabs';
 import BrandTabs from '@/components/BrandTabs';
@@ -36,6 +36,58 @@ export default function Home() {
   const [bsRemarks, setBsRemarks] = useState<Map<string, string>>(new Map());
   const [wcRemarks, setWcRemarks] = useState<Map<string, string>>(new Map());
   const [wcRemarksAuto, setWcRemarksAuto] = useState<{ [key: string]: string } | null>(null);
+
+  // 비고 데이터 로드
+  useEffect(() => {
+    const loadRemarks = async (type: 'bs' | 'wc') => {
+      try {
+        const response = await fetch(`/api/remarks?type=${type}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.remarks) {
+            const remarksMap = new Map<string, string>(Object.entries(data.remarks) as [string, string][]);
+            if (type === 'bs') {
+              setBsRemarks(remarksMap);
+            } else {
+              setWcRemarks(remarksMap);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('비고 로드 실패:', error);
+      }
+    };
+
+    // 재무상태표 탭일 때만 로드
+    if (activeTab === 2) {
+      loadRemarks('bs');
+      loadRemarks('wc');
+    }
+  }, [activeTab]);
+
+  // 비고 저장 함수 (디바운스)
+  const saveRemarkDebounced = useMemo(() => {
+    const timeouts: { [key: string]: NodeJS.Timeout } = {};
+    
+    return (account: string, remark: string, type: 'bs' | 'wc') => {
+      const key = `${type}-${account}`;
+      if (timeouts[key]) {
+        clearTimeout(timeouts[key]);
+      }
+      
+      timeouts[key] = setTimeout(async () => {
+        try {
+          await fetch('/api/remarks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account, remark, type })
+          });
+        } catch (error) {
+          console.error('비고 저장 실패:', error);
+        }
+      }, 1000); // 1초 디바운스
+    };
+  }, []);
 
   // 브랜드 목록
   const brands = [
@@ -366,6 +418,7 @@ export default function Home() {
                       const newRemarks = new Map(bsRemarks);
                       newRemarks.set(account, remark);
                       setBsRemarks(newRemarks);
+                      saveRemarkDebounced(account, remark, 'bs');
                     }}
                   />
                 </div>
@@ -392,6 +445,7 @@ export default function Home() {
                         const newRemarks = new Map(wcRemarks);
                         newRemarks.set(account, remark);
                         setWcRemarks(newRemarks);
+                        saveRemarkDebounced(account, remark, 'wc');
                       }}
                     />
                   </div>
@@ -448,7 +502,7 @@ export default function Home() {
         {activeTab === 4 && (
           <div>
             <div className="bg-gray-100 border-b border-gray-300 px-6 py-3">
-              <span className="text-sm font-medium text-gray-700">2025년 11월말 기준</span>
+              <span className="text-sm font-medium text-gray-700">2025년 12월말 기준</span>
             </div>
             {loading && <div className="p-6 text-center">로딩 중...</div>}
             {error && <div className="p-6 text-center text-red-500">{error}</div>}
