@@ -38,13 +38,13 @@ export default function BSAnalysis({ bsData, year, previousYearData }: BSAnalysi
   const 전년이익잉여금 = previousYearData ? getAccountValue('이익잉여금', previousYearData, prevMonth) : 0;
   
   // 당기순이익 계산 (이익잉여금 YoY, M 단위)
-  const 당기순이익 = (이익잉여금 - 전년이익잉여금) / 1000; // M 단위
+  const 당기순이익 = (이익잉여금 - 전년이익잉여금) / 1000000; // M 단위
   
   // 재무비율 계산
   const 부채비율 = 자본 !== 0 ? (부채 / 자본) * 100 : 0;
   const 차입금비율 = 자산 !== 0 ? (차입금 / 자산) * 100 : 0;
   const 유동비율 = 유동부채 !== 0 ? (유동자산 / 유동부채) * 100 : 0;
-  const ROE = 자본 !== 0 ? (당기순이익 * 1000 / 자본) * 100 : 0;
+  const ROE = 자본 !== 0 ? (당기순이익 * 1000000 / 자본) * 100 : 0;
   
   // 전년 비율
   const 전년부채비율 = 전년자본 !== 0 ? (전년부채 / 전년자본) * 100 : 0;
