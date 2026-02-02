@@ -53,7 +53,7 @@ export interface BrandComparisonData {
 
 // 재무제표 타입
 export type StatementType = 'PL' | 'BS' | 'CF';
-export type TabType = 'SUMMARY' | 'PL' | 'BS' | 'CF' | 'CREDIT';
+export type TabType = 'CF' | 'CREDIT' | 'WORKING_CAPITAL';
 
 // 월 데이터 맵
 export type MonthDataMap = Map<string, number[]>; // account -> [month1, month2, ..., month12]
@@ -112,28 +112,3 @@ export interface LoanLimitsData {
   };
 }
 
-// 경영요약 타입
-export interface ExecutiveSummaryData {
-  title: string;
-  baseMonth: number; // 기준월
-  sections: {
-    수익성분석: {
-      매출성장: string[];
-      비용증가: string[];
-    };
-    재무현황: {
-      자산규모: string[];
-      부채증가: string[];
-      재고자산: string[];
-      자본안정: string[];
-    };
-    실적분석: {
-      주요지표: string[];
-      부채비율: string[];
-    };
-    브랜드포트폴리오: {
-      기존브랜드: string[];
-      신규브랜드: string[];
-    };
-  };
-}

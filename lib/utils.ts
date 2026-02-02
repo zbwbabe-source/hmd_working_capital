@@ -2,7 +2,7 @@
 export function formatNumber(
   value: number | null | undefined, 
   showSign: boolean = false,
-  useParentheses: boolean = false
+  useParentheses: boolean = true
 ): string {
   if (value === null || value === undefined || isNaN(value)) {
     return '-';
@@ -14,12 +14,8 @@ export function formatNumber(
   
   // 음수일 때
   if (value < 0) {
-    // 괄호 형식 (원본 데이터)
-    if (useParentheses) {
-      return '(' + formatted + ')';
-    }
-    // 삼각형 형식 (계산된 값)
-    return '△' + formatted;
+    // 괄호 형식 (기본값)
+    return '(' + formatted + ')';
   }
   
   // 양수일 때 '+' 기호 추가 (옵션)
@@ -34,7 +30,7 @@ export function formatNumber(
 export function formatPercent(
   value: number | null | undefined, 
   showSign: boolean = false,
-  useParentheses: boolean = false,
+  useParentheses: boolean = true,
   decimalPlaces: number = 1
 ): string {
   if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
@@ -44,12 +40,8 @@ export function formatPercent(
   
   // 음수일 때
   if (value < 0) {
-    // 괄호 형식 (원본 데이터)
-    if (useParentheses) {
-      return '(' + absPercentValue + '%)';
-    }
-    // 삼각형 형식 (계산된 값)
-    return '△' + absPercentValue + '%';
+    // 괄호 형식 (기본값)
+    return '(' + absPercentValue + '%)';
   }
   
   // 양수일 때 '+' 기호 추가 (옵션)
