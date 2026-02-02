@@ -300,6 +300,12 @@ export function calculateWorkingCapitalTable(
   const rows: TableRow[] = [];
   const 대분류순서 = Array.from(new Set(data.map(r => r.대분류)));
   
+  // YoY 계산 헬퍼
+  const calculateYoY = (currentTotal: number, previousTotal: number | null | undefined): number | null => {
+    if (previousTotal === null || previousTotal === undefined) return null;
+    return currentTotal - previousTotal;
+  };
+  
   for (const 대분류 of 대분류순서) {
     const 중분류Rows = groupedBy대분류.get(대분류) || [];
     
@@ -317,6 +323,9 @@ export function calculateWorkingCapitalTable(
     // 전년도 대분류 합계
     const previousTotal = previousYearTotals?.get(대분류);
     
+    // YoY 계산
+    const yoyValue = calculateYoY(연간합계, previousTotal);
+    
     // 대분류 행 추가 (하늘색 배경)
     rows.push({
       account: 대분류,
@@ -325,7 +334,7 @@ export function calculateWorkingCapitalTable(
       isCalculated: true,
       isBold: true,
       isHighlight: 'sky',
-      values: [...대분류합계, 연간합계],
+      values: [...대분류합계, 연간합계, yoyValue],
       format: 'number',
       year2024Value: previousTotal ?? null,
     });
@@ -336,12 +345,15 @@ export function calculateWorkingCapitalTable(
       const accountKey = `${대분류}-${중분류Row.중분류}`;
       const previousValue = previousYearTotals?.get(accountKey);
       
+      // 중분류 YoY 계산
+      const 중분류YoY = calculateYoY(중분류연간합계, previousValue);
+      
       rows.push({
         account: 중분류Row.중분류,
         level: 1,
         isGroup: false,
         isCalculated: false,
-        values: [...중분류Row.values, 중분류연간합계],
+        values: [...중분류Row.values, 중분류연간합계, 중분류YoY],
         format: 'number',
         year2024Value: previousValue ?? null,
       });

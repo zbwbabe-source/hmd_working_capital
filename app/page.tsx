@@ -119,7 +119,6 @@ export default function Home() {
                     columns={cfColumns} 
                     showTotal 
                     isCashFlow={true}
-                    compactLayout={true}
                     monthsCollapsed={cfMonthsCollapsed}
                     onMonthsToggle={() => setCfMonthsCollapsed(!cfMonthsCollapsed)}
                     currentYear={cfYear}
@@ -134,7 +133,7 @@ export default function Home() {
                     </div>
                     <FinancialTable 
                       data={workingCapitalData} 
-                      columns={[...monthColumns, `${cfYear}년(합계)`]} 
+                      columns={[...monthColumns, `${cfYear}년(합계)`, 'YoY']} 
                       showTotal
                       isCashFlow={true}
                       monthsCollapsed={cfMonthsCollapsed}
