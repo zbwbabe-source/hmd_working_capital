@@ -1,5 +1,5 @@
 import { FinancialData, TableRow, ComparisonData, BrandComparisonData } from './types';
-import { WorkingCapitalRow } from './csv';
+import { WorkingCapitalRow, WorkingCapitalStatementRow } from './csv';
 
 // 월별 데이터를 Map으로 변환
 export function createMonthDataMap(data: FinancialData[]): Map<string, number[]> {
@@ -283,82 +283,159 @@ export function calculateCF(
 }
 
 // ==================== Working Capital Table (운전자본표) ====================
+const 대분류순서 = ['영업활동', '자산성지출', '기타수익', 'from 차입금'];
+const 중분류순서 = ['매출수금', '물품대', '본사선급금', '비용'];
+
 export function calculateWorkingCapitalTable(
   data: WorkingCapitalRow[],
   previousYearTotals?: Map<string, number>
 ): TableRow[] {
-  // 대분류별로 그룹화
   const groupedBy대분류 = new Map<string, WorkingCapitalRow[]>();
-  
   for (const row of data) {
     if (!groupedBy대분류.has(row.대분류)) {
       groupedBy대분류.set(row.대분류, []);
     }
     groupedBy대분류.get(row.대분류)!.push(row);
   }
-  
+
   const rows: TableRow[] = [];
-  const 대분류순서 = Array.from(new Set(data.map(r => r.대분류)));
-  
-  // YoY 계산 헬퍼
   const calculateYoY = (currentTotal: number, previousTotal: number | null | undefined): number | null => {
     if (previousTotal === null || previousTotal === undefined) return null;
     return currentTotal - previousTotal;
   };
-  
+
   for (const 대분류 of 대분류순서) {
-    const 중분류Rows = groupedBy대분류.get(대분류) || [];
-    
-    // 대분류 합계 계산 (중분류 합산)
+    const 대분류Rows = groupedBy대분류.get(대분류) || [];
+    if (대분류Rows.length === 0) continue;
+
     const 대분류합계 = new Array(12).fill(0);
-    for (const 중분류Row of 중분류Rows) {
-      for (let i = 0; i < 12; i++) {
-        대분류합계[i] += 중분류Row.values[i];
-      }
+    for (const r of 대분류Rows) {
+      for (let i = 0; i < 12; i++) 대분류합계[i] += r.values[i];
     }
-    
-    // 연간 합계 추가
     const 연간합계 = 대분류합계.reduce((sum, v) => sum + v, 0);
-    
-    // 전년도 대분류 합계
-    const previousTotal = previousYearTotals?.get(대분류);
-    
-    // YoY 계산
-    const yoyValue = calculateYoY(연간합계, previousTotal);
-    
-    // 대분류 행 추가 (하늘색 배경)
+    const yoyValue = calculateYoY(연간합계, previousYearTotals?.get(대분류));
+
+    const 중분류Set = new Set(대분류Rows.map(r => r.중분류).filter(Boolean));
+    const 중분류Ordered = 중분류순서.filter(c => 중분류Set.has(c));
+    const 중분류Rest = [...중분류Set].filter(c => !중분류순서.includes(c));
+    const 중분류List = [...중분류Ordered, ...중분류Rest.sort()];
+
     rows.push({
       account: 대분류,
       level: 0,
-      isGroup: true,
+      isGroup: 중분류List.length > 0,
       isCalculated: true,
       isBold: true,
       isHighlight: 'sky',
       values: [...대분류합계, 연간합계, yoyValue],
       format: 'number',
-      year2024Value: previousTotal ?? null,
+      year2024Value: previousYearTotals?.get(대분류) ?? null,
     });
-    
-    // 중분류 행 추가
-    for (const 중분류Row of 중분류Rows) {
-      const 중분류연간합계 = 중분류Row.values.reduce((sum, v) => sum + v, 0);
-      const accountKey = `${대분류}-${중분류Row.중분류}`;
-      const previousValue = previousYearTotals?.get(accountKey);
-      
-      // 중분류 YoY 계산
-      const 중분류YoY = calculateYoY(중분류연간합계, previousValue);
-      
+
+    for (const 중분류 of 중분류List) {
+      const 중분류RowsList = 대분류Rows.filter(r => r.중분류 === 중분류);
+      const 중분류합계 = new Array(12).fill(0);
+      for (const r of 중분류RowsList) {
+        for (let i = 0; i < 12; i++) 중분류합계[i] += r.values[i];
+      }
+      const 중분류연간합계 = 중분류합계.reduce((sum, v) => sum + v, 0);
+      const accountKey = `${대분류}-${중분류}`;
+      const 중분류YoY = calculateYoY(중분류연간합계, previousYearTotals?.get(accountKey));
+
+      const has소분류 = 중분류RowsList.some(r => !!r.소분류);
       rows.push({
-        account: 중분류Row.중분류,
+        account: 중분류,
+        level: 1,
+        isGroup: has소분류,
+        isCalculated: true,
+        isBold: true,
+        values: [...중분류합계, 중분류연간합계, 중분류YoY],
+        format: 'number',
+        year2024Value: previousYearTotals?.get(accountKey) ?? null,
+      });
+
+      for (const r of 중분류RowsList) {
+        if (!r.소분류) continue;
+        const 소분류연간합계 = r.values.reduce((sum, v) => sum + v, 0);
+        const 소분류Key = `${대분류}-${중분류}-${r.소분류}`;
+        const 소분류YoY = calculateYoY(소분류연간합계, previousYearTotals?.get(소분류Key));
+
+        rows.push({
+          account: r.소분류,
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...r.values, 소분류연간합계, 소분류YoY],
+          format: 'number',
+          year2024Value: previousYearTotals?.get(소분류Key) ?? null,
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
+// ==================== Working Capital Statement (운전자본표 - 운전자본 폴더) ====================
+const 운전자본표대분류순서 = ['매출채권', '재고자산', '매입채무'];
+
+export function calculateWorkingCapitalStatementTable(
+  data: WorkingCapitalStatementRow[],
+  previousYearTotals?: Map<string, number>
+): TableRow[] {
+  const groupedBy대분류 = new Map<string, WorkingCapitalStatementRow[]>();
+  for (const row of data) {
+    if (!groupedBy대분류.has(row.대분류)) {
+      groupedBy대분류.set(row.대분류, []);
+    }
+    groupedBy대분류.get(row.대분류)!.push(row);
+  }
+
+  const rows: TableRow[] = [];
+  const calculateYoY = (currentTotal: number, previousTotal: number | null | undefined): number | null => {
+    if (previousTotal === null || previousTotal === undefined) return null;
+    return currentTotal - previousTotal;
+  };
+
+  for (const 대분류 of 운전자본표대분류순서) {
+    const 대분류Rows = groupedBy대분류.get(대분류) || [];
+    if (대분류Rows.length === 0) continue;
+
+    const 대분류합계 = new Array(12).fill(0);
+    for (const r of 대분류Rows) {
+      for (let i = 0; i < 12; i++) 대분류합계[i] += r.values[i];
+    }
+    const 연간합계 = 대분류합계.reduce((sum, v) => sum + v, 0);
+    const yoyValue = calculateYoY(연간합계, previousYearTotals?.get(대분류));
+
+    rows.push({
+      account: 대분류,
+      level: 0,
+      isGroup: 대분류Rows.length > 0,
+      isCalculated: true,
+      isBold: true,
+      isHighlight: 'sky',
+      values: [...대분류합계, 연간합계, yoyValue],
+      format: 'number',
+      year2024Value: previousYearTotals?.get(대분류) ?? null,
+    });
+
+    for (const r of 대분류Rows) {
+      const 중분류연간합계 = r.values.reduce((sum, v) => sum + v, 0);
+      const accountKey = `${대분류}-${r.중분류}`;
+      const 중분류YoY = calculateYoY(중분류연간합계, previousYearTotals?.get(accountKey));
+
+      rows.push({
+        account: r.중분류,
         level: 1,
         isGroup: false,
         isCalculated: false,
-        values: [...중분류Row.values, 중분류연간합계, 중분류YoY],
+        values: [...r.values, 중분류연간합계, 중분류YoY],
         format: 'number',
-        year2024Value: previousValue ?? null,
+        year2024Value: previousYearTotals?.get(accountKey) ?? null,
       });
     }
   }
-  
+
   return rows;
 }

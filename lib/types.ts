@@ -52,7 +52,7 @@ export interface BrandComparisonData {
 }
 
 // 탭 타입
-export type TabType = 'CF' | 'CREDIT' | 'WORKING_CAPITAL';
+export type TabType = 'CF' | 'CREDIT' | 'WORKING_CAPITAL' | 'WORKING_CAPITAL_STATEMENT';
 
 // 월 데이터 맵
 export type MonthDataMap = Map<string, number[]>; // account -> [month1, month2, ..., month12]

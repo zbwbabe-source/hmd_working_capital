@@ -288,10 +288,11 @@ export async function readCreditCSV(filePath: string) {
   return dealers;
 }
 
-// 운전자본 CSV 읽기 (대분류/중분류 구조)
+// 운전자본 CSV 읽기 (대분류/중분류/소분류 구조)
 export interface WorkingCapitalRow {
   대분류: string;
   중분류: string;
+  소분류: string;
   values: number[]; // 12개월 데이터
 }
 
@@ -299,11 +300,9 @@ export async function readWorkingCapitalCSV(filePath: string, year: number): Pro
   let content: string;
 
   try {
-    // UTF-8 시도
     content = fs.readFileSync(filePath, 'utf-8');
   } catch (err) {
     try {
-      // CP949(EUC-KR) 시도
       const buffer = fs.readFileSync(filePath);
       content = iconv.decode(buffer, 'cp949');
     } catch (err2) {
@@ -311,7 +310,6 @@ export async function readWorkingCapitalCSV(filePath: string, year: number): Pro
     }
   }
 
-  // CSV 파싱
   const parsed = Papa.parse<string[]>(content, {
     header: false,
     skipEmptyLines: true,
@@ -326,10 +324,79 @@ export async function readWorkingCapitalCSV(filePath: string, year: number): Pro
     throw new Error('CSV 파일이 비어있거나 형식이 잘못되었습니다.');
   }
 
-  // 헤더 행 (첫 번째 행)
   const headers = rows[0];
-  
-  // 월 컬럼 인덱스 찾기 (3번째 컬럼부터 14번째 컬럼까지: 1월~12월)
+  // 월 컬럼: 대분류(0), 중분류(1), 소분류(2) 다음부터 1월~12월
+  const monthColumns: { index: number; month: number }[] = [];
+  for (let i = 3; i < headers.length && i < 15; i++) {
+    const month = parseMonthColumn(headers[i]);
+    if (month !== null) {
+      monthColumns.push({ index: i, month });
+    }
+  }
+
+  const result: WorkingCapitalRow[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const 대분류 = row[0]?.trim() ?? '';
+    const 중분류 = row[1]?.trim() ?? '';
+    const 소분류 = row[2]?.trim() ?? '';
+
+    if (!대분류) continue;
+
+    const values = new Array(12).fill(0);
+    for (const { index, month } of monthColumns) {
+      const valueStr = row[index];
+      values[month - 1] = cleanNumericValue(valueStr || '0');
+    }
+
+    result.push({
+      대분류,
+      중분류,
+      소분류,
+      values,
+    });
+  }
+
+  return result;
+}
+
+// 운전자본표 CSV 읽기 (운전자본 폴더: 대분류/중분류, 소분류 없음)
+export interface WorkingCapitalStatementRow {
+  대분류: string;
+  중분류: string;
+  values: number[]; // 12개월 데이터
+}
+
+export async function readWorkingCapitalStatementCSV(filePath: string, year: number): Promise<WorkingCapitalStatementRow[]> {
+  let content: string;
+
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      content = iconv.decode(buffer, 'cp949');
+    } catch (err2) {
+      throw new Error(`CSV 파일을 읽을 수 없습니다: ${filePath}`);
+    }
+  }
+
+  const parsed = Papa.parse<string[]>(content, {
+    header: false,
+    skipEmptyLines: true,
+  });
+
+  if (parsed.errors.length > 0) {
+    console.error('CSV 파싱 에러:', parsed.errors);
+  }
+
+  const rows = parsed.data;
+  if (rows.length < 2) {
+    throw new Error('CSV 파일이 비어있거나 형식이 잘못되었습니다.');
+  }
+
+  const headers = rows[0];
+  // 월 컬럼: 대분류(0), 중분류(1) 다음부터 1월~12월
   const monthColumns: { index: number; month: number }[] = [];
   for (let i = 2; i < headers.length && i < 14; i++) {
     const month = parseMonthColumn(headers[i]);
@@ -338,23 +405,18 @@ export async function readWorkingCapitalCSV(filePath: string, year: number): Pro
     }
   }
 
-  // 데이터 행 파싱
-  const result: WorkingCapitalRow[] = [];
+  const result: WorkingCapitalStatementRow[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const 대분류 = row[0]?.trim();
-    const 중분류 = row[1]?.trim();
-    
-    if (!대분류 || !중분류) continue;
+    const 대분류 = row[0]?.trim() ?? '';
+    const 중분류 = row[1]?.trim() ?? '';
 
-    // 12개월 데이터 배열 초기화
+    if (!대분류) continue;
+
     const values = new Array(12).fill(0);
-    
-    // 월별 값 파싱
     for (const { index, month } of monthColumns) {
       const valueStr = row[index];
-      const value = cleanNumericValue(valueStr || '0');
-      values[month - 1] = value;
+      values[month - 1] = cleanNumericValue(valueStr || '0');
     }
 
     result.push({

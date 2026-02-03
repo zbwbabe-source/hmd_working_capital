@@ -25,6 +25,7 @@ interface FinancialTableProps {
   onHideYtdToggle?: () => void; // YTD 숨기기 토글 핸들러
   allRowsCollapsed?: boolean; // 모든 행 접기 상태 (외부 제어)
   onAllRowsToggle?: () => void; // 모든 행 접기/펼치기 토글 핸들러
+  defaultExpandedAccounts?: string[]; // 초기 펼침 상태로 둘 그룹(계정과목) 목록
 }
 
 export default function FinancialTable({ 
@@ -48,6 +49,7 @@ export default function FinancialTable({
   onHideYtdToggle,
   allRowsCollapsed: externalAllRowsCollapsed,
   onAllRowsToggle,
+  defaultExpandedAccounts,
 }: FinancialTableProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
@@ -66,10 +68,13 @@ export default function FinancialTable({
   const monthsCollapsed = externalMonthsCollapsed !== undefined ? externalMonthsCollapsed : internalMonthsCollapsed;
   const toggleMonths = onMonthsToggle || (() => setInternalMonthsCollapsed(!internalMonthsCollapsed));
 
-  // 초기 마운트 시 모든 그룹 행 접기
+  // 초기 마운트 시 그룹 행 접기 (defaultExpandedAccounts는 펼친 상태로)
   useEffect(() => {
     const allGroups = data.filter(row => row.isGroup).map(row => row.account);
-    setCollapsed(new Set(allGroups));
+    const toCollapse = defaultExpandedAccounts?.length
+      ? allGroups.filter(g => !defaultExpandedAccounts.includes(g))
+      : allGroups;
+    setCollapsed(new Set(toCollapse));
   }, []); // 빈 의존성 배열로 초기 마운트 시에만 실행
 
   // 그룹 접기/펼치기 토글
@@ -103,9 +108,12 @@ export default function FinancialTable({
   useEffect(() => {
     if (isAllRowsControlled) {
       const allGroups = data.filter(row => row.isGroup).map(row => row.account);
-      setCollapsed(allRowsCollapsed ? new Set(allGroups) : new Set());
+      const toCollapse = allRowsCollapsed
+        ? (defaultExpandedAccounts?.length ? allGroups.filter(g => !defaultExpandedAccounts.includes(g)) : allGroups)
+        : [];
+      setCollapsed(new Set(toCollapse));
     }
-  }, [isAllRowsControlled, allRowsCollapsed, data]);
+  }, [isAllRowsControlled, allRowsCollapsed, data, defaultExpandedAccounts]);
 
   // 표시할 행 필터링 (접힌 그룹의 자식은 숨김)
   const visibleRows = useMemo(() => {
