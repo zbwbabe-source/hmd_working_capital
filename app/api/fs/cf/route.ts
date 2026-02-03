@@ -1,49 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCFCSV } from '@/lib/csv';
-import { calculateCF } from '@/lib/fs-mapping';
+import { readCashflowCSV, type CashflowRow } from '@/lib/csv';
+import { calculateCashflowTable } from '@/lib/fs-mapping';
+
+function buildTotalsFromCashflowRows(rows: CashflowRow[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    const annual = r.values.reduce((s, v) => s + v, 0);
+    map.set(r.대분류, (map.get(r.대분류) ?? 0) + annual);
+    if (r.중분류) map.set(`${r.대분류}-${r.중분류}`, (map.get(`${r.대분류}-${r.중분류}`) ?? 0) + annual);
+    if (r.소분류) map.set(`${r.대분류}-${r.중분류}-${r.소분류}`, (map.get(`${r.대분류}-${r.중분류}-${r.소분류}`) ?? 0) + annual);
+  }
+  return map;
+}
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const yearParam = searchParams.get('year');
     const year = yearParam ? parseInt(yearParam, 10) : 2025;
-    
+
     if (![2025, 2026].includes(year)) {
       return NextResponse.json(
         { error: '유효하지 않은 연도입니다. 2025 또는 2026을 선택하세요.' },
         { status: 400 }
       );
     }
-    
-    const filePath = path.join(process.cwd(), 'CF', `${year}.csv`);
-    const { data, year2024Values } = await readCFCSV(filePath, year);
-    
-    // 2026년일 때 2025년 합계 계산
-    let previousYearTotals: Map<string, number> | undefined = undefined;
-    if (year === 2026) {
+
+    const filePath = path.join(process.cwd(), 'cashflow', `${year}.csv`);
+    const data = await readCashflowCSV(filePath, year);
+
+    let previousYearTotals: Map<string, number> | undefined;
+    let year2023Totals: Map<string, number> | undefined;
+
+    const prevYear = year - 1;
+    try {
+      const prevFilePath = path.join(process.cwd(), 'cashflow', `${prevYear}.csv`);
+      const prevData = await readCashflowCSV(prevFilePath, prevYear);
+      previousYearTotals = buildTotalsFromCashflowRows(prevData);
+    } catch (err) {
+      console.error(`${prevYear}년 cashflow 로드 실패:`, err);
+      previousYearTotals = undefined;
+    }
+
+    if (year === 2025) {
       try {
-        const prevFilePath = path.join(process.cwd(), 'CF', '2025.csv');
-        const { data: prevData, year2024Values: prevYear2024Values } = await readCFCSV(prevFilePath, 2025);
-        const prevRows = calculateCF(prevData, prevYear2024Values, 2025);
-        
-        // 2025년 합계를 Map으로 변환 (각 row의 합계는 values[12]에 있음)
-        previousYearTotals = new Map<string, number>();
-        for (const row of prevRows) {
-          if (row.values && row.values.length > 12) {
-            const total = row.values[12]; // 합계 컬럼
-            if (total !== null && total !== undefined) {
-              previousYearTotals.set(row.account, total);
-            }
-          }
-        }
+        const path2023 = path.join(process.cwd(), 'cashflow', '2023.csv');
+        const data2023 = await readCashflowCSV(path2023, 2023);
+        year2023Totals = buildTotalsFromCashflowRows(data2023);
       } catch (err) {
-        console.error('2025년 데이터 로드 실패:', err);
+        console.error('2023년 cashflow 로드 실패:', err);
+      }
+    } else if (year === 2026) {
+      try {
+        const path2024 = path.join(process.cwd(), 'cashflow', '2024.csv');
+        const data2024 = await readCashflowCSV(path2024, 2024);
+        year2023Totals = buildTotalsFromCashflowRows(data2024);
+      } catch (err) {
+        console.error('2024년 cashflow 로드 실패:', err);
       }
     }
-    
-    const tableRows = calculateCF(data, year2024Values, year, previousYearTotals);
-    
+
+    const tableRows = calculateCashflowTable(data, previousYearTotals, year2023Totals);
+
     return NextResponse.json({
       year,
       type: 'CF',

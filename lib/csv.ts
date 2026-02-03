@@ -231,6 +231,55 @@ export async function readCFCSV(filePath: string, year: number): Promise<{ data:
   return { data: finalResult, year2024Values };
 }
 
+// cashflow 폴더 CSV 읽기 (대분류, 중분류, 소분류, 1월~12월) — 계층 그대로 반환
+export interface CashflowRow {
+  대분류: string;
+  중분류: string;
+  소분류: string;
+  values: number[];
+}
+
+export async function readCashflowCSV(filePath: string, _year: number): Promise<CashflowRow[]> {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      content = iconv.decode(buffer, 'cp949');
+    } catch (err2) {
+      throw new Error(`CSV 파일을 읽을 수 없습니다: ${filePath}`);
+    }
+  }
+
+  const parsed = Papa.parse<string[]>(content, { header: false, skipEmptyLines: true });
+  const rows = parsed.data as string[][];
+  if (rows.length < 2) throw new Error('CSV 파일이 비어있거나 형식이 잘못되었습니다.');
+
+  const headers = rows[0];
+  const monthColumns: { index: number; month: number }[] = [];
+  for (let i = 3; i < headers.length && i < 15; i++) {
+    const month = parseMonthColumn(headers[i]?.trim() ?? '');
+    if (month !== null) monthColumns.push({ index: i, month });
+  }
+
+  const result: CashflowRow[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const 대분류 = row[0]?.trim() ?? '';
+    const 중분류 = row[1]?.trim() ?? '';
+    const 소분류 = row[2]?.trim() ?? '';
+    if (!대분류) continue;
+
+    const values = new Array(12).fill(0);
+    for (const { index, month } of monthColumns) {
+      values[month - 1] = cleanNumericValue(row[index] || '0');
+    }
+    result.push({ 대분류, 중분류, 소분류, values });
+  }
+  return result;
+}
+
 // Credit CSV 읽기 (대리상별 외상매출금, 선수금)
 export async function readCreditCSV(filePath: string) {
   let content: string;

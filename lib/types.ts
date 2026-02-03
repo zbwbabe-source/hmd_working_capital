@@ -12,13 +12,14 @@ export interface TableRow {
   level: number; // 인덴트 레벨 (0=최상위)
   isGroup: boolean; // 그룹(접기/펼치기 가능)인지
   isCalculated: boolean; // 계산된 값인지
-  isHighlight?: 'sky' | 'yellow' | 'gray' | 'none'; // 배경색 강조
+  isHighlight?: 'sky' | 'yellow' | 'gray' | 'darkGray' | 'none'; // 배경색 강조
   isBold?: boolean; // 볼드 처리
   values: (number | null)[]; // 12개월 또는 13개(합계 포함)
   children?: TableRow[];
   format?: 'number' | 'percent'; // 표시 형식
   comparisons?: ComparisonData; // 비교 데이터 (FinancialTable 범용 지원용)
   year2024Value?: number | null; // CF용 2024년 값
+  year2023Value?: number | null; // 2025년 선택 시 2023년 합계/기말
   brandComparisons?: BrandComparisonData; // 브랜드별 비교 데이터 (FinancialTable 범용 지원용)
 }
 

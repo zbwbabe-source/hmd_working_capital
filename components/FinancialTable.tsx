@@ -159,10 +159,11 @@ export default function FinancialTable({
   };
 
   // 배경색 클래스
-  const getHighlightClass = (highlight?: 'sky' | 'yellow' | 'gray' | 'none') => {
+  const getHighlightClass = (highlight?: 'sky' | 'yellow' | 'gray' | 'darkGray' | 'none') => {
     if (highlight === 'sky') return 'bg-highlight-sky';
     if (highlight === 'yellow') return 'bg-highlight-yellow';
     if (highlight === 'gray') return 'bg-highlight-gray';
+    if (highlight === 'darkGray') return 'bg-gray-200 text-gray-800';
     return '';
   };
 
@@ -211,12 +212,22 @@ export default function FinancialTable({
     const accountCol = [columns[0]]; // "계정과목"
     
     if (isCashFlow) {
-      // 현금흐름표: 계정과목 | 2024년(합계) or 2025년(합계) | 1월~12월 | {currentYear}년(합계) | YoY
-      const totalColumnHeader = currentYear ? `${currentYear}년(합계)` : '2025년(합계)';
-      const prevYearHeader = currentYear === 2026 ? '2025년(합계)' : '2024년(합계)';
+      // 현금흐름표/운전자본표: columns[13]이 "2025년(합계)" 또는 "2025년(기말)" 등으로 전달됨
+      const yearColumnFromProps = columns.length >= 14 ? columns[13] : null;
+      const totalColumnHeader =
+        yearColumnFromProps && yearColumnFromProps.includes('년(')
+          ? yearColumnFromProps
+          : (currentYear ? `${currentYear}년(합계)` : '2025년(합계)');
+      const use기말 = yearColumnFromProps != null && yearColumnFromProps.includes('기말');
+      const prevYearHeader = use기말
+        ? (currentYear === 2026 ? '2025년(기말)' : '2024년(기말)')
+        : (currentYear === 2026 ? '2025년(합계)' : '2024년(합계)');
+      const year2023Header = use기말 ? '2023년(기말)' : '2023년(합계)';
+      const show2023 = currentYear === 2025;
       if (monthsCollapsed) {
         return [
           ...accountCol,
+          ...(show2023 ? [year2023Header] : []),
           prevYearHeader,
           '', // 빈 컬럼
           totalColumnHeader,
@@ -226,6 +237,7 @@ export default function FinancialTable({
         const monthCols = columns.slice(1, 13); // 1월~12월
         return [
           ...accountCol,
+          ...(show2023 ? [year2023Header] : []),
           prevYearHeader,
           ...monthCols,
           totalColumnHeader,
@@ -352,7 +364,7 @@ export default function FinancialTable({
       // 기본: 모든 컬럼
       return columns;
     }
-  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd]);
+  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear]);
 
   return (
     <div>
@@ -442,8 +454,8 @@ export default function FinancialTable({
                 const getColumnWidth = () => {
                   if (!compactLayout) return undefined;
                   if (isAccountCol) return { width: '280px', minWidth: '280px' };
-                  // 합계 컬럼 체크 (동적)
-                  const isTotalCol = col.includes('년(합계)');
+                  // 합계/기말 컬럼 체크 (동적)
+                  const isTotalCol = col.includes('년(합계)') || col.includes('년(기말)');
                   const isPrevYearCol = col === '2024년' || col === '2025년';
                   if (isPrevYearCol || isTotalCol || col === 'YoY') {
                     return { width: '160px', minWidth: '160px' };
@@ -498,6 +510,8 @@ export default function FinancialTable({
               // Balance Check 행 스타일링 (절대값 10 미만이면 정합)
               const isBalanceCheck = row.account === 'Balance Check';
               const isBalanceOk = isBalanceCheck && row.values.every(v => v === null || Math.abs(v) < 10);
+              // 전월대비 행: +/- 표시
+              const isMomRow = row.account === '전월대비';
               
               return (
               <tr
@@ -530,7 +544,7 @@ export default function FinancialTable({
                   onClick={() => row.isGroup && toggleCollapse(row.account)}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={compactLayout ? 'overflow-hidden text-ellipsis' : ''}>
+                    <span className={`${compactLayout ? 'overflow-hidden text-ellipsis' : ''} ${isMomRow ? 'italic' : ''}`}>
                       {isBalanceCheck ? (
                         isBalanceOk ? 'Balance Check ✓ 정합' : 'Balance Check (차대변 불일치)'
                       ) : (
@@ -545,9 +559,21 @@ export default function FinancialTable({
                   </div>
                 </td>
 
-                {/* CF: 2024년 값 */}
+                {/* CF: 2023년 / 2024년 값 (2025년 선택 시 2023·2024 두 컬럼) */}
                 {isCashFlow && (
                   <>
+                    {currentYear === 2025 && (
+                      <td
+                        className={`
+                          border border-gray-300 px-4 py-2 text-right
+                          ${getHighlightClass(row.isHighlight)}
+                          ${row.isBold ? 'font-semibold' : ''}
+                          ${isNegative(row.year2023Value ?? null) ? 'text-red-600' : ''}
+                        `}
+                      >
+                        {formatValue(row.year2023Value ?? null, row.format, isMomRow, !row.isCalculated)}
+                      </td>
+                    )}
                     <td
                       className={`
                         border border-gray-300 px-4 py-2 text-right
@@ -556,7 +582,7 @@ export default function FinancialTable({
                         ${isNegative(row.year2024Value ?? null) ? 'text-red-600' : ''}
                       `}
                     >
-                      {formatValue(row.year2024Value ?? null, row.format, false, !row.isCalculated)}
+                      {formatValue(row.year2024Value ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
                     {/* 빈 컬럼 (2024년 뒤) */}
                     {monthsCollapsed && <td className="bg-white border-0" style={{ minWidth: '16px', maxWidth: '16px', padding: 0 }}></td>}
@@ -593,7 +619,7 @@ export default function FinancialTable({
                         ${isNegative(value) ? 'text-red-600' : ''}
                       `}
                     >
-                      {formatValue(value, row.format, false, isBalanceSheet ? true : !row.isCalculated)}
+                      {formatValue(value, row.format, isMomRow, isBalanceSheet ? true : !row.isCalculated)}
                     </td>
                   );
                 })}
@@ -609,7 +635,7 @@ export default function FinancialTable({
                         ${isNegative(row.values[12]) ? 'text-red-600' : ''}
                       `}
                     >
-                      {formatValue(row.values[12], row.format, false, !row.isCalculated)}
+                      {formatValue(row.values[12], row.format, isMomRow, !row.isCalculated)}
                     </td>
                     {/* CF: YoY 컬럼 (25년 - 24년) */}
                     <td

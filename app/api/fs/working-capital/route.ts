@@ -63,8 +63,45 @@ export async function GET(request: NextRequest) {
     } catch (err) {
       console.error(`${prevYear}년 데이터 로드 실패:`, err);
     }
+
+    // 2025년 선택 시 2023년 합계 추가 (2023년(합계) 컬럼용)
+    let year2023Totals: Map<string, number> | undefined = undefined;
+    if (year === 2025) {
+      try {
+        const path2023 = path.join(process.cwd(), 'cashflow', '2023.csv');
+        const data2023 = await readWorkingCapitalCSV(path2023, 2023);
+        year2023Totals = new Map<string, number>();
+        const grouped2023 = new Map<string, typeof data2023>();
+        for (const row of data2023) {
+          if (!grouped2023.has(row.대분류)) grouped2023.set(row.대분류, []);
+          grouped2023.get(row.대분류)!.push(row);
+        }
+        for (const [대분류, 대분류Rows] of grouped2023) {
+          const 대분류합계 = 대분류Rows.reduce((sum, row) => sum + row.values.reduce((a, b) => a + b, 0), 0);
+          year2023Totals.set(대분류, 대분류합계);
+          const by중분류 = new Map<string, typeof data2023>();
+          for (const row of 대분류Rows) {
+            const key = row.중분류;
+            if (!by중분류.has(key)) by중분류.set(key, []);
+            by중분류.get(key)!.push(row);
+          }
+          for (const [중분류, 중분류Rows] of by중분류) {
+            const 중분류합계 = 중분류Rows.reduce((sum, row) => sum + row.values.reduce((a, b) => a + b, 0), 0);
+            year2023Totals.set(`${대분류}-${중분류}`, 중분류합계);
+            for (const row of 중분류Rows) {
+              if (row.소분류) {
+                const 소분류합계 = row.values.reduce((a, b) => a + b, 0);
+                year2023Totals.set(`${대분류}-${중분류}-${row.소분류}`, 소분류합계);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('2023년 데이터 로드 실패:', err);
+      }
+    }
     
-    const tableRows = calculateWorkingCapitalTable(data, previousYearTotals);
+    const tableRows = calculateWorkingCapitalTable(data, previousYearTotals, year2023Totals);
     
     return NextResponse.json({
       year,

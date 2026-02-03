@@ -14,7 +14,8 @@ export function formatNumber(
   
   // 음수일 때
   if (value < 0) {
-    // 괄호 형식 (기본값)
+    // showSign이면 '-' 표시, 아니면 괄호 형식
+    if (showSign) return '-' + formatted;
     return '(' + formatted + ')';
   }
   

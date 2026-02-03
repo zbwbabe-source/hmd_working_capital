@@ -20,7 +20,7 @@ export default function Home() {
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(false);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
   const [wcStatementAllRowsCollapsed, setWcStatementAllRowsCollapsed] = useState<boolean>(true);
-  const [workingCapitalData, setWorkingCapitalData] = useState<TableRow[] | null>(null);
+  const [cfData, setCfData] = useState<TableRow[] | null>(null);
   const [wcStatementData, setWcStatementData] = useState<TableRow[] | null>(null);
   const [creditData, setCreditData] = useState<CreditData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -28,9 +28,9 @@ export default function Home() {
   const [cfoQAExpanded, setCfoQAExpanded] = useState<boolean>(false);
 
   const tabs = ['연간 자금계획', '여신사용현황'];
-  const tabTypes: TabType[] = ['WORKING_CAPITAL', 'CREDIT'];
+  const tabTypes: TabType[] = ['CF', 'CREDIT'];
 
-  // 데이터 로딩
+  // 데이터 로딩: 현금흐름표=CF 폴더, 운전자본표=운전자본 폴더
   const loadData = async (type: TabType, year?: number) => {
     setLoading(true);
     setError(null);
@@ -39,8 +39,8 @@ export default function Home() {
       let url = '';
       if (type === 'CREDIT') {
         url = `/api/fs/credit`;
-      } else if (type === 'WORKING_CAPITAL') {
-        url = `/api/fs/working-capital?year=${year}`;
+      } else if (type === 'CF') {
+        url = `/api/fs/cf?year=${year}`;
       } else if (type === 'WORKING_CAPITAL_STATEMENT') {
         url = `/api/fs/working-capital-statement?year=${year}`;
       }
@@ -55,8 +55,8 @@ export default function Home() {
         throw new Error(message);
       }
 
-      if (type === 'WORKING_CAPITAL') {
-        setWorkingCapitalData(result.rows);
+      if (type === 'CF') {
+        setCfData(result.rows);
       } else if (type === 'WORKING_CAPITAL_STATEMENT') {
         setWcStatementData(result.rows);
       } else if (type === 'CREDIT') {
@@ -74,7 +74,7 @@ export default function Home() {
   // 탭 변경 시 데이터 로드
   useEffect(() => {
     if (activeTab === 0) {
-      if (!workingCapitalData) loadData('WORKING_CAPITAL', wcYear);
+      if (!cfData) loadData('CF', wcYear);
       if (!wcStatementData) loadData('WORKING_CAPITAL_STATEMENT', wcYear);
     } else if (activeTab === 1 && !creditData) {
       loadData('CREDIT');
@@ -83,7 +83,7 @@ export default function Home() {
 
   useEffect(() => {
     if (activeTab === 0) {
-      loadData('WORKING_CAPITAL', wcYear);
+      loadData('CF', wcYear);
       loadData('WORKING_CAPITAL_STATEMENT', wcYear);
     }
   }, [wcYear]);
@@ -91,19 +91,19 @@ export default function Home() {
   // 월 컬럼 (1월~12월)
   const monthColumns = ['계정과목', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
-  // 분석 결과 계산 (useMemo로 캐싱)
+  // 분석 결과 계산 (useMemo로 캐싱): 현금흐름표=cfData(CF 폴더), 운전자본표=wcStatementData(운전자본 폴더)
   const analysisResults = useMemo(() => {
-    if (!workingCapitalData && !wcStatementData) {
+    if (!cfData && !wcStatementData) {
       return null;
     }
 
-    const cfAnalysis = analyzeCashFlowData(workingCapitalData, wcYear);
+    const cfAnalysis = analyzeCashFlowData(cfData, wcYear);
     const wcAnalysis = analyzeWorkingCapitalData(wcStatementData, wcYear);
-    const insights = generateCashFlowInsights(workingCapitalData, wcStatementData, wcYear);
-    const cfoQA = generateCFOQA(workingCapitalData, wcStatementData, wcYear);
+    const insights = generateCashFlowInsights(cfData, wcStatementData, wcYear);
+    const cfoQA = generateCFOQA(cfData, wcStatementData, wcYear);
 
     return { cfAnalysis, wcAnalysis, insights, cfoQA };
-  }, [workingCapitalData, wcStatementData, wcYear]);
+  }, [cfData, wcStatementData, wcYear]);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -128,12 +128,12 @@ export default function Home() {
             </div>
             {loading && <div className="p-6 text-center">로딩 중...</div>}
             {error && <div className="p-6 text-center text-red-500">{error}</div>}
-            {(workingCapitalData || wcStatementData) && !loading && (
+            {(cfData || wcStatementData) && !loading && (
               <div className="px-6 pt-6 pb-6">
                 {workingCapitalMonthsCollapsed ? (
                   <div className="flex gap-6 items-start">
                     <div className="flex-shrink-0">
-                      {workingCapitalData && (
+                      {cfData && (
                         <>
                           <div className="flex items-center gap-2 mb-4">
                             <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
@@ -145,7 +145,7 @@ export default function Home() {
                             </button>
                           </div>
                           <FinancialTable 
-                            data={workingCapitalData} 
+                            data={cfData} 
                             columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
                             showTotal
                             isCashFlow={true}
@@ -171,7 +171,7 @@ export default function Home() {
                           </div>
                           <FinancialTable 
                             data={wcStatementData} 
-                            columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
+                            columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY']} 
                             showTotal
                             isCashFlow={true}
                             monthsCollapsed={workingCapitalMonthsCollapsed}
@@ -352,7 +352,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    {workingCapitalData && (
+                    {cfData && (
                       <>
                         <div className="flex items-center gap-2 mb-4">
                           <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
@@ -364,7 +364,7 @@ export default function Home() {
                           </button>
                         </div>
                         <FinancialTable 
-                          data={workingCapitalData} 
+                          data={cfData} 
                           columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
                           showTotal
                           isCashFlow={true}
@@ -390,7 +390,7 @@ export default function Home() {
                         </div>
                         <FinancialTable 
                           data={wcStatementData} 
-                          columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
+                          columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY']} 
                           showTotal
                           isCashFlow={true}
                           monthsCollapsed={workingCapitalMonthsCollapsed}
