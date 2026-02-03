@@ -17,42 +17,41 @@ export interface TableRow {
   values: (number | null)[]; // 12개월 또는 13개(합계 포함)
   children?: TableRow[];
   format?: 'number' | 'percent'; // 표시 형식
-  comparisons?: ComparisonData; // 비교 데이터 (PL 2025년 전용)
+  comparisons?: ComparisonData; // 비교 데이터 (FinancialTable 범용 지원용)
   year2024Value?: number | null; // CF용 2024년 값
-  brandComparisons?: BrandComparisonData; // 브랜드별 비교 데이터 (브랜드별 손익 보기 전용)
+  brandComparisons?: BrandComparisonData; // 브랜드별 비교 데이터 (FinancialTable 범용 지원용)
 }
 
-// 비교 데이터 (PL 2025년 전용)
+// 비교 데이터 (FinancialTable 범용 지원용)
 export interface ComparisonData {
-  prevYearMonth: number | null; // 전년(기준월)
-  currYearMonth: number | null; // 당년(기준월)
-  monthYoY: number | null; // 월 YoY
-  prevYearYTD: number | null; // 전년 YTD
-  currYearYTD: number | null; // 당년 YTD
-  ytdYoY: number | null; // YTD YoY
-  prevYearAnnual: number | null; // 24년 연간
-  currYearAnnual: number | null; // 25년 연간
-  annualYoY: number | null; // 연간 YoY
+  prevYearMonth: number | null;
+  currYearMonth: number | null;
+  monthYoY: number | null;
+  prevYearYTD: number | null;
+  currYearYTD: number | null;
+  ytdYoY: number | null;
+  prevYearAnnual: number | null;
+  currYearAnnual: number | null;
+  annualYoY: number | null;
 }
 
-// 브랜드별 비교 데이터 (브랜드별 손익 보기 전용)
+// 브랜드별 비교 데이터 (FinancialTable 범용 지원용)
 export interface BrandComparisonData {
   month: {
-    prevYear: { [brand: string]: number | null }; // 전년(12월) 브랜드별
-    currYear: { [brand: string]: number | null }; // 당년(12월) 브랜드별
+    prevYear: { [brand: string]: number | null };
+    currYear: { [brand: string]: number | null };
   };
   ytd: {
-    prevYear: { [brand: string]: number | null }; // 전년YTD 브랜드별
-    currYear: { [brand: string]: number | null }; // 당년YTD 브랜드별
+    prevYear: { [brand: string]: number | null };
+    currYear: { [brand: string]: number | null };
   };
   annual: {
-    prevYear: { [brand: string]: number | null }; // 24년연간 브랜드별
-    currYear: { [brand: string]: number | null }; // 25년연간 브랜드별
+    prevYear: { [brand: string]: number | null };
+    currYear: { [brand: string]: number | null };
   };
 }
 
-// 재무제표 타입
-export type StatementType = 'PL' | 'BS' | 'CF';
+// 탭 타입
 export type TabType = 'CF' | 'CREDIT' | 'WORKING_CAPITAL';
 
 // 월 데이터 맵
@@ -87,28 +86,3 @@ export interface CreditData {
     riskLevel: '높음' | '낮음';
   };
 }
-
-// 재무 분석 타입
-export interface FinancialAnalysis {
-  ratios: {
-    부채비율: { current: number; previous: number };
-    차입금비율: { current: number; previous: number };
-    유동비율: { current: number };
-    ROE: { current: number };
-    rawData: {
-      유동자산: number;
-      유동부채: number;
-      자본증가: number;
-    };
-  };
-  wcRemarksAuto: { [key: string]: string }; // 자동 생성된 운전자본 비고
-}
-
-// 차입 한도 타입
-export interface LoanLimitsData {
-  [bank: string]: {
-    current: number;
-    total: number;
-  };
-}
-
