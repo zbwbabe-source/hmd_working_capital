@@ -563,12 +563,6 @@ export function generateCashFlowInsights(
     );
   }
   
-  if (ar && ar.yoyAbsolute) {
-    actionItems.push(
-      `매출채권 회수 정책 점검: 회수조건 변화가 매출에 미치는 영향 평가.`
-    );
-  }
-  
   return { keyInsights, riskFactors, actionItems };
 }
 
