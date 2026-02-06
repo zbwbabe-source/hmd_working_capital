@@ -101,9 +101,9 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
       text += `## ${year}년 현금흐름표\n\n`;
       content.cfAnalysis.categories.forEach((cat: any) => {
         text += `**${cat.account}**\n`;
-        text += `연간: ${cat.annualTotal.toLocaleString('ko-KR')}\n`;
+        text += `연간: ${cat.annualTotal.toLocaleString('ko-KR')} K HKD\n`;
         if (cat.yoyAbsolute !== null) {
-          text += `전년 대비: ${cat.yoyAbsolute.toLocaleString('ko-KR')}\n`;
+          text += `전년 대비: ${cat.yoyAbsolute.toLocaleString('ko-KR')} K HKD\n`;
         }
         text += '\n';
       });
@@ -113,9 +113,9 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
       text += `## ${year}년 운전자본표\n\n`;
       content.wcAnalysis.categories.forEach((cat: any) => {
         text += `**${cat.account}**\n`;
-        text += `연간: ${cat.annualTotal.toLocaleString('ko-KR')}\n`;
+        text += `연간: ${cat.annualTotal.toLocaleString('ko-KR')} K HKD\n`;
         if (cat.yoyAbsolute !== null) {
-          text += `전년 대비: ${cat.yoyAbsolute.toLocaleString('ko-KR')}\n`;
+          text += `전년 대비: ${cat.yoyAbsolute.toLocaleString('ko-KR')} K HKD\n`;
         }
         text += '\n';
       });
