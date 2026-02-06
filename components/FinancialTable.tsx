@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { TableRow } from '@/lib/types';
-import { formatNumber, formatPercent } from '@/lib/utils';
+import { formatNumber, formatNumberWC, formatPercent } from '@/lib/utils';
 
 interface FinancialTableProps {
   data: TableRow[];
@@ -12,6 +12,7 @@ interface FinancialTableProps {
   baseMonth?: number; // 기준월 (1~12)
   isBalanceSheet?: boolean; // 재무상태표 여부
   isCashFlow?: boolean; // 현금흐름표 여부 (2024년 컬럼 표시)
+  isWorkingCapital?: boolean; // 운전자본표 여부 (HKD를 천 HKD로 변환)
   currentYear?: number; // 현재 년도 (BS 기말 컬럼 헤더에 사용)
   monthsCollapsed?: boolean; // 월별 데이터 접기 상태 (외부 제어)
   onMonthsToggle?: () => void; // 월별 데이터 토글 핸들러
@@ -36,6 +37,7 @@ export default function FinancialTable({
   baseMonth = 11,
   isBalanceSheet = false,
   isCashFlow = false,
+  isWorkingCapital = false,
   currentYear,
   monthsCollapsed: externalMonthsCollapsed,
   onMonthsToggle,
@@ -149,6 +151,10 @@ export default function FinancialTable({
   ) => {
     if (format === 'percent') {
       return formatPercent(value, showSign, useParentheses, decimalPlaces);
+    }
+    // 운전자본표는 formatNumberWC 사용 (HKD를 천 HKD로 변환)
+    if (isWorkingCapital) {
+      return formatNumberWC(value, showSign, useParentheses);
     }
     return formatNumber(value, showSign, useParentheses);
   };

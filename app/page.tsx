@@ -167,6 +167,7 @@ export default function Home() {
                             columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY']} 
                             showTotal
                             isCashFlow={true}
+                            isWorkingCapital={true}
                             monthsCollapsed={workingCapitalMonthsCollapsed}
                             onMonthsToggle={() => setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed)}
                             currentYear={wcYear}
@@ -232,6 +233,7 @@ export default function Home() {
                           columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY']} 
                           showTotal
                           isCashFlow={true}
+                          isWorkingCapital={true}
                           monthsCollapsed={workingCapitalMonthsCollapsed}
                           onMonthsToggle={() => setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed)}
                           currentYear={wcYear}
