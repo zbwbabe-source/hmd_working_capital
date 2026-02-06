@@ -1,4 +1,4 @@
-// 숫자 포맷팅 유틸리티 (K 단위)
+// 숫자 포맷팅 유틸리티 (천 HKD 단위)
 export function formatNumber(
   value: number | null | undefined, 
   showSign: boolean = false,
@@ -7,9 +7,8 @@ export function formatNumber(
   if (value === null || value === undefined || isNaN(value)) {
     return '-';
   }
-  // K 단위로 변환 (÷ 1000)
-  const kValue = value / 1000;
-  const absValue = Math.abs(Math.round(kValue));
+  // 이미 천 HKD 단위이므로 그대로 사용
+  const absValue = Math.abs(Math.round(value));
   const formatted = new Intl.NumberFormat('ko-KR').format(absValue);
   
   // 음수일 때
@@ -53,7 +52,7 @@ export function formatPercent(
   return absPercentValue + '%';
 }
 
-// 백만 단위 포맷팅 (분석용 - M위안)
+// 백만 단위 포맷팅 (분석용 - M HKD)
 export function formatMillionYuan(
   value: number | null | undefined,
   showSign: boolean = false
@@ -61,8 +60,8 @@ export function formatMillionYuan(
   if (value === null || value === undefined || isNaN(value)) {
     return '-';
   }
-  // 백만 단위로 변환 (÷ 1,000,000)
-  const mValue = value / 1000000;
+  // 이미 천 HKD 단위이므로 백만으로 변환 (÷ 1,000)
+  const mValue = value / 1000;
   const absValue = Math.abs(mValue);
   const formatted = absValue >= 100 
     ? absValue.toFixed(0) 
@@ -71,12 +70,12 @@ export function formatMillionYuan(
     : absValue.toFixed(2);
   
   if (value < 0) {
-    return showSign ? '-' + formatted + 'M위안' : '(' + formatted + 'M위안)';
+    return showSign ? '-' + formatted + 'M HKD' : '(' + formatted + 'M HKD)';
   }
   if (showSign && value > 0) {
-    return '+' + formatted + 'M위안';
+    return '+' + formatted + 'M HKD';
   }
-  return formatted + 'M위안';
+  return formatted + 'M HKD';
 }
 
 // 천단위 콤마 제거 및 숫자 파싱
