@@ -130,6 +130,7 @@ export default function Home() {
                         <>
                           <div className="flex items-center gap-2 mb-4">
                             <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
+                            <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
                             <button
                               onClick={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
                               className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
@@ -155,6 +156,7 @@ export default function Home() {
                         <div className="mt-8 pt-6 border-t-2 border-gray-400">
                           <div className="flex items-center gap-2 mb-4">
                             <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
+                            <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
                             <button
                               onClick={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                               className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
@@ -196,6 +198,7 @@ export default function Home() {
                       <>
                         <div className="flex items-center gap-2 mb-4">
                           <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
+                          <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
                           <button
                             onClick={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
                             className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
@@ -221,6 +224,7 @@ export default function Home() {
                       <div className="mt-8 pt-6 border-t-2 border-gray-400">
                         <div className="flex items-center gap-2 mb-4">
                           <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
+                          <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
                           <button
                             onClick={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                             className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
