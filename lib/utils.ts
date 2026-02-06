@@ -13,8 +13,8 @@ export function formatNumber(
   
   // 음수일 때
   if (value < 0) {
-    // showSign이면 '-' 표시, 아니면 괄호 형식
-    if (showSign) return '-' + formatted;
+    // showSign이면 '△' 표시, 아니면 괄호 형식
+    if (showSign) return '△' + formatted;
     return '(' + formatted + ')';
   }
   
@@ -65,7 +65,7 @@ export function formatMillionYuan(
   const formatted = new Intl.NumberFormat('ko-KR').format(absValue);
   
   if (value < 0) {
-    return showSign ? '-' + formatted + 'K HKD' : '(' + formatted + 'K HKD)';
+    return showSign ? '△' + formatted + 'K HKD' : '(' + formatted + 'K HKD)';
   }
   if (showSign && value > 0) {
     return '+' + formatted + 'K HKD';
