@@ -1,5 +1,5 @@
 import { TableRow } from './types';
-import { formatNumber, formatMillionYuan, formatMillionYuanWC } from './utils';
+import { formatNumber, formatMillionYuan } from './utils';
 
 // ==================== 월별 추세 분석 ====================
 
@@ -264,14 +264,14 @@ export function analyzeWorkingCapitalData(
     const change = ar.yoyAbsolute ?? 0;
     
     if (change < 0) {
-      arInsight = `매출채권이 전년 대비 ${formatMillionYuanWC(Math.abs(change))} 감소하여 현금 유입에 기여. `;
+      arInsight = `매출채권이 전년 대비 ${formatMillionYuan(Math.abs(change))} 감소하여 현금 유입에 기여. `;
       if (trend.concentration > 0.45) {
         arInsight += `${trend.peakMonth}월에 집중 회수되어 일회성 효과 가능성 존재.`;
       } else {
         arInsight += `연중 ${trend.pattern === 'stable' ? '균등하게' : '점진적으로'} 개선되어 구조적 변화로 판단.`;
       }
     } else {
-      arInsight = `매출채권이 ${formatMillionYuanWC(change)} 증가하여 현금 유출 요인으로 작용.`;
+      arInsight = `매출채권이 ${formatMillionYuan(change)} 증가하여 현금 유출 요인으로 작용.`;
     }
   }
   
@@ -282,7 +282,7 @@ export function analyzeWorkingCapitalData(
     const change = inventory.yoyAbsolute ?? 0;
     
     if (change < 0) {
-      inventoryInsight = `재고자산이 ${formatMillionYuanWC(Math.abs(change))} 감소하여 현금 유입 기여. `;
+      inventoryInsight = `재고자산이 ${formatMillionYuan(Math.abs(change))} 감소하여 현금 유입 기여. `;
       
       // 하반기 집중 감소인지 확인
       if (Math.abs(trend.h2Total) > Math.abs(trend.h1Total) * 1.5) {
@@ -291,7 +291,7 @@ export function analyzeWorkingCapitalData(
         inventoryInsight += `연중 균등 감소하여 보수적 재고 운영 정책으로 판단.`;
       }
     } else {
-      inventoryInsight = `재고자산이 ${formatMillionYuanWC(change)} 증가하여 현금 유출.`;
+      inventoryInsight = `재고자산이 ${formatMillionYuan(change)} 증가하여 현금 유출.`;
     }
   }
   
@@ -302,10 +302,10 @@ export function analyzeWorkingCapitalData(
     const change = ap.yoyAbsolute ?? 0;
     
     if (change < 0) {
-      apInsight = `매입채무가 ${formatMillionYuanWC(Math.abs(change))} 감소하여 현금 유출 요인. `;
+      apInsight = `매입채무가 ${formatMillionYuan(Math.abs(change))} 감소하여 현금 유출 요인. `;
       apInsight += `구매 규모 축소 또는 지급조건 변화 가능성.`;
     } else {
-      apInsight = `매입채무가 ${formatMillionYuanWC(change)} 증가하여 현금 유입에 기여. `;
+      apInsight = `매입채무가 ${formatMillionYuan(change)} 증가하여 현금 유입에 기여. `;
       if (trend.volatility > 0.5) {
         apInsight += `월별 변동성이 높아 단기 타이밍 효과로 판단.`;
       } else {
@@ -327,12 +327,12 @@ export function analyzeWorkingCapitalData(
   
   if (totalWCChange < 0) {
     summary.push(
-      `${year}년 운전자본은 전년 대비 ${formatMillionYuanWC(Math.abs(totalWCChange))} 감소하여 ` +
+      `${year}년 운전자본은 전년 대비 ${formatMillionYuan(Math.abs(totalWCChange))} 감소하여 ` +
       `영업현금흐름 개선에 기여. `
     );
   } else {
     summary.push(
-      `${year}년 운전자본이 ${formatMillionYuanWC(totalWCChange)} 증가하여 현금 유출 요인으로 작용.`
+      `${year}년 운전자본이 ${formatMillionYuan(totalWCChange)} 증가하여 현금 유출 요인으로 작용.`
     );
   }
   
@@ -431,7 +431,7 @@ export function generateCashFlowInsights(
     
     if (wcTotal2023 !== 0 && wcTotal2025 !== 0 && wcTotal2026 < wcTotal2025) {
       keyInsights.push(
-        `✓ 운전자본 총액은 2023년 ${formatMillionYuanWC(wcTotal2023)} → ${year}년 ${formatMillionYuanWC(wcTotal2026)}으로 구조적 축소 중. ` +
+        `✓ 운전자본 총액은 2023년 ${formatMillionYuan(wcTotal2023)} → ${year}년 ${formatMillionYuan(wcTotal2026)}으로 구조적 축소 중. ` +
         `매출 규모 대비 운전자본 부담 경감으로 단기 자금 소요 압력 완화.`
       );
     }
@@ -443,7 +443,7 @@ export function generateCashFlowInsights(
     // 재고자산 감소 (강화된 해석)
     if (inventory && inventory.yoyAbsolute && inventory.yoyAbsolute < 0) {
       details.push(
-        `재고자산 ${formatMillionYuanWC(Math.abs(inventory.yoyAbsolute))} 감소 → 회전율 개선, SKU/시즌 관리 효율화 가능성. ` +
+        `재고자산 ${formatMillionYuan(Math.abs(inventory.yoyAbsolute))} 감소 → 회전율 개선, SKU/시즌 관리 효율화 가능성. ` +
         `현금 전환 가속 및 향후 평가손/처분손 리스크 축소`
       );
     }
@@ -451,7 +451,7 @@ export function generateCashFlowInsights(
     // 매출채권 감소 (강화된 해석 - 매출 질 개선)
     if (ar && ar.yoyAbsolute && ar.yoyAbsolute < 0) {
       details.push(
-        `매출채권 ${formatMillionYuanWC(Math.abs(ar.yoyAbsolute))} 감소 → 신용 관리 강화, 매출 '질' 개선 관점에서 긍정적. ` +
+        `매출채권 ${formatMillionYuan(Math.abs(ar.yoyAbsolute))} 감소 → 신용 관리 강화, 매출 '질' 개선 관점에서 긍정적. ` +
         `할인·프로모션 중심 확대가 아닌 건전한 매출 구조로 전환`
       );
     }
@@ -461,12 +461,12 @@ export function generateCashFlowInsights(
       if (operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
         // 매입채무 감소에도 영업현금흐름이 개선된 경우 -> 질적 개선
         details.push(
-          `매입채무 ${formatMillionYuanWC(Math.abs(ap.yoyAbsolute))} 감소에도 불구하고 영업현금흐름 개선 → 질적 개선의 증거. ` +
+          `매입채무 ${formatMillionYuan(Math.abs(ap.yoyAbsolute))} 감소에도 불구하고 영업현금흐름 개선 → 질적 개선의 증거. ` +
           `영업 규모 조정에 따른 정상화로 부정 신호 아님`
         );
       } else {
         details.push(
-          `매입채무 ${formatMillionYuanWC(Math.abs(ap.yoyAbsolute))} 감소 → 대부분 본사 매입채무 감소로, 매출 감소에 따른 원재료 구매 축소 영향`
+          `매입채무 ${formatMillionYuan(Math.abs(ap.yoyAbsolute))} 감소 → 대부분 본사 매입채무 감소로, 매출 감소에 따른 원재료 구매 축소 영향`
         );
       }
     }
@@ -654,10 +654,10 @@ export function generateCFOQA(
   if (operations && (ar || inventory)) {
     const contributors: string[] = [];
     if (ar && ar.yoyAbsolute && ar.yoyAbsolute < 0) {
-      contributors.push(`매출채권 회수 ${formatMillionYuanWC(Math.abs(ar.yoyAbsolute))}`);
+      contributors.push(`매출채권 회수 ${formatMillionYuan(Math.abs(ar.yoyAbsolute))}`);
     }
     if (inventory && inventory.yoyAbsolute && inventory.yoyAbsolute < 0) {
-      contributors.push(`재고 축소 ${formatMillionYuanWC(Math.abs(inventory.yoyAbsolute))}`);
+      contributors.push(`재고 축소 ${formatMillionYuan(Math.abs(inventory.yoyAbsolute))}`);
     }
     
     if (contributors.length > 0) {

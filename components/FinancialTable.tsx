@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { TableRow } from '@/lib/types';
-import { formatNumber, formatNumberWC, formatPercent } from '@/lib/utils';
+import { formatNumber, formatPercent } from '@/lib/utils';
 
 interface FinancialTableProps {
   data: TableRow[];
@@ -152,10 +152,7 @@ export default function FinancialTable({
     if (format === 'percent') {
       return formatPercent(value, showSign, useParentheses, decimalPlaces);
     }
-    // 운전자본표는 formatNumberWC 사용 (HKD를 천 HKD로 변환)
-    if (isWorkingCapital) {
-      return formatNumberWC(value, showSign, useParentheses);
-    }
+    // 모든 데이터가 천 HKD 단위이므로 formatNumber 사용
     return formatNumber(value, showSign, useParentheses);
   };
 

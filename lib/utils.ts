@@ -1,4 +1,4 @@
-// 숫자 포맷팅 유틸리티 (천 HKD 단위 - 현금흐름표용)
+// 숫자 포맷팅 유틸리티 (천 HKD 단위)
 export function formatNumber(
   value: number | null | undefined, 
   showSign: boolean = false,
@@ -9,35 +9,6 @@ export function formatNumber(
   }
   // 이미 천 HKD 단위이므로 그대로 사용
   const absValue = Math.abs(Math.round(value));
-  const formatted = new Intl.NumberFormat('ko-KR').format(absValue);
-  
-  // 음수일 때
-  if (value < 0) {
-    // showSign이면 '-' 표시, 아니면 괄호 형식
-    if (showSign) return '-' + formatted;
-    return '(' + formatted + ')';
-  }
-  
-  // 양수일 때 '+' 기호 추가 (옵션)
-  if (showSign && value > 0) {
-    return '+' + formatted;
-  }
-  
-  return formatted;
-}
-
-// 운전자본표 전용 포맷팅 (HKD를 천 HKD로 변환)
-export function formatNumberWC(
-  value: number | null | undefined, 
-  showSign: boolean = false,
-  useParentheses: boolean = true
-): string {
-  if (value === null || value === undefined || isNaN(value)) {
-    return '-';
-  }
-  // HKD를 천 HKD로 변환 (÷ 1000)
-  const kValue = value / 1000;
-  const absValue = Math.abs(Math.round(kValue));
   const formatted = new Intl.NumberFormat('ko-KR').format(absValue);
   
   // 음수일 때
@@ -81,7 +52,7 @@ export function formatPercent(
   return absPercentValue + '%';
 }
 
-// 천 단위 포맷팅 (분석용 - K HKD, 천 단위 콤마 포함) - 현금흐름표용
+// 천 단위 포맷팅 (분석용 - K HKD, 천 단위 콤마 포함)
 export function formatMillionYuan(
   value: number | null | undefined,
   showSign: boolean = false
@@ -91,28 +62,6 @@ export function formatMillionYuan(
   }
   // 이미 천 HKD 단위이므로 그대로 사용하고 천 단위 콤마 추가 (소수점 제거)
   const absValue = Math.abs(Math.round(value));
-  const formatted = new Intl.NumberFormat('ko-KR').format(absValue);
-  
-  if (value < 0) {
-    return showSign ? '-' + formatted + 'K HKD' : '(' + formatted + 'K HKD)';
-  }
-  if (showSign && value > 0) {
-    return '+' + formatted + 'K HKD';
-  }
-  return formatted + 'K HKD';
-}
-
-// 천 단위 포맷팅 (분석용 - K HKD, 천 단위 콤마 포함) - 운전자본표용 (HKD → K HKD)
-export function formatMillionYuanWC(
-  value: number | null | undefined,
-  showSign: boolean = false
-): string {
-  if (value === null || value === undefined || isNaN(value)) {
-    return '-';
-  }
-  // HKD를 천 HKD로 변환 (÷ 1000, 소수점 제거)
-  const kValue = Math.round(value / 1000);
-  const absValue = Math.abs(kValue);
   const formatted = new Intl.NumberFormat('ko-KR').format(absValue);
   
   if (value < 0) {
