@@ -81,7 +81,7 @@ export function formatPercent(
   return absPercentValue + '%';
 }
 
-// 천 단위 포맷팅 (분석용 - K HKD, 천 단위 콤마 포함)
+// 천 단위 포맷팅 (분석용 - K HKD, 천 단위 콤마 포함) - 현금흐름표용
 export function formatMillionYuan(
   value: number | null | undefined,
   showSign: boolean = false
@@ -91,6 +91,28 @@ export function formatMillionYuan(
   }
   // 이미 천 HKD 단위이므로 그대로 사용하고 천 단위 콤마 추가
   const absValue = Math.abs(value);
+  const formatted = new Intl.NumberFormat('ko-KR').format(Math.round(absValue));
+  
+  if (value < 0) {
+    return showSign ? '-' + formatted + 'K HKD' : '(' + formatted + 'K HKD)';
+  }
+  if (showSign && value > 0) {
+    return '+' + formatted + 'K HKD';
+  }
+  return formatted + 'K HKD';
+}
+
+// 천 단위 포맷팅 (분석용 - K HKD, 천 단위 콤마 포함) - 운전자본표용 (HKD → K HKD)
+export function formatMillionYuanWC(
+  value: number | null | undefined,
+  showSign: boolean = false
+): string {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '-';
+  }
+  // HKD를 천 HKD로 변환 (÷ 1000)
+  const kValue = value / 1000;
+  const absValue = Math.abs(kValue);
   const formatted = new Intl.NumberFormat('ko-KR').format(Math.round(absValue));
   
   if (value < 0) {
