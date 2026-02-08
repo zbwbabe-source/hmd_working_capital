@@ -185,6 +185,34 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
     );
   }
 
+  // 섹션별로 컨텐츠 파싱
+  const parseContentIntoSections = (content: string) => {
+    const sections: { title: string; lines: string[] }[] = [];
+    let currentSection: { title: string; lines: string[] } | null = null;
+    
+    content.split('\n').forEach(line => {
+      if (line.startsWith('## ')) {
+        if (currentSection) {
+          sections.push(currentSection);
+        }
+        currentSection = {
+          title: line.replace('## ', ''),
+          lines: []
+        };
+      } else if (currentSection && line.trim()) {
+        currentSection.lines.push(line);
+      }
+    });
+    
+    if (currentSection) {
+      sections.push(currentSection);
+    }
+    
+    return sections;
+  };
+
+  const sections = parseContentIntoSections(displayContent);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 pb-3 border-b-2 border-gray-300">
@@ -196,38 +224,57 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
           편집
         </button>
       </div>
-      <div className="prose prose-sm max-w-none">
-        {displayContent.split('\n').map((line, idx) => {
-          if (line.startsWith('## ')) {
-            return (
-              <h4 key={idx} className="text-base font-semibold text-gray-800 mt-4 mb-3 flex items-center">
-                <span className="w-1.5 h-5 bg-blue-600 mr-2.5 rounded"></span>
-                {line.replace('## ', '')}
+      
+      {sections.length > 0 ? (
+        <div className="space-y-6">
+          {sections.map((section, sectionIdx) => (
+            <div 
+              key={sectionIdx} 
+              className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm"
+            >
+              <h4 className="text-base font-bold text-gray-900 mb-4 pb-2 border-b-2 border-blue-500 flex items-center">
+                <span className="w-1 h-5 bg-blue-600 mr-2.5 rounded"></span>
+                {section.title}
               </h4>
-            );
-          } else if (line.startsWith('**') && line.endsWith('**')) {
-            return (
-              <p key={idx} className="font-semibold text-gray-900 mb-1 mt-3">
-                {line.replace(/\*\*/g, '')}
-              </p>
-            );
-          } else if (line.startsWith('• ')) {
-            return (
-              <p key={idx} className="text-base text-gray-700 leading-relaxed pl-4 border-l-3 border-blue-200 mb-3">
-                {line.replace('• ', '')}
-              </p>
-            );
-          } else if (line.trim()) {
-            return (
-              <p key={idx} className="text-sm text-gray-700 mb-2">
-                {line}
-              </p>
-            );
-          }
-          return null;
-        })}
-      </div>
-      {!displayContent && (
+              <div className="space-y-2">
+                {section.lines.map((line, lineIdx) => {
+                  if (line.startsWith('**') && line.includes('**')) {
+                    return (
+                      <p key={lineIdx} className="font-semibold text-gray-900 mb-1 mt-3 text-sm">
+                        {line.replace(/\*\*/g, '')}
+                      </p>
+                    );
+                  } else if (line.startsWith('• ') || line.startsWith('✓ ')) {
+                    const symbol = line.startsWith('✓ ') ? '✓' : '•';
+                    const text = line.substring(2);
+                    return (
+                      <div key={lineIdx} className="flex items-start mb-3">
+                        <span className="text-blue-600 mr-2 mt-0.5 flex-shrink-0">{symbol}</span>
+                        <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                          {text}
+                        </p>
+                      </div>
+                    );
+                  } else if (line.startsWith('→ ')) {
+                    return (
+                      <p key={lineIdx} className="text-sm text-gray-600 pl-6 mb-2">
+                        {line}
+                      </p>
+                    );
+                  } else if (line.trim()) {
+                    return (
+                      <p key={lineIdx} className="text-sm text-gray-700 mb-2 leading-relaxed">
+                        {line}
+                      </p>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
         <p className="text-sm text-gray-500">
           데이터를 불러오는 중이거나 표시할 분석 내용이 없습니다.
         </p>
