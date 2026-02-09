@@ -22,178 +22,66 @@ export function getAccountValues(map: Map<string, number[]>, account: string): n
 }
 
 // ==================== CF (현금흐름표) ====================
-// CSV 구조를 그대로 계층화: 대분류 > 중분류1 > 중분류2 > 소분류
-export function calculateCF(
-  data: FinancialData[], 
-  year2024Values: Map<string, number>,
-  year: number = 2025,
-  previousYearTotals?: Map<string, number>
-): TableRow[] {
-  const map = createMonthDataMap(data);
+// NEW: 4-level tree structure (대분류 > 중분류1 > 중분류2 > 소분류)
+import { readCashflowCSV, buildTree, flattenTree, TreeNode } from './csv-tree';
+
+export async function calculateCF(
+  year: number = 2025
+): Promise<TableRow[]> {
+  // CSV 데이터 읽기
+  const rows2025 = await readCashflowCSV(2025);
+  const rows2026 = await readCashflowCSV(2026);
   
-  // 합계 계산
-  const sumArray = (arr: number[]) => arr.reduce((sum: number, v) => sum + v, 0);
+  // 트리 구조 생성
+  const tree = buildTree(rows2025, rows2026);
   
-  // YoY 계산
-  const calculateYoY = (currentYearTotal: number | null, previousValue: number | null): number | null => {
-    if (currentYearTotal === null || previousValue === null) return null;
-    return currentYearTotal - previousValue;
-  };
-  
-  // 전년도 값 가져오기
-  const getPreviousValue = (account: string): number | null => {
-    if (year === 2026 && previousYearTotals) {
-      return previousYearTotals.get(account) ?? null;
-    } else {
-      return year2024Values.get(account) ?? null;
-    }
-  };
-  
-  // CSV에서 계층 구조 생성
-  // 각 행의 구조: {대분류, 중분류1, 중분류2, 소분류, 데이터...}
-  interface CsvGroup {
-    대분류: string;
-    중분류1들: Map<string, {
-      중분류2들: Map<string, {
-        소분류들: Array<{소분류: string; account: string;}>;
-      }>;
-    }>;
-  }
-  
-  // CSV 데이터를 읽어서 계층 구조 파악
-  const hierarchy: Map<string, CsvGroup> = new Map();
-  
-  // map의 모든 키를 순회하면서 계층 구조 파악
-  for (const [account] of map) {
-    // account 이름에서 원본 구조 추정
-    // 실제로는 CSV를 다시 읽어야 정확하지만, 여기서는 패턴 매칭
-    // 예: "매출수금" -> 중분류2, "매출수금_홍콩마카오" -> 중분류2_소분류
-  }
-  
-  // 단순화: CSV를 직접 파싱해서 계층 구조 생성
-  const rows: TableRow[] = [];
-  
-  // 임시: 하드코딩으로 구조 생성 (추후 CSV 직접 파싱으로 대체)
-  const 대분류목록 = ['영업활동', '기타수익', '자산성지출', '현금잔액'];
-  
-  const 구조 = {
-    '영업활동': {
-      '매출수금': ['홍콩마카오', '대만'], // 합계는 중분류1 자체
-      '물품대': ['홍콩마카오', '대만'],
-      '비용': {
-        '광고비': ['홍콩마카오', '대만'],
-        '매장 임차료': ['홍콩마카오', '대만'],
-        '매장 운영비': ['홍콩마카오', '대만'],
-        '사무실 운영비': ['홍콩마카오', '대만'],
-        '수입관세': ['홍콩마카오', '대만'],
-        '인건비': ['홍콩마카오', '대만'],
-        '보증금지급': ['홍콩마카오', '대만'],
-        '기타': ['홍콩마카오', '대만'],
-      },
-    },
-    '기타수익': {
-      '기타수익': ['홍콩마카오', '대만'],
-    },
-    '자산성지출': {
-      '인테리어/VMD': ['홍콩마카오', '대만'],
-      '비품취득': ['홍콩마카오', '대만'],
-    },
-    '현금잔액': {
-      '현금잔액': ['홍콩마카오', '대만'],
-    },
-  };
-  
-  // 계층 구조 생성
-  Object.entries(구조).forEach(([대분류, 중분류1맵]) => {
-    // 대분류 행
-    const 대분류Data = getAccountValues(map, 대분류);
-    rows.push({
-      account: 대분류,
-      level: 0,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      isHighlight: 'sky',
-      values: [...대분류Data, sumArray(대분류Data), null],
+  // TreeNode를 TableRow로 변환
+  function treeNodeToTableRow(node: TreeNode): TableRow {
+    return {
+      account: node.label,
+      level: node.depth - 1, // depth 1~4 -> level 0~3
+      isGroup: !node.isLeaf,
+      isCalculated: !node.isLeaf,
+      isBold: node.depth <= 2,
+      isHighlight: node.depth === 1 ? 'sky' : (node.label === '비용' ? 'gray' : undefined),
+      values: [
+        // 2025년 월별 (0으로 채움 - 연간합계만 표시)
+        ...new Array(12).fill(0),
+        // 2025년 합계
+        node.value2025,
+        // YoY
+        node.yoy,
+      ],
       format: 'number',
-    });
-    
-    // 중분류1
-    Object.entries(중분류1맵).forEach(([중분류1, 중분류2항목]) => {
-      // 중분류1이 배열인지 객체인지 확인
-      const is중분류1단순 = Array.isArray(중분류2항목);
-      
-      if (is중분류1단순) {
-        // 중분류1 바로 아래 지역 구분 (매출수금, 물품대, 기타수익 등)
-        const 중분류1Data = getAccountValues(map, 중분류1);
-        rows.push({
-          account: 중분류1,
-          level: 1,
-          isGroup: true,
-          isCalculated: true,
-          isBold: true,
-          values: [...중분류1Data, sumArray(중분류1Data), null],
-          format: 'number',
-        });
-        
-        // 지역별 행
-        중분류2항목.forEach((지역) => {
-          const accountName = `${중분류1}_${지역}`;
-          const 지역Data = getAccountValues(map, accountName);
-          rows.push({
-            account: 지역,
-            level: 2,
-            isGroup: false,
-            isCalculated: false,
-            values: [...지역Data, sumArray(지역Data), null],
-            format: 'number',
-          });
-        });
-      } else {
-        // 중분류1 아래 중분류2가 있음 (비용)
-        const 중분류1Data = getAccountValues(map, 중분류1);
-        rows.push({
-          account: 중분류1,
-          level: 1,
-          isGroup: true,
-          isCalculated: true,
-          isBold: true,
-          isHighlight: 중분류1 === '비용' ? 'gray' : undefined,
-          values: [...중분류1Data, sumArray(중분류1Data), null],
-          format: 'number',
-        });
-        
-        // 중분류2 (광고비, 매장 임차료 등)
-        Object.entries(중분류2항목 as Record<string, string[]>).forEach(([중분류2, 지역배열]) => {
-          const 중분류2Data = getAccountValues(map, 중분류2);
-          rows.push({
-            account: 중분류2,
-            level: 2,
-            isGroup: true,
-            isCalculated: true,
-            values: [...중분류2Data, sumArray(중분류2Data), null],
-            format: 'number',
-          });
-          
-          // 지역별 행
-          지역배열.forEach((지역) => {
-            const accountName = `${중분류2}_${지역}`;
-            const 지역Data = getAccountValues(map, accountName);
-            rows.push({
-              account: 지역,
-              level: 3,
-              isGroup: false,
-              isCalculated: false,
-              values: [...지역Data, sumArray(지역Data), null],
-              format: 'number',
-            });
-          });
-        });
-      }
-    });
-  });
+      children: node.children?.map(treeNodeToTableRow),
+    };
+  }
   
-  return rows;
+  const tableRows = tree.map(treeNodeToTableRow);
+  
+  // Flatten the tree structure for rendering
+  function flattenTableRows(rows: TableRow[]): TableRow[] {
+    const result: TableRow[] = [];
+    
+    function traverse(row: TableRow) {
+      const { children, ...rowWithoutChildren } = row;
+      result.push(rowWithoutChildren);
+      
+      if (children) {
+        for (const child of children) {
+          traverse(child);
+        }
+      }
+    }
+    
+    for (const row of rows) {
+      traverse(row);
+    }
+    
+    return result;
+  }
+  
+  return flattenTableRows(tableRows);
 }
 
 // ==================== Cashflow Table (현금흐름표 - cashflow 폴더, 대분류/중분류/소분류) ====================
