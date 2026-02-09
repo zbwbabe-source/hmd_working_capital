@@ -304,9 +304,9 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
                   if (line.startsWith('**') && line.includes('**')) {
                     const cleanText = line.replace(/\*\*/g, '');
                     return (
-                      <p key={lineIdx} className="font-semibold text-gray-900 mb-1 mt-3 text-sm">
+                      <div key={lineIdx} className="font-semibold text-gray-900 mb-1 mt-3 text-sm" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {highlightImportantText(cleanText)}
-                      </p>
+                      </div>
                     );
                   } else if (line.startsWith('• ') || line.startsWith('✓ ')) {
                     const symbol = line.startsWith('✓ ') ? '✓' : '•';
@@ -314,22 +314,22 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
                     return (
                       <div key={lineIdx} className="flex items-start mb-3">
                         <span className="text-blue-600 mr-2 mt-0.5 flex-shrink-0">{symbol}</span>
-                        <p className="text-sm text-gray-700 leading-relaxed flex-1 whitespace-normal break-words">
+                        <div className="text-sm text-gray-700 leading-relaxed flex-1" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           {highlightImportantText(text)}
-                        </p>
+                        </div>
                       </div>
                     );
                   } else if (line.startsWith('→ ')) {
                     return (
-                      <p key={lineIdx} className="text-sm text-gray-600 pl-6 mb-2 whitespace-normal break-words">
+                      <div key={lineIdx} className="text-sm text-gray-600 pl-6 mb-2" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {highlightImportantText(line)}
-                      </p>
+                      </div>
                     );
                   } else if (line.trim()) {
                     return (
-                      <p key={lineIdx} className="text-sm text-gray-700 mb-2 leading-relaxed whitespace-normal break-words">
+                      <div key={lineIdx} className="text-sm text-gray-700 mb-2 leading-relaxed" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {highlightImportantText(line)}
-                      </p>
+                      </div>
                     );
                   }
                   return null;
