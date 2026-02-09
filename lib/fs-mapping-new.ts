@@ -34,6 +34,9 @@ export function calculateCashflowTable(
     
     if (!대분류) continue;
     
+    // Skip "합계" rows to avoid double counting (regional breakdown already has totals)
+    if (소분류 === '합계') continue;
+    
     // Level 0: 대분류
     if (!root.has(대분류)) {
       root.set(대분류, {
