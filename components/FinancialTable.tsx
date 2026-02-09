@@ -60,8 +60,11 @@ export default function FinancialTable({
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
   const [internalAllRowsCollapsed, setInternalAllRowsCollapsed] = useState<boolean>(true);
 
-  // CF 지역 그룹 토글 상태 (홍콩마카오/대만 전용, 기본 접힌 상태)
-  const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({});
+  // CF 지역 그룹 토글 상태 (홍콩마카오/대만 전용, 기본 펼쳐진 상태)
+  const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({
+    '홍콩마카오': true,
+    '대만': true,
+  });
   
   // 헬퍼: 비용의 지역 그룹인지 체크 (row와 이전 rows를 받아서 판단)
   const isCostRegionGroup = (row: TableRow, allRows: TableRow[], currentIndex: number): boolean => {
@@ -70,7 +73,7 @@ export default function FinancialTable({
     // 현재 row보다 앞에 있는 row 중에서 level이 더 낮은(부모) row 찾기
     for (let i = currentIndex - 1; i >= 0; i--) {
       if (allRows[i].level < row.level) {
-        return allRows[i].account === '비용';
+        return allRows[i].account === '지출';
       }
     }
     return false;
@@ -223,27 +226,31 @@ export default function FinancialTable({
     if (isCashFlow) {
       const filtered: TableRow[] = [];
       let skipUntilLevel = -1;
-      let parentAccount = ''; // 부모 계정 추적
+      const parentStack: { account: string; level: number }[] = []; // 부모 계정 스택으로 추적
       
       for (let i = 0; i < result.length; i++) {
         const row = result[i];
         
-        // 부모 계정 추적 (level 0 또는 level 1)
-        if (row.level === 0 || row.level === 1) {
-          parentAccount = row.account;
+        // 부모 스택 업데이트 (현재 row보다 level이 낮은 것만 유지)
+        while (parentStack.length > 0 && parentStack[parentStack.length - 1].level >= row.level) {
+          parentStack.pop();
         }
         
-        // 지역 그룹이면서 부모가 "비용"인 경우만 토글 처리
-        const isCostRegionGroup = REGION_GROUPS.includes(row.account) && parentAccount === '비용';
+        // 지역 그룹이면서 조상 중에 "지출"이 있는 경우만 토글 처리
+        const hasExpenseParent = parentStack.some(p => p.account === '지출');
+        const isCostRegionGroup = REGION_GROUPS.includes(row.account) && hasExpenseParent;
         
         if (isCostRegionGroup) {
           skipUntilLevel = -1; // 새로운 그룹을 만나면 스킵 종료
           filtered.push(row);
           
-          // 펼쳐져 있지 않으면 하위 항목 스킵 시작
-          if (summaryExpanded[row.account] !== true) {
+          // 펼쳐져 있지 않으면(false) 하위 항목 스킵 시작
+          if (!summaryExpanded[row.account]) {
             skipUntilLevel = row.level;
           }
+          
+          // 현재 row를 스택에 추가
+          parentStack.push({ account: row.account, level: row.level });
           continue;
         }
         
@@ -257,8 +264,9 @@ export default function FinancialTable({
           skipUntilLevel = -1;
         }
         
-        // 현재 row 추가
+        // 현재 row 추가 및 스택에 추가
         filtered.push(row);
+        parentStack.push({ account: row.account, level: row.level });
       }
       
       return filtered;
@@ -670,8 +678,9 @@ export default function FinancialTable({
               const isBalanceOk = isBalanceCheck && row.values.every(v => v === null || Math.abs(v) < 10);
               // 전월대비 행: +/- 표시
               const isMomRow = row.account === '전월대비';
-              // 비용의 지역 그룹인지 체크
-              const isCostRegion = isCostRegionGroup(row, visibleRows, rowIndex);
+              // 비용의 지역 그룹인지 체크 (원본 데이터에서 찾기)
+              const originalIndex = allFlatRows.findIndex(r => r.account === row.account && r.level === row.level);
+              const isCostRegion = originalIndex >= 0 ? isCostRegionGroup(row, allFlatRows, originalIndex) : false;
               
               return (
               <tr
@@ -717,7 +726,7 @@ export default function FinancialTable({
                         row.account
                       )}
                     </span>
-                    {hasChildren(row) && (
+                    {hasChildren(row) && !isCostRegion && (
                       <span className="text-gray-500 flex-shrink-0">
                         {collapsed.has(row.account) ? '▶' : '▼'}
                       </span>
