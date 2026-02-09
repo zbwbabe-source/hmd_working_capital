@@ -128,24 +128,18 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
     if (content.cfAnalysis?.categories?.length > 0) {
       text += `## ${year}년 현금흐름표\n\n`;
       content.cfAnalysis.categories.forEach((cat: any) => {
-        text += `**${cat.account}**\n`;
-        text += `연간: ${Math.round(cat.annualTotal).toLocaleString('ko-KR')} K HKD\n`;
-        if (cat.yoyAbsolute !== null) {
-          text += `전년 대비: ${Math.round(cat.yoyAbsolute).toLocaleString('ko-KR')} K HKD\n`;
-        }
-        text += '\n';
+        const annual = `연간: ${Math.round(cat.annualTotal).toLocaleString('ko-KR')} K HKD`;
+        const yoy = cat.yoyAbsolute !== null ? `, 전년 대비: ${Math.round(cat.yoyAbsolute).toLocaleString('ko-KR')} K HKD` : '';
+        text += `**${cat.account}:** ${annual}${yoy}\n\n`;
       });
     }
 
     if (content.wcAnalysis?.categories?.length > 0) {
       text += `## ${year}년 운전자본표\n\n`;
       content.wcAnalysis.categories.forEach((cat: any) => {
-        text += `**${cat.account}**\n`;
-        text += `연간: ${Math.round(cat.annualTotal).toLocaleString('ko-KR')} K HKD\n`;
-        if (cat.yoyAbsolute !== null) {
-          text += `전년 대비: ${Math.round(cat.yoyAbsolute).toLocaleString('ko-KR')} K HKD\n`;
-        }
-        text += '\n';
+        const annual = `연간: ${Math.round(cat.annualTotal).toLocaleString('ko-KR')} K HKD`;
+        const yoy = cat.yoyAbsolute !== null ? `, 전년 대비: ${Math.round(cat.yoyAbsolute).toLocaleString('ko-KR')} K HKD` : '';
+        text += `**${cat.account}:** ${annual}${yoy}\n\n`;
       });
       
       if (content.wcAnalysis.arInsight) {
