@@ -118,7 +118,10 @@ export function calculateCashflowTable(
   const tableRows: TableRow[] = [];
   
   function processNode(node: TreeNode4) {
-    const annual = node.values.reduce((sum, v) => sum + v, 0);
+    // 현금잔액의 경우 12월 값을 사용, 다른 항목은 합계 사용
+    const isBalance = node.path[0] === '현금잔액';
+    const annual = isBalance ? node.values[11] : node.values.reduce((sum, v) => sum + v, 0);
+    
     const key = node.path.join('-');
     const yoy = calculateYoY(annual, previousYearTotals?.get(key));
     
