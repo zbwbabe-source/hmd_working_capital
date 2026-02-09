@@ -298,9 +298,9 @@ export function calculateCF(
       isCalculated: false,
       isBold: true,
       isHighlight: 'yellow',
-      values: [...현금잔액CSV, 현금잔액CSV[11], calculateYoY(현금잔액CSV[11], year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? 기말현금2024) : 기말현금2024)],
+      values: [...현금잔액CSV, 현금잔액CSV[11] || 0, calculateYoY(현금잔액CSV[11] || 0, year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? null) : null)],
       format: 'number',
-      year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? 기말현금2024) : 기말현금2024,
+      year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? null) : null,
     },
   ];
 
