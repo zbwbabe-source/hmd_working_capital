@@ -72,7 +72,21 @@ export default function FinancialTable({
 
   // 초기 마운트 시 그룹 행 접기 (defaultExpandedAccounts는 펼친 상태로)
   useEffect(() => {
-    const allGroups = data.filter(row => row.isGroup).map(row => row.account);
+    // children이 있는 행을 포함하여 모든 그룹 수집
+    const collectAllGroups = (rows: TableRow[]): string[] => {
+      const groups: string[] = [];
+      for (const row of rows) {
+        if (row.isGroup) {
+          groups.push(row.account);
+        }
+        if (row.children) {
+          groups.push(...collectAllGroups(row.children));
+        }
+      }
+      return groups;
+    };
+    
+    const allGroups = collectAllGroups(data);
     const toCollapse = defaultExpandedAccounts?.length
       ? allGroups.filter(g => !defaultExpandedAccounts.includes(g))
       : allGroups;
@@ -99,7 +113,20 @@ export default function FinancialTable({
         setCollapsed(new Set());
         setInternalAllRowsCollapsed(false);
       } else {
-        const allGroups = data.filter(row => row.isGroup).map(row => row.account);
+        // children이 있는 행을 포함하여 모든 그룹 수집
+        const collectAllGroups = (rows: TableRow[]): string[] => {
+          const groups: string[] = [];
+          for (const row of rows) {
+            if (row.isGroup) {
+              groups.push(row.account);
+            }
+            if (row.children) {
+              groups.push(...collectAllGroups(row.children));
+            }
+          }
+          return groups;
+        };
+        const allGroups = collectAllGroups(data);
         setCollapsed(new Set(allGroups));
         setInternalAllRowsCollapsed(true);
       }
@@ -109,7 +136,20 @@ export default function FinancialTable({
   // 외부 제어 시 allRowsCollapsed에 맞춰 collapsed 동기화
   useEffect(() => {
     if (isAllRowsControlled) {
-      const allGroups = data.filter(row => row.isGroup).map(row => row.account);
+      // children이 있는 행을 포함하여 모든 그룹 수집
+      const collectAllGroups = (rows: TableRow[]): string[] => {
+        const groups: string[] = [];
+        for (const row of rows) {
+          if (row.isGroup) {
+            groups.push(row.account);
+          }
+          if (row.children) {
+            groups.push(...collectAllGroups(row.children));
+          }
+        }
+        return groups;
+      };
+      const allGroups = collectAllGroups(data);
       const toCollapse = allRowsCollapsed
         ? (defaultExpandedAccounts?.length ? allGroups.filter(g => !defaultExpandedAccounts.includes(g)) : allGroups)
         : [];
@@ -118,11 +158,26 @@ export default function FinancialTable({
   }, [isAllRowsControlled, allRowsCollapsed, data, defaultExpandedAccounts]);
 
   // 표시할 행 필터링 (접힌 그룹의 자식은 숨김)
+  // children 속성이 있는 행은 평면화하여 처리
   const visibleRows = useMemo(() => {
     const result: TableRow[] = [];
+    
+    // children을 포함한 평면화
+    const flattenRows = (rows: TableRow[]): TableRow[] => {
+      const flattened: TableRow[] = [];
+      for (const row of rows) {
+        flattened.push(row);
+        if (row.children && row.children.length > 0) {
+          flattened.push(...row.children);
+        }
+      }
+      return flattened;
+    };
+    
+    const flatData = flattenRows(data);
     let skipUntilLevel = -1;
 
-    for (const row of data) {
+    for (const row of flatData) {
       // 접힌 그룹의 자식인지 확인
       if (skipUntilLevel >= 0 && row.level > skipUntilLevel) {
         continue; // 숨김

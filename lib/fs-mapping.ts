@@ -30,277 +30,568 @@ export function calculateCF(
 ): TableRow[] {
   const map = createMonthDataMap(data);
   
-  const INITIAL_CASH = 140853827.859988;
-  
-  // 2024년 값 가져오기 헬퍼
-  const get2024Value = (account: string): number | null => {
-    return year2024Values.get(account) ?? null;
-  };
-  
-  const sum2024Values = (accounts: string[]): number | null => {
-    let sum = 0;
-    let hasValue = false;
-    for (const acc of accounts) {
-      const val = year2024Values.get(acc);
-      if (val !== undefined) {
-        sum += val;
-        hasValue = true;
-      }
-    }
-    return hasValue ? sum : null;
-  };
-  
-  // 매출수금
-  const MLB = getAccountValues(map, 'MLB');
-  const KIDS = getAccountValues(map, 'KIDS');
-  const Discovery = getAccountValues(map, 'Discovery');
-  const Duvetica = getAccountValues(map, 'Duvetica');
-  const Supra = getAccountValues(map, 'Supra');
-  const 매출수금 = MLB.map((v, i) => v + KIDS[i] + Discovery[i] + Duvetica[i] + Supra[i]);
-  
-  // 기타수익
-  const 대리상선금 = getAccountValues(map, '대리상선금');
-  const 대리상보증금 = getAccountValues(map, '대리상보증금');
-  const 정부보조금 = getAccountValues(map, '정부보조금');
-  const 기타수익 = getAccountValues(map, '기타수익');
-  const 기타수익합계 = 대리상선금.map((v, i) => v + 대리상보증금[i] + 정부보조금[i] + 기타수익[i]);
-  
-  const 입금 = 매출수금.map((v, i) => v + 기타수익합계[i]);
-  
-  // 상품대
-  const 본사 = getAccountValues(map, '본사');
-  const 위탁생산 = getAccountValues(map, '위탁생산');
-  const 상품대 = 본사.map((v, i) => v + 위탁생산[i]);
-  
-  const 본사선급금 = getAccountValues(map, '본사선급금');
-  const 운영비 = getAccountValues(map, '운영비');
-  const 출금 = 상품대.map((v, i) => v + 본사선급금[i] + 운영비[i]);
-  
-  const 영업활동 = 입금.map((v, i) => v + 출금[i]);
-  
-  // 재무활동
-  const 차입금입금 = getAccountValues(map, '차입금입금');
-  const 차입금상환 = getAccountValues(map, '차입금상환');
-  const 재무활동 = 차입금입금.map((v, i) => v + 차입금상환[i]);
-  
-  // 투자활동
-  const 자산성지출 = getAccountValues(map, '자산성지출');
-  const 투자활동 = 자산성지출;
-  
-  // 현금잔액 (CSV에서 직접 읽기)
-  const 현금잔액CSV = getAccountValues(map, '현금잔액');
-  
-  // 합계 계산 (12개월)
+  // 합계 계산
   const sumArray = (arr: number[]) => arr.reduce((sum: number, v) => sum + v, 0);
   
-  // 2024년 데이터 계산
-  const 기초현금2024 = year2024Values.get('기초현금') ?? 140853827.859988;
-  const 영업활동2024 = sum2024Values(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra', '대리상선금', '대리상보증금', '정부보조금', '기타수익', '본사', '위탁생산', '본사선급금', '운영비']);
-  const 입금2024 = sum2024Values(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra', '대리상선금', '대리상보증금', '정부보조금', '기타수익']);
-  const 매출수금2024 = sum2024Values(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra']);
-  const 기타수익2024 = sum2024Values(['대리상선금', '대리상보증금', '정부보조금', '기타수익']);
-  const 출금2024 = sum2024Values(['본사', '위탁생산', '본사선급금', '운영비']);
-  const 상품대2024 = sum2024Values(['본사', '위탁생산']);
-  const 재무활동2024 = sum2024Values(['차입금입금', '차입금상환']);
-  const 투자활동2024 = sum2024Values(['자산성지출']);
-  const 기말현금2024 = 기초현금2024 + (영업활동2024 ?? 0) + (재무활동2024 ?? 0) + (투자활동2024 ?? 0);
-  
-  // 현재년도 기말현금 계산
-  const 기초현금 = new Array(12).fill(0);
-  const 기말현금 = new Array(12).fill(0);
-  
-  if (year === 2025) {
-    기초현금[0] = 기말현금2024;
-  } else if (year === 2026 && previousYearTotals) {
-    const 기말현금2025 = previousYearTotals.get('기말현금') ?? 기말현금2024;
-    기초현금[0] = 기말현금2025;
-  }
-  
-  기말현금[0] = 기초현금[0] + 영업활동[0] + 재무활동[0] + 투자활동[0];
-  
-  for (let i = 1; i < 12; i++) {
-    기초현금[i] = 기말현금[i - 1];
-    기말현금[i] = 기초현금[i] + 영업활동[i] + 재무활동[i] + 투자활동[i];
-  }
-
-  // YoY 계산 헬퍼 함수
+  // YoY 계산
   const calculateYoY = (currentYearTotal: number | null, previousValue: number | null): number | null => {
     if (currentYearTotal === null || previousValue === null) return null;
     return currentYearTotal - previousValue;
   };
-
+  
   // 전년도 값 가져오기 헬퍼
-  const getPreviousValue = (account: string, currentTotal: number): number | null => {
+  const getPreviousValue = (account: string): number | null => {
     if (year === 2026 && previousYearTotals) {
       return previousYearTotals.get(account) ?? null;
     } else {
-      return get2024Value(account);
+      return year2024Values.get(account) ?? null;
     }
   };
-
-  // 전년도 합계 가져오기 헬퍼
-  const getPreviousTotal = (accounts: string[], currentTotal: number): number | null => {
-    if (year === 2026 && previousYearTotals) {
-      let sum = 0;
-      let hasValue = false;
-      for (const acc of accounts) {
-        const val = previousYearTotals.get(acc);
-        if (val !== undefined) {
-          sum += val;
-          hasValue = true;
-        }
-      }
-      return hasValue ? sum : null;
-    } else {
-      return sum2024Values(accounts);
-    }
-  };
+  
+  // CSV에서 데이터 읽기 (새로운 구조)
+  // 계정명 형식: "매출수금", "매출수금_홍콩마카오", "매출수금_대만"
+  const 매출수금 = getAccountValues(map, '매출수금');
+  const 매출수금홍콩 = getAccountValues(map, '매출수금_홍콩마카오');
+  const 매출수금대만 = getAccountValues(map, '매출수금_대만');
+  
+  const 물품대 = getAccountValues(map, '물품대');
+  const 물품대홍콩 = getAccountValues(map, '물품대_홍콩마카오');
+  const 물품대대만 = getAccountValues(map, '물품대_대만');
+  
+  const 기타수익 = getAccountValues(map, '기타수익');
+  const 기타수익홍콩 = getAccountValues(map, '기타수익_홍콩마카오');
+  const 기타수익대만 = getAccountValues(map, '기타수익_대만');
+  
+  const 광고비 = getAccountValues(map, '광고비');
+  const 광고비홍콩 = getAccountValues(map, '광고비_홍콩마카오');
+  const 광고비대만 = getAccountValues(map, '광고비_대만');
+  
+  const 매장임차료 = getAccountValues(map, '매장 임차료');
+  const 매장임차료홍콩 = getAccountValues(map, '매장 임차료_홍콩마카오');
+  const 매장임차료대만 = getAccountValues(map, '매장 임차료_대만');
+  
+  const 매장운영비 = getAccountValues(map, '매장 운영비');
+  const 매장운영비홍콩 = getAccountValues(map, '매장 운영비_홍콩마카오');
+  const 매장운영비대만 = getAccountValues(map, '매장 운영비_대만');
+  
+  const 사무실운영비 = getAccountValues(map, '사무실 운영비');
+  const 사무실운영비홍콩 = getAccountValues(map, '사무실 운영비_홍콩마카오');
+  const 사무실운영비대만 = getAccountValues(map, '사무실 운영비_대만');
+  
+  const 수입관세 = getAccountValues(map, '수입관세');
+  const 수입관세홍콩 = getAccountValues(map, '수입관세_홍콩마카오');
+  const 수입관세대만 = getAccountValues(map, '수입관세_대만');
+  
+  const 인건비 = getAccountValues(map, '인건비');
+  const 인건비홍콩 = getAccountValues(map, '인건비_홍콩마카오');
+  const 인건비대만 = getAccountValues(map, '인건비_대만');
+  
+  const 보증금지급 = getAccountValues(map, '보증금지급');
+  const 보증금지급홍콩 = getAccountValues(map, '보증금지급_홍콩마카오');
+  const 보증금지급대만 = getAccountValues(map, '보증금지급_대만');
+  
+  const 기타비용 = getAccountValues(map, '기타');
+  const 기타비용홍콩 = getAccountValues(map, '기타_홍콩마카오');
+  const 기타비용대만 = getAccountValues(map, '기타_대만');
+  
+  const 인테리어VMD = getAccountValues(map, '인테리어/VMD');
+  const 인테리어VMD홍콩 = getAccountValues(map, '인테리어/VMD_홍콩마카오');
+  const 인테리어VMD대만 = getAccountValues(map, '인테리어/VMD_대만');
+  
+  const 비품취득 = getAccountValues(map, '비품취득');
+  const 비품취득홍콩 = getAccountValues(map, '비품취득_홍콩마카오');
+  const 비품취득대만 = getAccountValues(map, '비품취득_대만');
+  
+  const 현금잔액 = getAccountValues(map, '현금잔액');
+  const 현금잔액홍콩 = getAccountValues(map, '현금잔액_홍콩마카오');
+  const 현금잔액대만 = getAccountValues(map, '현금잔액_대만');
+  
+  // 영업활동 총합 계산
+  const 비용합계 = 광고비.map((v, i) => 
+    v + 매장임차료[i] + 매장운영비[i] + 사무실운영비[i] + 수입관세[i] + 인건비[i] + 보증금지급[i] + 기타비용[i]
+  );
+  
+  const 영업활동 = 매출수금.map((v, i) => v + 물품대[i] + 기타수익[i] + 비용합계[i]);
+  
+  // 자산성지출 총합
+  const 자산성지출 = 인테리어VMD.map((v, i) => v + 비품취득[i]);
+  
+  // Net Cash 계산
+  const netCash = 영업활동.map((v, i) => v + 자산성지출[i] + 기타수익[i]);
 
   const rows: TableRow[] = [
+    // 영업활동
     {
-      account: '기초현금',
+      account: '영업활동',
+      level: 0,
+      isGroup: true,
+      isCalculated: true,
+      isBold: true,
+      isHighlight: 'sky',
+      values: [...영업활동, sumArray(영업활동), calculateYoY(sumArray(영업활동), getPreviousValue('영업활동'))],
+      format: 'number',
+      year2024Value: getPreviousValue('영업활동'),
+    },
+    // 매출수금 (토글 가능)
+    {
+      account: '매출수금',
+      level: 1,
+      isGroup: true,
+      isCalculated: false,
+      isBold: true,
+      values: [...매출수금, sumArray(매출수금), calculateYoY(sumArray(매출수금), getPreviousValue('매출수금'))],
+      format: 'number',
+      year2024Value: getPreviousValue('매출수금'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...매출수금홍콩, sumArray(매출수금홍콩), calculateYoY(sumArray(매출수금홍콩), getPreviousValue('매출수금_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('매출수금_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...매출수금대만, sumArray(매출수금대만), calculateYoY(sumArray(매출수금대만), getPreviousValue('매출수금_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('매출수금_대만'),
+        },
+      ],
+    },
+    // 물품대 (토글 가능)
+    {
+      account: '물품대',
+      level: 1,
+      isGroup: true,
+      isCalculated: false,
+      isBold: true,
+      values: [...물품대, sumArray(물품대), calculateYoY(sumArray(물품대), getPreviousValue('물품대'))],
+      format: 'number',
+      year2024Value: getPreviousValue('물품대'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...물품대홍콩, sumArray(물품대홍콩), calculateYoY(sumArray(물품대홍콩), getPreviousValue('물품대_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('물품대_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...물품대대만, sumArray(물품대대만), calculateYoY(sumArray(물품대대만), getPreviousValue('물품대_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('물품대_대만'),
+        },
+      ],
+    },
+    // 비용
+    {
+      account: '비용',
+      level: 1,
+      isGroup: true,
+      isCalculated: true,
+      isBold: true,
+      isHighlight: 'gray',
+      values: [...비용합계, sumArray(비용합계), calculateYoY(sumArray(비용합계), getPreviousValue('비용'))],
+      format: 'number',
+      year2024Value: getPreviousValue('비용'),
+    },
+    // 광고비 (토글 가능)
+    {
+      account: '광고비',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...광고비, sumArray(광고비), calculateYoY(sumArray(광고비), getPreviousValue('광고비'))],
+      format: 'number',
+      year2024Value: getPreviousValue('광고비'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...광고비홍콩, sumArray(광고비홍콩), calculateYoY(sumArray(광고비홍콩), getPreviousValue('광고비_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('광고비_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...광고비대만, sumArray(광고비대만), calculateYoY(sumArray(광고비대만), getPreviousValue('광고비_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('광고비_대만'),
+        },
+      ],
+    },
+    // 매장 임차료 (토글 가능)
+    {
+      account: '매장 임차료',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...매장임차료, sumArray(매장임차료), calculateYoY(sumArray(매장임차료), getPreviousValue('매장 임차료'))],
+      format: 'number',
+      year2024Value: getPreviousValue('매장 임차료'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...매장임차료홍콩, sumArray(매장임차료홍콩), calculateYoY(sumArray(매장임차료홍콩), getPreviousValue('매장 임차료_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('매장 임차료_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...매장임차료대만, sumArray(매장임차료대만), calculateYoY(sumArray(매장임차료대만), getPreviousValue('매장 임차료_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('매장 임차료_대만'),
+        },
+      ],
+    },
+    // 매장 운영비 (토글 가능)
+    {
+      account: '매장 운영비',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...매장운영비, sumArray(매장운영비), calculateYoY(sumArray(매장운영비), getPreviousValue('매장 운영비'))],
+      format: 'number',
+      year2024Value: getPreviousValue('매장 운영비'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...매장운영비홍콩, sumArray(매장운영비홍콩), calculateYoY(sumArray(매장운영비홍콩), getPreviousValue('매장 운영비_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('매장 운영비_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...매장운영비대만, sumArray(매장운영비대만), calculateYoY(sumArray(매장운영비대만), getPreviousValue('매장 운영비_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('매장 운영비_대만'),
+        },
+      ],
+    },
+    // 사무실 운영비 (토글 가능)
+    {
+      account: '사무실 운영비',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...사무실운영비, sumArray(사무실운영비), calculateYoY(sumArray(사무실운영비), getPreviousValue('사무실 운영비'))],
+      format: 'number',
+      year2024Value: getPreviousValue('사무실 운영비'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...사무실운영비홍콩, sumArray(사무실운영비홍콩), calculateYoY(sumArray(사무실운영비홍콩), getPreviousValue('사무실 운영비_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('사무실 운영비_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...사무실운영비대만, sumArray(사무실운영비대만), calculateYoY(sumArray(사무실운영비대만), getPreviousValue('사무실 운영비_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('사무실 운영비_대만'),
+        },
+      ],
+    },
+    // 수입관세 (토글 가능)
+    {
+      account: '수입관세',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...수입관세, sumArray(수입관세), calculateYoY(sumArray(수입관세), getPreviousValue('수입관세'))],
+      format: 'number',
+      year2024Value: getPreviousValue('수입관세'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...수입관세홍콩, sumArray(수입관세홍콩), calculateYoY(sumArray(수입관세홍콩), getPreviousValue('수입관세_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('수입관세_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...수입관세대만, sumArray(수입관세대만), calculateYoY(sumArray(수입관세대만), getPreviousValue('수입관세_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('수입관세_대만'),
+        },
+      ],
+    },
+    // 인건비 (토글 가능)
+    {
+      account: '인건비',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...인건비, sumArray(인건비), calculateYoY(sumArray(인건비), getPreviousValue('인건비'))],
+      format: 'number',
+      year2024Value: getPreviousValue('인건비'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...인건비홍콩, sumArray(인건비홍콩), calculateYoY(sumArray(인건비홍콩), getPreviousValue('인건비_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('인건비_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...인건비대만, sumArray(인건비대만), calculateYoY(sumArray(인건비대만), getPreviousValue('인건비_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('인건비_대만'),
+        },
+      ],
+    },
+    // 보증금지급 (토글 가능)
+    {
+      account: '보증금지급',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...보증금지급, sumArray(보증금지급), calculateYoY(sumArray(보증금지급), getPreviousValue('보증금지급'))],
+      format: 'number',
+      year2024Value: getPreviousValue('보증금지급'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...보증금지급홍콩, sumArray(보증금지급홍콩), calculateYoY(sumArray(보증금지급홍콩), getPreviousValue('보증금지급_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('보증금지급_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...보증금지급대만, sumArray(보증금지급대만), calculateYoY(sumArray(보증금지급대만), getPreviousValue('보증금지급_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('보증금지급_대만'),
+        },
+      ],
+    },
+    // 기타 (토글 가능)
+    {
+      account: '기타',
+      level: 2,
+      isGroup: true,
+      isCalculated: false,
+      values: [...기타비용, sumArray(기타비용), calculateYoY(sumArray(기타비용), getPreviousValue('기타'))],
+      format: 'number',
+      year2024Value: getPreviousValue('기타'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...기타비용홍콩, sumArray(기타비용홍콩), calculateYoY(sumArray(기타비용홍콩), getPreviousValue('기타_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('기타_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 3,
+          isGroup: false,
+          isCalculated: false,
+          values: [...기타비용대만, sumArray(기타비용대만), calculateYoY(sumArray(기타비용대만), getPreviousValue('기타_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('기타_대만'),
+        },
+      ],
+    },
+    // 기타수익 (토글 가능)
+    {
+      account: '기타수익',
+      level: 1,
+      isGroup: true,
+      isCalculated: false,
+      isBold: true,
+      values: [...기타수익, sumArray(기타수익), calculateYoY(sumArray(기타수익), getPreviousValue('기타수익'))],
+      format: 'number',
+      year2024Value: getPreviousValue('기타수익'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...기타수익홍콩, sumArray(기타수익홍콩), calculateYoY(sumArray(기타수익홍콩), getPreviousValue('기타수익_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('기타수익_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...기타수익대만, sumArray(기타수익대만), calculateYoY(sumArray(기타수익대만), getPreviousValue('기타수익_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('기타수익_대만'),
+        },
+      ],
+    },
+    // 자산성지출
+    {
+      account: '자산성지출',
+      level: 0,
+      isGroup: true,
+      isCalculated: true,
+      isBold: true,
+      isHighlight: 'sky',
+      values: [...자산성지출, sumArray(자산성지출), calculateYoY(sumArray(자산성지출), getPreviousValue('자산성지출'))],
+      format: 'number',
+      year2024Value: getPreviousValue('자산성지출'),
+    },
+    // 인테리어/VMD (토글 가능)
+    {
+      account: '인테리어/VMD',
+      level: 1,
+      isGroup: true,
+      isCalculated: false,
+      values: [...인테리어VMD, sumArray(인테리어VMD), calculateYoY(sumArray(인테리어VMD), getPreviousValue('인테리어/VMD'))],
+      format: 'number',
+      year2024Value: getPreviousValue('인테리어/VMD'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...인테리어VMD홍콩, sumArray(인테리어VMD홍콩), calculateYoY(sumArray(인테리어VMD홍콩), getPreviousValue('인테리어/VMD_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('인테리어/VMD_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...인테리어VMD대만, sumArray(인테리어VMD대만), calculateYoY(sumArray(인테리어VMD대만), getPreviousValue('인테리어/VMD_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('인테리어/VMD_대만'),
+        },
+      ],
+    },
+    // 비품취득 (토글 가능)
+    {
+      account: '비품취득',
+      level: 1,
+      isGroup: true,
+      isCalculated: false,
+      values: [...비품취득, sumArray(비품취득), calculateYoY(sumArray(비품취득), getPreviousValue('비품취득'))],
+      format: 'number',
+      year2024Value: getPreviousValue('비품취득'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...비품취득홍콩, sumArray(비품취득홍콩), calculateYoY(sumArray(비품취득홍콩), getPreviousValue('비품취득_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('비품취득_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 2,
+          isGroup: false,
+          isCalculated: false,
+          values: [...비품취득대만, sumArray(비품취득대만), calculateYoY(sumArray(비품취득대만), getPreviousValue('비품취득_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('비품취득_대만'),
+        },
+      ],
+    },
+    // Net Cash
+    {
+      account: 'Net Cash',
       level: 0,
       isGroup: false,
       isCalculated: true,
-      isBold: true,
-      isHighlight: 'yellow',
-      values: [...기초현금, year === 2025 ? 기말현금2024 : (previousYearTotals?.get('기말현금') ?? 기말현금2024), calculateYoY(기초현금[0], year === 2025 ? 기초현금2024 : (previousYearTotals?.get('기초현금') ?? 기초현금2024))],
+      isBold: false,
+      isHighlight: 'darkGray',
+      values: [...netCash, sumArray(netCash), calculateYoY(sumArray(netCash), getPreviousValue('Net Cash'))],
       format: 'number',
-      year2024Value: year === 2025 ? 기초현금2024 : (previousYearTotals?.get('기초현금') ?? 기초현금2024),
+      year2024Value: getPreviousValue('Net Cash'),
     },
-    {
-      account: '1. 영업활동',
-      level: 0,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      isHighlight: 'sky',
-      values: [...영업활동, sumArray(영업활동), calculateYoY(sumArray(영업활동), getPreviousTotal(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra', '대리상선금', '대리상보증금', '정부보조금', '기타수익', '본사', '위탁생산', '본사선급금', '운영비'], sumArray(영업활동)))],
-      format: 'number',
-      year2024Value: getPreviousTotal(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra', '대리상선금', '대리상보증금', '정부보조금', '기타수익', '본사', '위탁생산', '본사선급금', '운영비'], sumArray(영업활동)),
-    },
-    {
-      account: '입금',
-      level: 1,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      isHighlight: 'gray',
-      values: [...입금, sumArray(입금), calculateYoY(sumArray(입금), getPreviousTotal(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra', '대리상선금', '대리상보증금', '정부보조금', '기타수익'], sumArray(입금)))],
-      format: 'number',
-      year2024Value: getPreviousTotal(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra', '대리상선금', '대리상보증금', '정부보조금', '기타수익'], sumArray(입금)),
-    },
-    {
-      account: '매출수금',
-      level: 2,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      values: [...매출수금, sumArray(매출수금), calculateYoY(sumArray(매출수금), getPreviousTotal(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra'], sumArray(매출수금)))],
-      format: 'number',
-      year2024Value: getPreviousTotal(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra'], sumArray(매출수금)),
-    },
-    { account: 'MLB', level: 3, isGroup: false, isCalculated: false, values: [...MLB, sumArray(MLB), calculateYoY(sumArray(MLB), getPreviousValue('MLB', sumArray(MLB)))], format: 'number', year2024Value: getPreviousValue('MLB', sumArray(MLB)) },
-    { account: 'KIDS', level: 3, isGroup: false, isCalculated: false, values: [...KIDS, sumArray(KIDS), calculateYoY(sumArray(KIDS), getPreviousValue('KIDS', sumArray(KIDS)))], format: 'number', year2024Value: getPreviousValue('KIDS', sumArray(KIDS)) },
-    { account: 'Discovery', level: 3, isGroup: false, isCalculated: false, values: [...Discovery, sumArray(Discovery), calculateYoY(sumArray(Discovery), getPreviousValue('Discovery', sumArray(Discovery)))], format: 'number', year2024Value: getPreviousValue('Discovery', sumArray(Discovery)) },
-    { account: 'Duvetica', level: 3, isGroup: false, isCalculated: false, values: [...Duvetica, sumArray(Duvetica), calculateYoY(sumArray(Duvetica), getPreviousValue('Duvetica', sumArray(Duvetica)))], format: 'number', year2024Value: getPreviousValue('Duvetica', sumArray(Duvetica)) },
-    { account: 'Supra', level: 3, isGroup: false, isCalculated: false, values: [...Supra, sumArray(Supra), calculateYoY(sumArray(Supra), getPreviousValue('Supra', sumArray(Supra)))], format: 'number', year2024Value: getPreviousValue('Supra', sumArray(Supra)) },
-    {
-      account: '기타수익',
-      level: 2,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      values: [...기타수익합계, sumArray(기타수익합계), calculateYoY(sumArray(기타수익합계), 기타수익2024)],
-      format: 'number',
-      year2024Value: getPreviousTotal(['대리상선금', '대리상보증금', '정부보조금', '기타수익'], sumArray(기타수익합계)),
-    },
-    { account: '대리상선금', level: 3, isGroup: false, isCalculated: false, values: [...대리상선금, sumArray(대리상선금), calculateYoY(sumArray(대리상선금), getPreviousValue('대리상선금', sumArray(대리상선금)))], format: 'number', year2024Value: getPreviousValue('대리상선금', sumArray(대리상선금)) },
-    { account: '대리상보증금', level: 3, isGroup: false, isCalculated: false, values: [...대리상보증금, sumArray(대리상보증금), calculateYoY(sumArray(대리상보증금), getPreviousValue('대리상보증금', sumArray(대리상보증금)))], format: 'number', year2024Value: getPreviousValue('대리상보증금', sumArray(대리상보증금)) },
-    { account: '정부보조금', level: 3, isGroup: false, isCalculated: false, values: [...정부보조금, sumArray(정부보조금), calculateYoY(sumArray(정부보조금), getPreviousValue('정부보조금', sumArray(정부보조금)))], format: 'number', year2024Value: getPreviousValue('정부보조금', sumArray(정부보조금)) },
-    { account: '기타수익', level: 3, isGroup: false, isCalculated: false, values: [...기타수익, sumArray(기타수익), calculateYoY(sumArray(기타수익), getPreviousValue('기타수익', sumArray(기타수익)))], format: 'number', year2024Value: getPreviousValue('기타수익', sumArray(기타수익)) },
-    {
-      account: '출금',
-      level: 1,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      isHighlight: 'gray',
-      values: [...출금, sumArray(출금), calculateYoY(sumArray(출금), 출금2024)],
-      format: 'number',
-      year2024Value: getPreviousTotal(['본사', '위탁생산', '본사선급금', '운영비'], sumArray(출금)),
-    },
-    {
-      account: '상품대',
-      level: 2,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      values: [...상품대, sumArray(상품대), calculateYoY(sumArray(상품대), getPreviousTotal(['본사', '위탁생산'], sumArray(상품대)))],
-      format: 'number',
-      year2024Value: getPreviousTotal(['본사', '위탁생산'], sumArray(상품대)),
-    },
-    { account: '본사', level: 3, isGroup: false, isCalculated: false, values: [...본사, sumArray(본사), calculateYoY(sumArray(본사), getPreviousValue('본사', sumArray(본사)))], format: 'number', year2024Value: getPreviousValue('본사', sumArray(본사)) },
-    { account: '위탁생산', level: 3, isGroup: false, isCalculated: false, values: [...위탁생산, sumArray(위탁생산), calculateYoY(sumArray(위탁생산), getPreviousValue('위탁생산', sumArray(위탁생산)))], format: 'number', year2024Value: getPreviousValue('위탁생산', sumArray(위탁생산)) },
-    { account: '본사선급금', level: 2, isGroup: false, isCalculated: false, values: [...본사선급금, sumArray(본사선급금), calculateYoY(sumArray(본사선급금), getPreviousValue('본사선급금', sumArray(본사선급금)))], format: 'number', year2024Value: getPreviousValue('본사선급금', sumArray(본사선급금)) },
-    { account: '운영비', level: 2, isGroup: false, isCalculated: false, values: [...운영비, sumArray(운영비), calculateYoY(sumArray(운영비), getPreviousValue('운영비', sumArray(운영비)))], format: 'number', year2024Value: getPreviousValue('운영비', sumArray(운영비)) },
-    {
-      account: '2. 재무활동',
-      level: 0,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      isHighlight: 'sky',
-      values: [...재무활동, sumArray(재무활동), calculateYoY(sumArray(재무활동), getPreviousTotal(['차입금입금', '차입금상환'], sumArray(재무활동)))],
-      format: 'number',
-      year2024Value: getPreviousTotal(['차입금입금', '차입금상환'], sumArray(재무활동)),
-    },
-    { account: '차입금입금', level: 1, isGroup: false, isCalculated: false, values: [...차입금입금, sumArray(차입금입금), calculateYoY(sumArray(차입금입금), getPreviousValue('차입금입금', sumArray(차입금입금)))], format: 'number', year2024Value: getPreviousValue('차입금입금', sumArray(차입금입금)) },
-    { account: '차입금상환', level: 1, isGroup: false, isCalculated: false, values: [...차입금상환, sumArray(차입금상환), calculateYoY(sumArray(차입금상환), getPreviousValue('차입금상환', sumArray(차입금상환)))], format: 'number', year2024Value: getPreviousValue('차입금상환', sumArray(차입금상환)) },
-    {
-      account: '3. 투자활동',
-      level: 0,
-      isGroup: true,
-      isCalculated: true,
-      isBold: true,
-      isHighlight: 'sky',
-      values: [...투자활동, sumArray(투자활동), calculateYoY(sumArray(투자활동), getPreviousTotal(['자산성지출'], sumArray(투자활동)))],
-      format: 'number',
-      year2024Value: getPreviousTotal(['자산성지출'], sumArray(투자활동)),
-    },
-    { account: '자산성지출', level: 1, isGroup: false, isCalculated: false, values: [...자산성지출, sumArray(자산성지출), calculateYoY(sumArray(자산성지출), getPreviousValue('자산성지출', sumArray(자산성지출)))], format: 'number', year2024Value: getPreviousValue('자산성지출', sumArray(자산성지출)) },
-    // Net Cash = 영업활동 + 자산성지출 + 기타수익 + from 차입금(재무활동)
-    (() => {
-      const netCash = 영업활동.map((_, i) => 영업활동[i] + 자산성지출[i] + 기타수익합계[i] + 재무활동[i]);
-      const netCashAnnual = sumArray(netCash);
-      const prev영업 = getPreviousTotal(['MLB', 'KIDS', 'Discovery', 'Duvetica', 'Supra', '대리상선금', '대리상보증금', '정부보조금', '기타수익', '본사', '위탁생산', '본사선급금', '운영비'], netCashAnnual);
-      const prev자산 = getPreviousTotal(['자산성지출'], netCashAnnual);
-      const prev기타 = getPreviousTotal(['대리상선금', '대리상보증금', '정부보조금', '기타수익'], netCashAnnual);
-      const prev재무 = getPreviousTotal(['차입금입금', '차입금상환'], netCashAnnual);
-      const prevNetCash = (prev영업 ?? 0) + (prev자산 ?? 0) + (prev기타 ?? 0) + (prev재무 ?? 0);
-      const year2024NetCash = (prev영업 != null || prev자산 != null || prev기타 != null || prev재무 != null) ? prevNetCash : null;
-      return {
-        account: 'Net Cash',
-        level: 0,
-        isGroup: false,
-        isCalculated: true,
-        isBold: false,
-        isHighlight: 'darkGray' as const,
-        values: [...netCash, netCashAnnual, calculateYoY(netCashAnnual, year2024NetCash)] as (number | null)[],
-        format: 'number' as const,
-        year2024Value: year2024NetCash,
-      };
-    })(),
+    // 현금잔액 (토글 가능)
     {
       account: '현금잔액',
       level: 0,
-      isGroup: false,
+      isGroup: true,
       isCalculated: false,
       isBold: true,
       isHighlight: 'yellow',
-      values: [...현금잔액CSV, 현금잔액CSV[11] || 0, calculateYoY(현금잔액CSV[11] || 0, year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? null) : null)],
+      values: [...현금잔액, 현금잔액[11] || 0, calculateYoY(현금잔액[11] || 0, getPreviousValue('현금잔액'))],
       format: 'number',
-      year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? null) : null,
+      year2024Value: getPreviousValue('현금잔액'),
+      children: [
+        {
+          account: '홍콩마카오',
+          level: 1,
+          isGroup: false,
+          isCalculated: false,
+          values: [...현금잔액홍콩, 현금잔액홍콩[11] || 0, calculateYoY(현금잔액홍콩[11] || 0, getPreviousValue('현금잔액_홍콩마카오'))],
+          format: 'number',
+          year2024Value: getPreviousValue('현금잔액_홍콩마카오'),
+        },
+        {
+          account: '대만',
+          level: 1,
+          isGroup: false,
+          isCalculated: false,
+          values: [...현금잔액대만, 현금잔액대만[11] || 0, calculateYoY(현금잔액대만[11] || 0, getPreviousValue('현금잔액_대만'))],
+          format: 'number',
+          year2024Value: getPreviousValue('현금잔액_대만'),
+        },
+      ],
     },
   ];
 

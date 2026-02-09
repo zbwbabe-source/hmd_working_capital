@@ -54,13 +54,26 @@ export async function readCSV(filePath: string, year: number): Promise<Financial
   const result: FinancialData[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // 대분류(row[0]), 중분류(row[1]), 소분류(row[2]) 중 값이 있는 것을 계정명으로 사용
+    // 새로운 구조: 대분류(row[0]), 중분류1(row[1]), 중분류2(row[2]), 소분류(row[3])
     const 대분류 = row[0]?.trim();
-    const 중분류 = row[1]?.trim();
-    const 소분류 = row[2]?.trim();
+    const 중분류1 = row[1]?.trim();
+    const 중분류2 = row[2]?.trim();
+    const 소분류 = row[3]?.trim();
     
-    // 소분류 -> 중분류 -> 대분류 순으로 우선순위
-    const account = 소분류 || 중분류 || 대분류;
+    // 계정명 생성: 중분류2를 주로 사용하되, 소분류를 suffix로 추가
+    // 예: "매출수금", "매출수금_홍콩마카오", "매출수금_대만"
+    let account = '';
+    
+    if (중분류2) {
+      account = 중분류2;
+      if (소분류 && 소분류 !== '합계' && 소분류 !== 중분류2) {
+        account = `${중분류2}_${소분류}`;
+      }
+    } else if (중분류1) {
+      account = 중분류1;
+    } else if (대분류) {
+      account = 대분류;
+    }
     
     if (!account) continue;
 
