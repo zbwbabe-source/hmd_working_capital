@@ -6,7 +6,9 @@ import { calculateCashflowTable } from '@/lib/fs-mapping-new';
 function buildTotalsFromCashflowRows(rows: CashflowRow[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const r of rows) {
-    const annual = r.values.reduce((s, v) => s + v, 0);
+    // 현금잔액은 12월 값 사용, 다른 항목은 합계 사용
+    const isBalance = r.대분류 === '현금잔액';
+    const annual = isBalance ? r.values[11] : r.values.reduce((s, v) => s + v, 0);
     
     // 4-level keys
     const 대분류 = r.대분류;
