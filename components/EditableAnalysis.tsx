@@ -211,6 +211,69 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
     return sections;
   };
 
+  // 텍스트에서 중요한 부분을 강조 표시
+  const highlightImportantText = (text: string) => {
+    const parts: JSX.Element[] = [];
+    let lastIndex = 0;
+    
+    // 강조할 패턴들
+    const patterns = [
+      // 금액 (숫자 + K/M HKD, 천 HKD 등)
+      { regex: /([+△]?\d{1,3}(?:,\d{3})*(?:\.\d+)?[KM]?\s*HKD)/g, color: 'text-blue-700 font-semibold' },
+      // 백분율
+      { regex: /([+△]?\d+(?:\.\d+)?%)/g, color: 'text-green-700 font-semibold' },
+      // Target, 개선, 증가, 감소, 플러스 전환 등 중요 단어
+      { regex: /(Target|개선|증가|감소|플러스 전환|구조적|현금창출|상환|투자|재고일수)/g, color: 'text-orange-600 font-medium' },
+    ];
+
+    let processedText = text;
+    const highlights: { start: number; end: number; className: string; text: string }[] = [];
+
+    // 모든 패턴 찾기
+    patterns.forEach(({ regex, color }) => {
+      const matches = Array.from(text.matchAll(regex));
+      matches.forEach(match => {
+        if (match.index !== undefined) {
+          highlights.push({
+            start: match.index,
+            end: match.index + match[0].length,
+            className: color,
+            text: match[0]
+          });
+        }
+      });
+    });
+
+    // 위치 순으로 정렬하고 겹치는 부분 제거
+    highlights.sort((a, b) => a.start - b.start);
+    const filtered = highlights.filter((h, i) => {
+      if (i === 0) return true;
+      return h.start >= highlights[i - 1].end;
+    });
+
+    // JSX 엘리먼트 생성
+    filtered.forEach((h, i) => {
+      // 이전 강조 끝부터 현재 강조 시작까지의 일반 텍스트
+      if (h.start > lastIndex) {
+        parts.push(<span key={`text-${i}`}>{text.substring(lastIndex, h.start)}</span>);
+      }
+      // 강조 텍스트
+      parts.push(
+        <span key={`highlight-${i}`} className={h.className}>
+          {h.text}
+        </span>
+      );
+      lastIndex = h.end;
+    });
+
+    // 마지막 남은 텍스트
+    if (lastIndex < text.length) {
+      parts.push(<span key="text-last">{text.substring(lastIndex)}</span>);
+    }
+
+    return parts.length > 0 ? <>{parts}</> : text;
+  };
+
   const sections = parseContentIntoSections(displayContent);
 
   return (
@@ -239,9 +302,10 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
               <div className="space-y-2">
                 {section.lines.map((line, lineIdx) => {
                   if (line.startsWith('**') && line.includes('**')) {
+                    const cleanText = line.replace(/\*\*/g, '');
                     return (
                       <p key={lineIdx} className="font-semibold text-gray-900 mb-1 mt-3 text-sm">
-                        {line.replace(/\*\*/g, '')}
+                        {highlightImportantText(cleanText)}
                       </p>
                     );
                   } else if (line.startsWith('• ') || line.startsWith('✓ ')) {
@@ -251,20 +315,20 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
                       <div key={lineIdx} className="flex items-start mb-3">
                         <span className="text-blue-600 mr-2 mt-0.5 flex-shrink-0">{symbol}</span>
                         <p className="text-sm text-gray-700 leading-relaxed flex-1">
-                          {text}
+                          {highlightImportantText(text)}
                         </p>
                       </div>
                     );
                   } else if (line.startsWith('→ ')) {
                     return (
                       <p key={lineIdx} className="text-sm text-gray-600 pl-6 mb-2">
-                        {line}
+                        {highlightImportantText(line)}
                       </p>
                     );
                   } else if (line.trim()) {
                     return (
                       <p key={lineIdx} className="text-sm text-gray-700 mb-2 leading-relaxed">
-                        {line}
+                        {highlightImportantText(line)}
                       </p>
                     );
                   }
