@@ -78,8 +78,8 @@ export function calculateCF(
   
   const 구조 = {
     '영업활동': {
-      '매출수금': { '매출수금': ['합계', '홍콩마카오', '대만'] },
-      '물품대': { '물품대': ['합계', '홍콩마카오', '대만'] },
+      '매출수금': ['합계', '홍콩마카오', '대만'],
+      '물품대': ['합계', '홍콩마카오', '대만'],
       '비용': {
         '광고비': ['합계', '홍콩마카오', '대만'],
         '매장 임차료': ['합계', '홍콩마카오', '대만'],
@@ -92,19 +92,19 @@ export function calculateCF(
       },
     },
     '기타수익': {
-      '기타수익': { '기타수익': ['합계', '홍콩마카오', '대만'] },
+      '기타수익': ['합계', '홍콩마카오', '대만'],
     },
     '자산성지출': {
-      '인테리어/VMD': { '합계': ['합계', '홍콩마카오', '대만'] },
-      '비품취득': { '합계': ['합계', '홍콩마카오', '대만'] },
+      '인테리어/VMD': ['합계', '홍콩마카오', '대만'],
+      '비품취득': ['합계', '홍콩마카오', '대만'],
     },
     '현금잔액': {
-      '현금잔액': { '합계': ['합계', '홍콩마카오', '대만'] },
+      '현금잔액': ['합계', '홍콩마카오', '대만'],
     },
   };
   
   // 계층 구조 생성
-  Object.entries(구조).forEach(([대분류, 중분류1맵], 대분류Index) => {
+  Object.entries(구조).forEach(([대분류, 중분류1맵]) => {
     // 대분류 행
     const 대분류Data = getAccountValues(map, 대분류);
     rows.push({
@@ -119,68 +119,81 @@ export function calculateCF(
     });
     
     // 중분류1
-    Object.entries(중분류1맵).forEach(([중분류1, 중분류2맵]) => {
-      const 중분류1Data = getAccountValues(map, 중분류1);
-      rows.push({
-        account: 중분류1,
-        level: 1,
-        isGroup: true,
-        isCalculated: true,
-        isBold: true,
-        isHighlight: 중분류1 === '비용' ? 'gray' : undefined,
-        values: [...중분류1Data, sumArray(중분류1Data), null],
-        format: 'number',
-      });
+    Object.entries(중분류1맵).forEach(([중분류1, 중분류2항목]) => {
+      // 중분류1이 배열인지 객체인지 확인
+      const is중분류1단순 = Array.isArray(중분류2항목);
       
-      // 중분류2
-      Object.entries(중분류2맵).forEach(([중분류2, 소분류배열]) => {
-        // 중분류1과 중분류2가 같으면 중분류2를 건너뛰고 바로 소분류 표시
-        if (중분류1 === 중분류2) {
-          // 소분류만 표시 (합계는 이미 중분류1에 표시됨)
-          소분류배열.forEach((소분류) => {
-            if (소분류 === '합계') return; // 합계는 건너뛰기 (이미 중분류1이 합계)
-            
-            const accountName = `${중분류2}_${소분류}`;
-            const 소분류Data = getAccountValues(map, accountName);
-            rows.push({
-              account: 소분류,
-              level: 2, // level 2로 표시
-              isGroup: false,
-              isCalculated: false,
-              values: [...소분류Data, sumArray(소분류Data), null],
-              format: 'number',
-            });
+      if (is중분류1단순) {
+        // 중분류1 바로 아래 지역 구분 (매출수금, 물품대, 기타수익 등)
+        const 중분류1Data = getAccountValues(map, 중분류1);
+        rows.push({
+          account: 중분류1,
+          level: 1,
+          isGroup: true,
+          isCalculated: true,
+          isBold: true,
+          values: [...중분류1Data, sumArray(중분류1Data), null],
+          format: 'number',
+        });
+        
+        // 지역별 행 (합계 제외)
+        중분류2항목.forEach((지역) => {
+          if (지역 === '합계') return; // 합계는 이미 중분류1에 표시됨
+          
+          const accountName = `${중분류1}_${지역}`;
+          const 지역Data = getAccountValues(map, accountName);
+          rows.push({
+            account: 지역,
+            level: 2,
+            isGroup: false,
+            isCalculated: false,
+            values: [...지역Data, sumArray(지역Data), null],
+            format: 'number',
           });
-        } else {
-          // 중분류1과 중분류2가 다르면 중분류2도 표시
+        });
+      } else {
+        // 중분류1 아래 중분류2가 있음 (비용)
+        const 중분류1Data = getAccountValues(map, 중분류1);
+        rows.push({
+          account: 중분류1,
+          level: 1,
+          isGroup: true,
+          isCalculated: true,
+          isBold: true,
+          isHighlight: 중분류1 === '비용' ? 'gray' : undefined,
+          values: [...중분류1Data, sumArray(중분류1Data), null],
+          format: 'number',
+        });
+        
+        // 중분류2 (광고비, 매장 임차료 등)
+        Object.entries(중분류2항목 as Record<string, string[]>).forEach(([중분류2, 지역배열]) => {
           const 중분류2Data = getAccountValues(map, 중분류2);
           rows.push({
             account: 중분류2,
             level: 2,
             isGroup: true,
             isCalculated: true,
-            isBold: true,
             values: [...중분류2Data, sumArray(중분류2Data), null],
             format: 'number',
           });
           
-          // 소분류
-          소분류배열.forEach((소분류) => {
-            if (소분류 === '합계') return; // 합계는 건너뛰기 (이미 중분류2가 합계)
+          // 지역별 행 (합계 제외)
+          지역배열.forEach((지역) => {
+            if (지역 === '합계') return;
             
-            const accountName = `${중분류2}_${소분류}`;
-            const 소분류Data = getAccountValues(map, accountName);
+            const accountName = `${중분류2}_${지역}`;
+            const 지역Data = getAccountValues(map, accountName);
             rows.push({
-              account: 소분류,
+              account: 지역,
               level: 3,
               isGroup: false,
               isCalculated: false,
-              values: [...소분류Data, sumArray(소분류Data), null],
+              values: [...지역Data, sumArray(지역Data), null],
               format: 'number',
             });
           });
-        }
-      });
+        });
+      }
     });
   });
   
