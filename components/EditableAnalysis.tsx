@@ -211,19 +211,19 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
     return sections;
   };
 
-  // 텍스트에서 중요한 부분을 강조 표시
+  // 텍스트에서 중요한 부분을 강조 표시 (모두 검은색)
   const highlightImportantText = (text: string) => {
     const parts: JSX.Element[] = [];
     let lastIndex = 0;
     
-    // 강조할 패턴들
+    // 강조할 패턴들 - 모두 검은색 폰트
     const patterns = [
       // 금액 (숫자 + K/M HKD, 천 HKD 등)
-      { regex: /([+△]?\d{1,3}(?:,\d{3})*(?:\.\d+)?[KM]?\s*HKD)/g, color: 'text-blue-700 font-semibold' },
+      { regex: /([+△]?\d{1,3}(?:,\d{3})*(?:\.\d+)?[KM]?\s*HKD)/g, color: 'text-gray-900 font-semibold' },
       // 백분율
-      { regex: /([+△]?\d+(?:\.\d+)?%)/g, color: 'text-green-700 font-semibold' },
+      { regex: /([+△]?\d+(?:\.\d+)?%)/g, color: 'text-gray-900 font-semibold' },
       // Target, 개선, 증가, 감소, 플러스 전환 등 중요 단어
-      { regex: /(Target|개선|증가|감소|플러스 전환|구조적|현금창출|상환|투자|재고일수|연체분|본사|채무|건전성|매출|성장|실판매출)/g, color: 'text-orange-600 font-medium' },
+      { regex: /(Target|개선|증가|감소|플러스 전환|구조적|현금창출|상환|투자|재고일수|연체분|본사|채무|건전성|매출|성장|실판매출)/g, color: 'text-gray-900 font-medium' },
     ];
 
     let processedText = text;
