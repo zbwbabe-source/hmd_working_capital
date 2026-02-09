@@ -266,17 +266,6 @@ export function calculateCF(
       year2024Value: getPreviousTotal(['자산성지출'], sumArray(투자활동)),
     },
     { account: '자산성지출', level: 1, isGroup: false, isCalculated: false, values: [...자산성지출, sumArray(자산성지출), calculateYoY(sumArray(자산성지출), getPreviousValue('자산성지출', sumArray(자산성지출)))], format: 'number', year2024Value: getPreviousValue('자산성지출', sumArray(자산성지출)) },
-    {
-      account: '기말현금',
-      level: 0,
-      isGroup: false,
-      isCalculated: true,
-      isBold: true,
-      isHighlight: 'yellow',
-      values: [...기말현금, 기말현금[11], calculateYoY(기말현금[11], year === 2026 && previousYearTotals ? (previousYearTotals.get('기말현금') ?? 기말현금2024) : 기말현금2024)],
-      format: 'number',
-      year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('기말현금') ?? 기말현금2024) : 기말현금2024,
-    },
     // Net Cash = 영업활동 + 자산성지출 + 기타수익 + from 차입금(재무활동)
     (() => {
       const netCash = 영업활동.map((_, i) => 영업활동[i] + 자산성지출[i] + 기타수익합계[i] + 재무활동[i]);
@@ -299,6 +288,17 @@ export function calculateCF(
         year2024Value: year2024NetCash,
       };
     })(),
+    {
+      account: '현금잔액',
+      level: 0,
+      isGroup: false,
+      isCalculated: true,
+      isBold: true,
+      isHighlight: 'yellow',
+      values: [...기말현금, 기말현금[11], calculateYoY(기말현금[11], year === 2026 && previousYearTotals ? (previousYearTotals.get('기말현금') ?? 기말현금2024) : 기말현금2024)],
+      format: 'number',
+      year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('기말현금') ?? 기말현금2024) : 기말현금2024,
+    },
   ];
 
   return rows;
