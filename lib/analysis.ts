@@ -420,9 +420,9 @@ export function generateCashFlowInsights(
     }
   }
   
-  // 차입금 분석 (from 차입금)
+  // 차입금 분석 (from 차입금) - 차입금이 있는 경우만 표시
   const debt = cfAnalysis.categories.find(c => c.account === 'from 차입금');
-  if (debt && debt.yoyAbsolute !== null && debt.yoyAbsolute < 0) {
+  if (debt && debt.annualTotal !== 0 && debt.yoyAbsolute !== null && debt.yoyAbsolute < 0) {
     keyInsights.push(
       `✓ ${year}년 차입금 순 상환 ${formatMillionYuan(debt.yoyAbsolute, true)}으로 재무 레버리지 감소. ` +
       `영업현금 개선이 차입금 상환 여력을 제공하며 재무 건전성 개선 중.`
@@ -504,8 +504,8 @@ export function generateCashFlowInsights(
     // 매입채무는 음수 잔액이므로 yoyAbsolute > 0이 감소(절대값 감소)
     if (ap && ap.yoyAbsolute && ap.yoyAbsolute > 0 && operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
       keyInsights.push(
-        `연쇄 효과: ${year}년 실판매출 전년 대비 115% 증가 → 영업현금흐름 개선 → 본사 채무 상환 → 매입채무 감소(연체분 정리) → 운전자본 구조 개선 → 차입금 상환 가능. ` +
-        `매출 성장과 재무 건전성 개선이 동시에 달성됨.`
+        `연쇄 효과: ${year}년 실판매출 전년 대비 115% 증가 → 영업현금흐름 개선 → 본사 채무 상환 → 매입채무 감소(연체분 정리) → 운전자본 구조 개선. ` +
+        `매출 성장과 재무 건전성 개선이 동시에 달성되어 순현금 흐름 플러스 전환.`
       );
     }
   }
