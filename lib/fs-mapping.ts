@@ -88,6 +88,235 @@ export async function calculateCF(
 // Moved to fs-mapping-new.ts for 4-level tree structure
 export { calculateCashflowTable } from './fs-mapping-new';
 
+// ==================== Cashflow Table 3-Level (현금흐름표 3단계) ====================
+const cashflow대분류순서 = ['영업활동', '자산성지출', '기타수익', 'from 차입금', '현금잔액'];
+
+export function calculateCashflowTable3Level(
+  data: WorkingCapitalRow[],
+  previousYearTotals?: Map<string, number>,
+  year2023Totals?: Map<string, number>
+): TableRow[] {
+  const groupedBy대분류 = new Map<string, WorkingCapitalRow[]>();
+  for (const row of data) {
+    if (!groupedBy대분류.has(row.대분류)) {
+      groupedBy대분류.set(row.대분류, []);
+    }
+    groupedBy대분류.get(row.대분류)!.push(row);
+  }
+
+  const rows: TableRow[] = [];
+  const calculateYoY = (currentTotal: number, previousTotal: number | null | undefined): number | null => {
+    if (previousTotal === null || previousTotal === undefined) return null;
+    return currentTotal - previousTotal;
+  };
+
+  for (const 대분류 of cashflow대분류순서) {
+    const 대분류Rows = groupedBy대분류.get(대분류) || [];
+    if (대분류Rows.length === 0) continue;
+
+    // 현금잔액은 12월 값만 사용, 나머지는 합계
+    const isBalance = 대분류 === '현금잔액';
+    let 연간합계 = 0;
+    const 대분류합계 = new Array(12).fill(0);
+    
+    // "합계"만 포함하고 지역(홍마, 대만, 홍콩마카오)이 없는 행만 더하기
+    const 합계Rows = 대분류Rows.filter(r => {
+      const 소분류 = r.소분류.trim();
+      // "합계"를 포함하고
+      const has합계 = 소분류 === '합계' || 소분류.includes('합계');
+      // 지역명이 없어야 함
+      const has지역 = 소분류.includes('홍마') || 소분류.includes('대만') || 소분류.includes('홍콩마카오');
+      return has합계 && !has지역;
+    });
+    
+    // 디버그 로그
+    if (대분류 === '영업활동') {
+      console.log('=== 영업활동 합계 행들 ===');
+      합계Rows.forEach(r => {
+        const annual = r.annual !== undefined ? r.annual : r.values.reduce((s, v) => s + v, 0);
+        console.log(`${r.중분류} - ${r.소분류}: annual=${r.annual}, calculated=${r.values.reduce((s, v) => s + v, 0)}`);
+      });
+    }
+    
+    for (const r of 합계Rows) {
+      for (let i = 0; i < 12; i++) {
+        대분류합계[i] += r.values[i];
+      }
+      
+      // P열의 연간 합계가 있으면 우선 사용
+      if (r.annual !== undefined && r.annual !== null) {
+        연간합계 += r.annual;
+      } else if (isBalance) {
+        연간합계 += r.values[11]; // 12월 값
+      } else {
+        연간합계 += r.values.reduce((sum, v) => sum + v, 0);
+      }
+    }
+    
+    if (대분류 === '영업활동') {
+      console.log(`영업활동 연간합계: ${연간합계}`);
+    }
+    
+    const yoyValue = calculateYoY(연간합계, previousYearTotals?.get(대분류));
+
+    const 중분류Set = new Set(대분류Rows.map(r => r.중분류).filter(Boolean));
+    const 중분류List = [...중분류Set];
+
+    rows.push({
+      account: 대분류,
+      level: 0,
+      isGroup: 중분류List.length > 0,
+      isCalculated: true,
+      isBold: true,
+      isHighlight: 'sky',
+      values: [...대분류합계, 연간합계, yoyValue],
+      format: 'number',
+      year2024Value: previousYearTotals?.get(대분류) ?? null,
+      year2023Value: year2023Totals?.get(대분류) ?? null,
+    });
+
+    for (const 중분류 of 중분류List) {
+      const 중분류RowsList = 대분류Rows.filter(r => r.중분류 === 중분류);
+      const 중분류합계 = new Array(12).fill(0);
+      
+      // "합계"만 포함하고 지역(홍마, 대만, 홍콩마카오)이 없는 행만 더하기
+      const 중분류합계Rows = 중분류RowsList.filter(r => {
+        const 소분류 = r.소분류.trim();
+        // "합계"를 포함하고
+        const has합계 = 소분류 === '합계' || 소분류.includes('합계');
+        // 지역명이 없어야 함
+        const has지역 = 소분류.includes('홍마') || 소분류.includes('대만') || 소분류.includes('홍콩마카오');
+        return has합계 && !has지역;
+      });
+      
+      let 중분류연간합계 = 0;
+      for (const r of 중분류합계Rows) {
+        for (let i = 0; i < 12; i++) {
+          중분류합계[i] += r.values[i];
+        }
+        
+        // P열의 연간 합계가 있으면 우선 사용
+        if (r.annual !== undefined && r.annual !== null) {
+          중분류연간합계 += r.annual;
+        } else if (isBalance) {
+          중분류연간합계 += r.values[11]; // 현금잔액은 12월 값
+        } else {
+          중분류연간합계 += r.values.reduce((sum, v) => sum + v, 0);
+        }
+      }
+      
+      const accountKey = `${대분류}-${중분류}`;
+      const 중분류YoY = calculateYoY(중분류연간합계, previousYearTotals?.get(accountKey));
+
+      const has소분류 = 중분류RowsList.some(r => !!r.소분류);
+      
+      // 중분류가 "비용"이면 회색 하이라이트
+      const isExpense = 중분류 === '비용';
+      
+      rows.push({
+        account: 중분류,
+        level: 1,
+        isGroup: has소분류,
+        isCalculated: true,
+        isBold: true,
+        isHighlight: isExpense ? 'gray' : undefined,
+        values: [...중분류합계, 중분류연간합계, 중분류YoY],
+        format: 'number',
+        year2024Value: previousYearTotals?.get(accountKey) ?? null,
+        year2023Value: year2023Totals?.get(accountKey) ?? null,
+      });
+
+      // 소분류 처리
+      for (const r of 중분류RowsList) {
+        if (!r.소분류) continue;
+        
+        // 소분류가 단순히 "합계"인 경우는 건너뛰기 (중분류에 이미 포함됨)
+        // 하지만 "광고비 합계"처럼 항목명이 포함된 경우는 표시
+        if (r.소분류 === '합계') continue;
+        
+        let 소분류연간합계 = 0;
+        // P열의 연간 합계가 있으면 우선 사용
+        if (r.annual !== undefined && r.annual !== null) {
+          소분류연간합계 = r.annual;
+        } else if (isBalance) {
+          소분류연간합계 = r.values[11]; // 현금잔액은 12월 값
+        } else {
+          소분류연간합계 = r.values.reduce((sum, v) => sum + v, 0);
+        }
+        
+        const 소분류Key = `${대분류}-${중분류}-${r.소분류}`;
+        const 소분류YoY = calculateYoY(소분류연간합계, previousYearTotals?.get(소분류Key));
+
+        // 소분류 이름 처리
+        let displayLabel = r.소분류;
+        let level = 2;
+        let isBold = false;
+        let isGroup = false;
+        
+        // "합계"를 포함하는 경우 (예: "광고비 합계")
+        if (r.소분류.includes('합계')) {
+          // 합계 항목은 그대로 표시 (굵게)
+          isBold = true;
+          isGroup = true; // 하위에 지역 항목이 있을 수 있음
+        } 
+        // 지역 항목(홍콩마카오, 대만, 홍마)에 '-' 접두사 추가
+        else if (r.소분류 === '홍콩마카오' || r.소분류 === '대만' || r.소분류 === '홍마' || r.소분류.includes('홍마') || r.소분류.includes('대만')) {
+          displayLabel = '-' + r.소분류;
+        }
+        
+        rows.push({
+          account: displayLabel,
+          level: level,
+          isGroup: isGroup,
+          isCalculated: false,
+          isBold: isBold,
+          values: [...r.values, 소분류연간합계, 소분류YoY],
+          format: 'number',
+          year2024Value: previousYearTotals?.get(소분류Key) ?? null,
+          year2023Value: year2023Totals?.get(소분류Key) ?? null,
+        });
+      }
+    }
+  }
+
+  // Net Cash 계산
+  const 영업활동 = rows.find(r => r.account === '영업활동' && r.level === 0);
+  const 자산성지출 = rows.find(r => r.account === '자산성지출' && r.level === 0);
+  const 기타수익 = rows.find(r => r.account === '기타수익' && r.level === 0);
+
+  if (영업활동 && 자산성지출 && 기타수익) {
+    const netCashValues = new Array(14).fill(0);
+    for (let i = 0; i < 14; i++) {
+      netCashValues[i] = (영업활동.values[i] ?? 0) + (자산성지출.values[i] ?? 0) + (기타수익.values[i] ?? 0);
+    }
+
+    const netCashAnnual = netCashValues[12];
+    const netCashYear2024 = (previousYearTotals?.get('영업활동') ?? 0) + 
+                            (previousYearTotals?.get('자산성지출') ?? 0) + 
+                            (previousYearTotals?.get('기타수익') ?? 0);
+    const netCashYear2023 = (year2023Totals?.get('영업활동') ?? 0) + 
+                            (year2023Totals?.get('자산성지출') ?? 0) + 
+                            (year2023Totals?.get('기타수익') ?? 0);
+
+    netCashValues[13] = calculateYoY(netCashAnnual, netCashYear2024) ?? 0;
+
+    rows.push({
+      account: 'Net Cash',
+      level: 0,
+      isGroup: false,
+      isCalculated: true,
+      isBold: false,
+      isHighlight: 'darkGray',
+      values: netCashValues,
+      format: 'number',
+      year2024Value: netCashYear2024,
+      year2023Value: netCashYear2023,
+    });
+  }
+
+  return rows;
+}
+
 // ==================== Working Capital Table (운전자본표) ====================
 const 대분류순서 = ['영업활동', '자산성지출', '기타수익', 'from 차입금'];
 const 중분류순서 = ['매출수금', '물품대', '본사선급금', '비용'];

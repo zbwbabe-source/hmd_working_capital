@@ -321,6 +321,7 @@ export interface WorkingCapitalRow {
   중분류: string;
   소분류: string;
   values: number[]; // 12개월 데이터
+  annual?: number; // 연간 합계 (2025합계 등)
 }
 
 export async function readWorkingCapitalCSV(filePath: string, year: number): Promise<WorkingCapitalRow[]> {
@@ -360,6 +361,16 @@ export async function readWorkingCapitalCSV(filePath: string, year: number): Pro
       monthColumns.push({ index: i, month });
     }
   }
+  
+  // 연간 합계 컬럼 찾기 (2025합계, 2026합계 등)
+  let annualIndex = -1;
+  for (let i = 15; i < headers.length; i++) {
+    const header = headers[i]?.trim() ?? '';
+    if (header.includes(`${year}`) && header.includes('합계')) {
+      annualIndex = i;
+      break;
+    }
+  }
 
   const result: WorkingCapitalRow[] = [];
   for (let i = 1; i < rows.length; i++) {
@@ -375,12 +386,19 @@ export async function readWorkingCapitalCSV(filePath: string, year: number): Pro
       const valueStr = row[index];
       values[month - 1] = cleanNumericValue(valueStr || '0');
     }
+    
+    // 연간 합계 값 읽기
+    let annual: number | undefined = undefined;
+    if (annualIndex >= 0 && row[annualIndex]) {
+      annual = cleanNumericValue(row[annualIndex]);
+    }
 
     result.push({
       대분류,
       중분류,
       소분류,
       values,
+      annual,
     });
   }
 

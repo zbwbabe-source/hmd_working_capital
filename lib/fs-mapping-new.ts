@@ -34,6 +34,14 @@ export function calculateCashflowTable(
     
     if (!대분류) continue;
     
+    // Debug logging for specific cases
+    if (중분류1 === '매출수금' && (중분류2 === '홍콩마카오' || 중분류2 === '대만')) {
+      console.log(`Processing: ${대분류}-${중분류1}-${중분류2}-${소분류}, values[0]=${values[0]}`);
+    }
+    if (중분류2 === '광고비' && (소분류 === '홍콩마카오' || 소분류 === '대만')) {
+      console.log(`Processing 광고비: ${대분류}-${중분류1}-${중분류2}-${소분류}, values[0]=${values[0]}`);
+    }
+    
     // Determine if this row is regional or aggregate
     const isRegional = 중분류2 === '홍콩마카오' || 중분류2 === '대만' || 소분류 === '홍콩마카오' || 소분류 === '대만';
     const isAggregate = 중분류2 === '합계' || 소분류 === '합계';
@@ -108,6 +116,16 @@ export function calculateCashflowTable(
     
     // Skip adding "합계" as a child - it's already represented in the parent level
     if (소분류 === '합계') continue;
+    
+    // If 중분류2 and 소분류 are the same (e.g., 홍콩마카오-홍콩마카오), 
+    // use the values directly in Level 2 and don't create Level 3
+    if (중분류2 === 소분류) {
+      for (let i = 0; i < 12; i++) {
+        l2.values[i] = values[i];
+      }
+      l2.isLeaf = true;
+      continue;
+    }
     
     l2.isLeaf = false;
     

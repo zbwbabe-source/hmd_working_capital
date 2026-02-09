@@ -1,43 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { readCashflowCSV, type CashflowRow } from '@/lib/csv';
-import { calculateCashflowTable } from '@/lib/fs-mapping-new';
+import { readWorkingCapitalCSV, type WorkingCapitalRow } from '@/lib/csv';
+import { calculateCashflowTable3Level } from '@/lib/fs-mapping';
 
-function buildTotalsFromCashflowRows(rows: CashflowRow[]): Map<string, number> {
+function buildTotalsFromRows(rows: WorkingCapitalRow[]): Map<string, number> {
   const map = new Map<string, number>();
+  
   for (const r of rows) {
-    // Only accumulate aggregate rows for totals calculation
-    const isRegional = r.중분류2 === '홍콩마카오' || r.중분류2 === '대만' || r.소분류 === '홍콩마카오' || r.소분류 === '대만';
-    const isAggregate = r.중분류2 === '합계' || r.소분류 === '합계';
+    const { 대분류, 중분류, 소분류, values, annual } = r;
     
-    if (!isAggregate || isRegional) continue;
-    
+    // P열의 연간 합계가 있으면 우선 사용, 없으면 계산
     // 현금잔액은 12월 값 사용, 다른 항목은 합계 사용
-    const isBalance = r.대분류 === '현금잔액';
-    const annual = isBalance ? r.values[11] : r.values.reduce((s, v) => s + v, 0);
+    const isBalance = 대분류 === '현금잔액';
+    let annualValue: number;
     
-    // 4-level keys
-    const 대분류 = r.대분류;
-    const 중분류1 = r.중분류1;
-    const 중분류2 = r.중분류2;
-    const 소분류 = r.소분류;
+    if (annual !== undefined && annual !== null) {
+      // CSV의 2025합계 컬럼 값 사용
+      annualValue = annual;
+    } else {
+      // 없으면 기존 방식대로 계산
+      annualValue = isBalance ? values[11] : values.reduce((s, v) => s + v, 0);
+    }
     
+    // 대분류 키 - "합계"만 포함
     if (대분류) {
-      map.set(대분류, (map.get(대분류) ?? 0) + annual);
+      const 소분류Trim = 소분류?.trim() ?? '';
+      const has합계 = 소분류Trim === '합계' || 소분류Trim.includes('합계');
+      const has지역 = 소분류Trim.includes('홍마') || 소분류Trim.includes('대만') || 소분류Trim.includes('홍콩마카오');
+      
+      if (has합계 && !has지역) {
+        const key = 대분류;
+        map.set(key, (map.get(key) ?? 0) + annualValue);
+      }
     }
-    if (대분류 && 중분류1) {
-      const key = `${대분류}-${중분류1}`;
-      map.set(key, (map.get(key) ?? 0) + annual);
+    
+    // 대분류-중분류 키 - "합계"만 포함
+    if (대분류 && 중분류) {
+      const 소분류Trim = 소분류?.trim() ?? '';
+      const has합계 = 소분류Trim === '합계' || 소분류Trim.includes('합계');
+      const has지역 = 소분류Trim.includes('홍마') || 소분류Trim.includes('대만') || 소분류Trim.includes('홍콩마카오');
+      
+      if (has합계 && !has지역) {
+        const key = `${대분류}-${중분류}`;
+        map.set(key, (map.get(key) ?? 0) + annualValue);
+      }
     }
-    if (대분류 && 중분류1 && 중분류2) {
-      const key = `${대분류}-${중분류1}-${중분류2}`;
-      map.set(key, (map.get(key) ?? 0) + annual);
-    }
-    if (대분류 && 중분류1 && 중분류2 && 소분류) {
-      const key = `${대분류}-${중분류1}-${중분류2}-${소분류}`;
-      map.set(key, (map.get(key) ?? 0) + annual);
+    
+    // 대분류-중분류-소분류 키
+    if (대분류 && 중분류 && 소분류) {
+      const key = `${대분류}-${중분류}-${소분류}`;
+      map.set(key, annualValue);
     }
   }
+  
   return map;
 }
 
@@ -55,7 +70,7 @@ export async function GET(request: NextRequest) {
     }
 
     const filePath = path.join(process.cwd(), 'cashflow', `${year}.csv`);
-    const data = await readCashflowCSV(filePath, year);
+    const data = await readWorkingCapitalCSV(filePath, year);
 
     let previousYearTotals: Map<string, number> | undefined;
     let year2023Totals: Map<string, number> | undefined;
@@ -63,8 +78,8 @@ export async function GET(request: NextRequest) {
     const prevYear = year - 1;
     try {
       const prevFilePath = path.join(process.cwd(), 'cashflow', `${prevYear}.csv`);
-      const prevData = await readCashflowCSV(prevFilePath, prevYear);
-      previousYearTotals = buildTotalsFromCashflowRows(prevData);
+      const prevData = await readWorkingCapitalCSV(prevFilePath, prevYear);
+      previousYearTotals = buildTotalsFromRows(prevData);
     } catch (err) {
       console.error(`${prevYear}년 cashflow 로드 실패:`, err);
       previousYearTotals = undefined;
@@ -73,22 +88,22 @@ export async function GET(request: NextRequest) {
     if (year === 2025) {
       try {
         const path2023 = path.join(process.cwd(), 'cashflow', '2023.csv');
-        const data2023 = await readCashflowCSV(path2023, 2023);
-        year2023Totals = buildTotalsFromCashflowRows(data2023);
+        const data2023 = await readWorkingCapitalCSV(path2023, 2023);
+        year2023Totals = buildTotalsFromRows(data2023);
       } catch (err) {
         console.error('2023년 cashflow 로드 실패:', err);
       }
     } else if (year === 2026) {
       try {
         const path2024 = path.join(process.cwd(), 'cashflow', '2024.csv');
-        const data2024 = await readCashflowCSV(path2024, 2024);
-        year2023Totals = buildTotalsFromCashflowRows(data2024);
+        const data2024 = await readWorkingCapitalCSV(path2024, 2024);
+        year2023Totals = buildTotalsFromRows(data2024);
       } catch (err) {
         console.error('2024년 cashflow 로드 실패:', err);
       }
     }
 
-    const tableRows = calculateCashflowTable(data, previousYearTotals, year2023Totals);
+    const tableRows = calculateCashflowTable3Level(data, previousYearTotals, year2023Totals);
 
     return NextResponse.json({
       year,
@@ -103,4 +118,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
