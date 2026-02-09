@@ -34,8 +34,14 @@ export function calculateCashflowTable(
     
     if (!대분류) continue;
     
-    // Only use "합계" rows for calculation, skip regional breakdowns (홍콩마카오, 대만)
-    if (소분류 && 소분류 !== '합계') continue;
+    // Only use aggregate rows where 중분류2 === "합계" OR (소분류 === "합계" AND 중분류2 !== "홍콩마카오/대만")
+    // Skip regional breakdowns completely
+    const isRegional = 중분류2 === '홍콩마카오' || 중분류2 === '대만' || 소분류 === '홍콩마카오' || 소분류 === '대만';
+    if (isRegional) continue;
+    
+    // Only include if it's a "합계" row at either level
+    const isAggregate = 중분류2 === '합계' || 소분류 === '합계';
+    if (!isAggregate) continue;
     
     // Level 0: 대분류
     if (!root.has(대분류)) {
