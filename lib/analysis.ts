@@ -285,10 +285,10 @@ export function analyzeWorkingCapitalData(
     if (change < 0) {
       inventoryInsight = `재고자산이 ${formatMillionYuan(change, true)} 감소하여 현금 유입 기여. `;
       
-      // 2026년 말 재고자산이 약 127M 근처인 경우 Target 달성 메시지 추가
-      if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
-        inventoryInsight += `26년말 재고자산 127M 수준으로 Target 달성 (재고일수 320일 → 240일 개선). `;
-        inventoryInsight += `현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자 계획).`;
+      // 2026년 말 재고자산이 약 121M 근처인 경우 Target 달성 메시지 추가
+      if (year === 2026 && annualTotal > 115000 && annualTotal < 125000) {
+        inventoryInsight += `26년말 재고자산 121M 수준으로 Target 달성 (재고일수 개선). `;
+        inventoryInsight += `현금창출로 매입채무 상환 및 리뉴얼 투자 계획 가능.`;
       } else {
         // 하반기 집중 감소인지 확인
         if (Math.abs(trend.h2Total) > Math.abs(trend.h1Total) * 1.5) {
@@ -455,9 +455,9 @@ export function generateCashFlowInsights(
       const annualTotal = inventory.annualTotal ?? 0;
       let inventoryDetail = `재고자산 ${formatMillionYuan(inventory.yoyAbsolute, true)} 감소`;
       
-      // 2026년 말 재고자산이 약 127M 근처인 경우 Target 정보 추가
-      if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
-        inventoryDetail += ` → 26년말 재고자산 127M Target 달성 (재고일수 320일 → 240일), 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자)`;
+      // 2026년 말 재고자산이 약 121M 근처인 경우 Target 정보 추가
+      if (year === 2026 && annualTotal > 115000 && annualTotal < 125000) {
+        inventoryDetail += ` → 26년말 재고자산 121M Target 달성, 현금창출로 매입채무 상환 및 리뉴얼 투자 가능`;
       }
       
       details.push(inventoryDetail);
@@ -502,7 +502,7 @@ export function generateCashFlowInsights(
     // 매입채무는 음수 잔액이므로 yoyAbsolute > 0이 감소(절대값 감소)
     if (ap && ap.yoyAbsolute && ap.yoyAbsolute > 0 && operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
       keyInsights.push(
-        `✓ 연쇄 효과: ${year}년 실판매출 전년 대비 115% 증가 → 영업현금흐름 개선 → 본사 채무 상환 → 매입채무 감소(연체분 감소) → 운전자본 구조 개선. ` +
+        `✓ 연쇄 효과: ${year}년 영업활동 개선 → 본사 채무 상환 → 매입채무 감소(연체분 감소) → 운전자본 구조 개선. ` +
         `매출 성장과 재무 건전성 개선이 동시에 달성되어 순현금 흐름 플러스 전환.`
       );
     }
