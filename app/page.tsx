@@ -179,7 +179,7 @@ export default function Home() {
                         </div>
                       )}
                     </div>
-                    <aside className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]">
+                    <aside className="flex-1 min-w-[500px] rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]">
                       <EditableAnalysis
                         year={wcYear}
                         initialContent={analysisResults ? {
