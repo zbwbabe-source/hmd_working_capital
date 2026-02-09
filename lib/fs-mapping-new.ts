@@ -34,16 +34,12 @@ export function calculateCashflowTable(
     
     if (!대분류) continue;
     
-    // Only use aggregate rows where 중분류2 === "합계" OR (소분류 === "합계" AND 중분류2 !== "홍콩마카오/대만")
-    // Skip regional breakdowns completely
+    // Determine if this row is regional or aggregate
     const isRegional = 중분류2 === '홍콩마카오' || 중분류2 === '대만' || 소분류 === '홍콩마카오' || 소분류 === '대만';
-    if (isRegional) continue;
-    
-    // Only include if it's a "합계" row at either level
     const isAggregate = 중분류2 === '합계' || 소분류 === '합계';
-    if (!isAggregate) continue;
     
     // Level 0: 대분류
+    // Only accumulate aggregate values to parent levels, but keep all children for display
     if (!root.has(대분류)) {
       root.set(대분류, {
         label: 대분류,
@@ -56,9 +52,11 @@ export function calculateCashflowTable(
     }
     const l0 = root.get(대분류)!;
     
-    // Accumulate values
-    for (let i = 0; i < 12; i++) {
-      l0.values[i] += values[i];
+    // Accumulate only aggregate values to parent
+    if (isAggregate) {
+      for (let i = 0; i < 12; i++) {
+        l0.values[i] += values[i];
+      }
     }
     
     if (!중분류1) continue;
@@ -76,8 +74,10 @@ export function calculateCashflowTable(
     }
     const l1 = l0.children.get(중분류1)!;
     
-    for (let i = 0; i < 12; i++) {
-      l1.values[i] += values[i];
+    if (isAggregate) {
+      for (let i = 0; i < 12; i++) {
+        l1.values[i] += values[i];
+      }
     }
     
     if (!중분류2) continue;
@@ -97,15 +97,24 @@ export function calculateCashflowTable(
     }
     const l2 = l1.children.get(중분류2)!;
     
-    for (let i = 0; i < 12; i++) {
-      l2.values[i] += values[i];
+    // For Level 2, set values directly from this row if it's a leaf
+    if (!소분류) {
+      l2.values = [...values];
+      l2.isLeaf = true;
+    } else {
+      // If has children, accumulate only aggregate values
+      if (isAggregate && !isRegional) {
+        for (let i = 0; i < 12; i++) {
+          l2.values[i] += values[i];
+        }
+      }
     }
     
     if (!소분류) continue;
     
     l2.isLeaf = false;
     
-    // Level 3: 소분류
+    // Level 3: 소분류 - always display, set values directly
     if (!l2.children.has(소분류)) {
       l2.children.set(소분류, {
         label: 소분류,

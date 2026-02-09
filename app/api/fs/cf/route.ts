@@ -6,12 +6,11 @@ import { calculateCashflowTable } from '@/lib/fs-mapping-new';
 function buildTotalsFromCashflowRows(rows: CashflowRow[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const r of rows) {
-    // Only use aggregate rows, skip regional breakdowns
+    // Only accumulate aggregate rows for totals calculation
     const isRegional = r.중분류2 === '홍콩마카오' || r.중분류2 === '대만' || r.소분류 === '홍콩마카오' || r.소분류 === '대만';
-    if (isRegional) continue;
-    
     const isAggregate = r.중분류2 === '합계' || r.소분류 === '합계';
-    if (!isAggregate) continue;
+    
+    if (!isAggregate || isRegional) continue;
     
     // 현금잔액은 12월 값 사용, 다른 항목은 합계 사용
     const isBalance = r.대분류 === '현금잔액';
