@@ -54,7 +54,13 @@ export async function readCSV(filePath: string, year: number): Promise<Financial
   const result: FinancialData[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const account = row[0]?.trim();
+    // 대분류(row[0]), 중분류(row[1]), 소분류(row[2]) 중 값이 있는 것을 계정명으로 사용
+    const 대분류 = row[0]?.trim();
+    const 중분류 = row[1]?.trim();
+    const 소분류 = row[2]?.trim();
+    
+    // 소분류 -> 중분류 -> 대분류 순으로 우선순위
+    const account = 소분류 || 중분류 || 대분류;
     
     if (!account) continue;
 
