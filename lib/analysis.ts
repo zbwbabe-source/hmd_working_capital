@@ -280,16 +280,24 @@ export function analyzeWorkingCapitalData(
   if (inventory) {
     const trend = analyzeMonthlyTrend(inventory.monthlyValues);
     const change = inventory.yoyAbsolute ?? 0;
+    const annualTotal = inventory.annualTotal ?? 0;
     
     if (change < 0) {
       inventoryInsight = `재고자산이 ${formatMillionYuan(change, true)} 감소하여 현금 유입 기여. `;
       
-      // 하반기 집중 감소인지 확인
-      if (Math.abs(trend.h2Total) > Math.abs(trend.h1Total) * 1.5) {
-        inventoryInsight += `하반기에 집중 축소되어 관리 조정 효과로 판단. 향후 매출 대응 재고 확보 필요.`;
+      // 2026년 말 재고자산이 약 127M 근처인 경우 Target 달성 메시지 추가
+      if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
+        inventoryInsight += `26년말 재고자산 127M 수준으로 Target 달성 (재고일수 320일 → 240일 개선). `;
+        inventoryInsight += `향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자 계획). `;
       } else {
-        inventoryInsight += `연중 균등 감소하여 보수적 재고 운영 정책으로 판단.`;
+        // 하반기 집중 감소인지 확인
+        if (Math.abs(trend.h2Total) > Math.abs(trend.h1Total) * 1.5) {
+          inventoryInsight += `하반기에 집중 축소되어 관리 조정 효과로 판단. `;
+        } else {
+          inventoryInsight += `연중 균등 감소하여 보수적 재고 운영 정책으로 판단. `;
+        }
       }
+      inventoryInsight += `회전율 개선 및 SKU/시즌 관리 효율화로 현금 전환 가속, 향후 평가손/처분손 리스크 축소 기대.`;
     } else {
       inventoryInsight = `재고자산이 ${formatMillionYuan(change, true)} 증가하여 현금 유출.`;
     }
@@ -442,10 +450,16 @@ export function generateCashFlowInsights(
     
     // 재고자산 감소 (강화된 해석)
     if (inventory && inventory.yoyAbsolute && inventory.yoyAbsolute < 0) {
-      details.push(
-        `재고자산 ${formatMillionYuan(inventory.yoyAbsolute, true)} 감소 → 회전율 개선, SKU/시즌 관리 효율화 가능성. ` +
-        `현금 전환 가속 및 향후 평가손/처분손 리스크 축소`
-      );
+      const annualTotal = inventory.annualTotal ?? 0;
+      let inventoryDetail = `재고자산 ${formatMillionYuan(inventory.yoyAbsolute, true)} 감소 → 회전율 개선, SKU/시즌 관리 효율화 가능성. ` +
+        `현금 전환 가속 및 향후 평가손/처분손 리스크 축소`;
+      
+      // 2026년 말 재고자산이 약 127M 근처인 경우 Target 정보 추가
+      if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
+        inventoryDetail += `. 26년말 재고자산 127M Target 달성 (재고일수 320일 → 240일), 향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자)`;
+      }
+      
+      details.push(inventoryDetail);
     }
     
     // 매출채권 감소 (강화된 해석 - 매출 질 개선)
