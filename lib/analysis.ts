@@ -288,7 +288,7 @@ export function analyzeWorkingCapitalData(
       // 2026년 말 재고자산이 약 127M 근처인 경우 Target 달성 메시지 추가
       if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
         inventoryInsight += `26년말 재고자산 127M 수준으로 Target 달성 (재고일수 320일 → 240일 개선). `;
-        inventoryInsight += `향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자 계획).`;
+        inventoryInsight += `현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자 계획).`;
       } else {
         // 하반기 집중 감소인지 확인
         if (Math.abs(trend.h2Total) > Math.abs(trend.h1Total) * 1.5) {
@@ -457,7 +457,7 @@ export function generateCashFlowInsights(
       
       // 2026년 말 재고자산이 약 127M 근처인 경우 Target 정보 추가
       if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
-        inventoryDetail += ` → 26년말 재고자산 127M Target 달성 (재고일수 320일 → 240일), 향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자)`;
+        inventoryDetail += ` → 26년말 재고자산 127M Target 달성 (재고일수 320일 → 240일), 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자)`;
       }
       
       details.push(inventoryDetail);
