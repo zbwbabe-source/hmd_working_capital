@@ -222,6 +222,11 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
     calculateParentValues(root);
   }
   
+  // 자동 그룹화: "xxx 합계" 패턴을 감지하여 부모-자식 관계 생성
+  for (const root of roots) {
+    autoGroupSummaryNodes(root);
+  }
+  
   return roots;
 }
 
@@ -242,6 +247,158 @@ function calculateParentValues(node: TreeNode): void {
   node.value2025 = node.children.reduce((sum, child) => sum + child.value2025, 0);
   node.value2026 = node.children.reduce((sum, child) => sum + child.value2026, 0);
   node.yoy = node.value2026 - node.value2025;
+}
+
+/**
+ * "xxx 합계" 패턴을 감지하여 자동으로 부모-자식 관계 생성
+ */
+function autoGroupSummaryNodes(node: TreeNode): void {
+  if (!node.children || node.children.length === 0) {
+    return;
+  }
+  
+  // 각 레벨의 children에 대해 재귀적으로 처리
+  for (const child of node.children) {
+    autoGroupSummaryNodes(child);
+  }
+  
+  // 현재 레벨에서 "xxx 합계" 패턴 찾기
+  const summaryNodes: TreeNode[] = [];
+  const otherNodes: TreeNode[] = [];
+  
+  for (const child of node.children) {
+    if (child.label.includes(' 합계')) {
+      summaryNodes.push(child);
+    } else {
+      otherNodes.push(child);
+    }
+  }
+  
+  // "xxx 합계" 노드가 있으면 그룹화 수행
+  for (const summaryNode of summaryNodes) {
+    // "광고비 합계" -> "광고비"
+    const prefix = summaryNode.label.replace(' 합계', '');
+    
+    // 같은 prefix를 가진 다른 노드들 찾기
+    const childrenToGroup: TreeNode[] = [];
+    const remainingNodes: TreeNode[] = [];
+    
+    for (const otherNode of otherNodes) {
+      // "광고비 홍마", "광고비 대만" 등 매칭
+      if (otherNode.label.startsWith(prefix + ' ')) {
+        childrenToGroup.push(otherNode);
+      } else {
+        remainingNodes.push(otherNode);
+      }
+    }
+    
+    // 매칭되는 자식이 있으면 그룹화
+    if (childrenToGroup.length > 0) {
+      // summaryNode를 부모로 변경
+      summaryNode.isLeaf = false;
+      summaryNode.children = childrenToGroup;
+      
+      // depth 조정: 자식들의 depth를 1 증가
+      for (const child of childrenToGroup) {
+        adjustDepth(child, 1);
+      }
+      
+      // otherNodes 업데이트
+      otherNodes.length = 0;
+      otherNodes.push(...remainingNodes);
+    }
+  }
+  
+  // node.children 재구성: summaryNodes + remainingNodes
+  node.children = [...summaryNodes, ...otherNodes];
+}
+
+/**
+ * 노드와 그 하위 노드들의 depth를 조정
+ */
+function adjustDepth(node: TreeNode, increment: number): void {
+  node.depth = (node.depth + increment) as 1 | 2 | 3 | 4;
+  if (node.children) {
+    for (const child of node.children) {
+      adjustDepth(child, increment);
+    }
+  }
+}
+
+/**
+ * "xxx 합계" 패턴을 감지하여 자동 그룹화 (재귀)
+ * 같은 레벨의 형제 노드 중 "xxx yyy" 패턴을 찾아 "xxx 합계"의 자식으로 이동
+ */
+function autoGroupSummaryNodes(node: TreeNode): void {
+  if (!node.children || node.children.length === 0) {
+    return;
+  }
+  
+  // 자식 노드들에 대해 먼저 재귀 처리
+  for (const child of node.children) {
+    autoGroupSummaryNodes(child);
+  }
+  
+  // "xxx 합계" 패턴 찾기
+  const summaryNodes: TreeNode[] = [];
+  const otherNodes: TreeNode[] = [];
+  
+  for (const child of node.children) {
+    if (child.label.endsWith(' 합계')) {
+      summaryNodes.push(child);
+    } else {
+      otherNodes.push(child);
+    }
+  }
+  
+  // 각 합계 노드에 대해 매칭되는 자식 노드 찾기
+  for (const summaryNode of summaryNodes) {
+    // "광고비 합계" -> "광고비"
+    const prefix = summaryNode.label.replace(' 합계', '');
+    
+    // 같은 prefix를 가진 다른 노드들 찾기
+    const matchingNodes: TreeNode[] = [];
+    const remainingNodes: TreeNode[] = [];
+    
+    for (const otherNode of otherNodes) {
+      if (otherNode.label.startsWith(prefix + ' ')) {
+        matchingNodes.push(otherNode);
+      } else {
+        remainingNodes.push(otherNode);
+      }
+    }
+    
+    // 매칭되는 노드가 있으면 그룹화
+    if (matchingNodes.length > 0) {
+      // 합계 노드를 부모로 변경
+      summaryNode.isLeaf = false;
+      summaryNode.children = matchingNodes;
+      
+      // depth 조정: 자식들의 depth를 1 증가
+      for (const child of matchingNodes) {
+        adjustDepth(child, 1);
+      }
+      
+      // otherNodes 업데이트
+      otherNodes.length = 0;
+      otherNodes.push(...remainingNodes);
+    }
+  }
+  
+  // 노드의 children을 summaryNodes + otherNodes로 재구성
+  node.children = [...summaryNodes, ...otherNodes];
+}
+
+/**
+ * 노드와 그 하위 트리의 depth를 조정
+ */
+function adjustDepth(node: TreeNode, increment: number): void {
+  node.depth = (node.depth + increment) as 1 | 2 | 3 | 4;
+  if (node.children) {
+    for (const child of node.children) {
+      adjustDepth(child, increment);
+    }
+  }
 }
 
 /**
