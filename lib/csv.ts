@@ -60,12 +60,13 @@ export async function readCSV(filePath: string, year: number): Promise<Financial
     const 중분류2 = row[2]?.trim();
     const 소분류 = row[3]?.trim();
     
-    // 계정명 생성: 중분류2를 주로 사용하되, 소분류를 suffix로 추가
-    // 예: "매출수금", "매출수금_홍콩마카오", "매출수금_대만"
+    // 계정명 생성: 중분류2를 주로 사용하되, 소분류가 "합계"가 아니면 suffix로 추가
+    // 예: "매출수금" (합계), "매출수금_홍콩마카오", "매출수금_대만"
     let account = '';
     
     if (중분류2) {
       account = 중분류2;
+      // 소분류가 있고, "합계"가 아니며, 중분류2와 다른 경우에만 suffix 추가
       if (소분류 && 소분류 !== '합계' && 소분류 !== 중분류2) {
         account = `${중분류2}_${소분류}`;
       }
