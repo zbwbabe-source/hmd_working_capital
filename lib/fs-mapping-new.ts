@@ -34,8 +34,8 @@ export function calculateCashflowTable(
     
     if (!대분류) continue;
     
-    // Skip "합계" rows to avoid double counting (regional breakdown already has totals)
-    if (소분류 === '합계') continue;
+    // Only use "합계" rows for calculation, skip regional breakdowns (홍콩마카오, 대만)
+    if (소분류 && 소분류 !== '합계') continue;
     
     // Level 0: 대분류
     if (!root.has(대분류)) {
