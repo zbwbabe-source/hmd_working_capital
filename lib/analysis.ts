@@ -288,16 +288,15 @@ export function analyzeWorkingCapitalData(
       // 2026년 말 재고자산이 약 127M 근처인 경우 Target 달성 메시지 추가
       if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
         inventoryInsight += `26년말 재고자산 127M 수준으로 Target 달성 (재고일수 320일 → 240일 개선). `;
-        inventoryInsight += `향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자 계획). `;
+        inventoryInsight += `향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자 계획).`;
       } else {
         // 하반기 집중 감소인지 확인
         if (Math.abs(trend.h2Total) > Math.abs(trend.h1Total) * 1.5) {
-          inventoryInsight += `하반기에 집중 축소되어 관리 조정 효과로 판단. `;
+          inventoryInsight += `하반기에 집중 축소되어 관리 조정 효과로 판단.`;
         } else {
-          inventoryInsight += `연중 균등 감소하여 보수적 재고 운영 정책으로 판단. `;
+          inventoryInsight += `연중 균등 감소하여 보수적 재고 운영 정책으로 판단.`;
         }
       }
-      inventoryInsight += `회전율 개선 및 SKU/시즌 관리 효율화로 현금 전환 가속, 향후 평가손/처분손 리스크 축소 기대.`;
     } else {
       inventoryInsight = `재고자산이 ${formatMillionYuan(change, true)} 증가하여 현금 유출.`;
     }
@@ -454,12 +453,11 @@ export function generateCashFlowInsights(
     // 재고자산 감소 (강화된 해석)
     if (inventory && inventory.yoyAbsolute && inventory.yoyAbsolute < 0) {
       const annualTotal = inventory.annualTotal ?? 0;
-      let inventoryDetail = `재고자산 ${formatMillionYuan(inventory.yoyAbsolute, true)} 감소 → 회전율 개선, SKU/시즌 관리 효율화 가능성. ` +
-        `현금 전환 가속 및 향후 평가손/처분손 리스크 축소`;
+      let inventoryDetail = `재고자산 ${formatMillionYuan(inventory.yoyAbsolute, true)} 감소`;
       
       // 2026년 말 재고자산이 약 127M 근처인 경우 Target 정보 추가
       if (year === 2026 && annualTotal > 120000 && annualTotal < 135000) {
-        inventoryDetail += `. 26년말 재고자산 127M Target 달성 (재고일수 320일 → 240일), 향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자)`;
+        inventoryDetail += ` → 26년말 재고자산 127M Target 달성 (재고일수 320일 → 240일), 향후 현금창출 50M 가능 (40M 매입채무 상환, 10M 리뉴얼 투자)`;
       }
       
       details.push(inventoryDetail);
@@ -504,7 +502,7 @@ export function generateCashFlowInsights(
     // 매입채무는 음수 잔액이므로 yoyAbsolute > 0이 감소(절대값 감소)
     if (ap && ap.yoyAbsolute && ap.yoyAbsolute > 0 && operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
       keyInsights.push(
-        `연쇄 효과: ${year}년 실판매출 전년 대비 115% 증가 → 영업현금흐름 개선 → 본사 채무 상환 → 매입채무 감소(연체분 정리) → 운전자본 구조 개선. ` +
+        `연쇄 효과: ${year}년 실판매출 전년 대비 115% 증가 → 영업현금흐름 개선 → 본사 채무 상환 → 매입채무 감소(연체분 감소) → 운전자본 구조 개선. ` +
         `매출 성장과 재무 건전성 개선이 동시에 달성되어 순현금 흐름 플러스 전환.`
       );
     }
