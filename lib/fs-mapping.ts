@@ -277,7 +277,7 @@ export function calculateCF(
       format: 'number',
       year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('기말현금') ?? 기말현금2024) : 기말현금2024,
     },
-    // net cash = 영업활동 + 자산성지출 + 기타수익 + from 차입금(재무활동)
+    // Net Cash = 영업활동 + 자산성지출 + 기타수익 + from 차입금(재무활동)
     (() => {
       const netCash = 영업활동.map((_, i) => 영업활동[i] + 자산성지출[i] + 기타수익합계[i] + 재무활동[i]);
       const netCashAnnual = sumArray(netCash);
@@ -288,7 +288,7 @@ export function calculateCF(
       const prevNetCash = (prev영업 ?? 0) + (prev자산 ?? 0) + (prev기타 ?? 0) + (prev재무 ?? 0);
       const year2024NetCash = (prev영업 != null || prev자산 != null || prev기타 != null || prev재무 != null) ? prevNetCash : null;
       return {
-        account: 'net cash',
+        account: 'Net Cash',
         level: 0,
         isGroup: false,
         isCalculated: true,
@@ -400,7 +400,7 @@ export function calculateCashflowTable(
     }
   }
 
-  // net cash = 영업활동 + 자산성지출 + 기타수익 + from 차입금 (from 차입금 바로 아래 행에 항상 표시)
+  // Net Cash = 영업활동 + 자산성지출 + 기타수익 + from 차입금 (from 차입금 바로 아래 행에 항상 표시)
   if (대분류연간합계.length > 0) {
     const netCashValues = new Array(14).fill(0);
     let netCashAnnual = 0;
@@ -418,7 +418,7 @@ export function calculateCashflowTable(
     netCashValues[12] = netCashAnnual;
     netCashValues[13] = calculateYoY(netCashAnnual, netCashYear2024) ?? 0;
     rows.push({
-      account: 'net cash',
+      account: 'Net Cash',
       level: 0,
       isGroup: false,
       isCalculated: true,
