@@ -264,10 +264,11 @@ export async function readCFCSV(filePath: string, year: number): Promise<{ data:
   return { data: finalResult, year2024Values };
 }
 
-// cashflow 폴더 CSV 읽기 (대분류, 중분류, 소분류, 1월~12월) — 계층 그대로 반환
+// cashflow 폴더 CSV 읽기 (대분류, 중분류1, 중분류2, 소분류, 1월~12월) — 4단계 계층
 export interface CashflowRow {
   대분류: string;
-  중분류: string;
+  중분류1: string;
+  중분류2: string;
   소분류: string;
   values: number[];
 }
@@ -291,7 +292,7 @@ export async function readCashflowCSV(filePath: string, _year: number): Promise<
 
   const headers = rows[0];
   const monthColumns: { index: number; month: number }[] = [];
-  for (let i = 3; i < headers.length && i < 15; i++) {
+  for (let i = 4; i < headers.length && i < 16; i++) { // 컬럼 4부터 시작 (0:대분류, 1:중분류1, 2:중분류2, 3:소분류)
     const month = parseMonthColumn(headers[i]?.trim() ?? '');
     if (month !== null) monthColumns.push({ index: i, month });
   }
@@ -300,15 +301,16 @@ export async function readCashflowCSV(filePath: string, _year: number): Promise<
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const 대분류 = row[0]?.trim() ?? '';
-    const 중분류 = row[1]?.trim() ?? '';
-    const 소분류 = row[2]?.trim() ?? '';
+    const 중분류1 = row[1]?.trim() ?? '';
+    const 중분류2 = row[2]?.trim() ?? '';
+    const 소분류 = row[3]?.trim() ?? '';
     if (!대분류) continue;
 
     const values = new Array(12).fill(0);
     for (const { index, month } of monthColumns) {
       values[month - 1] = cleanNumericValue(row[index] || '0');
     }
-    result.push({ 대분류, 중분류, 소분류, values });
+    result.push({ 대분류, 중분류1, 중분류2, 소분류, values });
   }
   return result;
 }

@@ -1,15 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { readCashflowCSV, type CashflowRow } from '@/lib/csv';
-import { calculateCashflowTable } from '@/lib/fs-mapping';
+import { calculateCashflowTable } from '@/lib/fs-mapping-new';
 
 function buildTotalsFromCashflowRows(rows: CashflowRow[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const r of rows) {
     const annual = r.values.reduce((s, v) => s + v, 0);
-    map.set(r.대분류, (map.get(r.대분류) ?? 0) + annual);
-    if (r.중분류) map.set(`${r.대분류}-${r.중분류}`, (map.get(`${r.대분류}-${r.중분류}`) ?? 0) + annual);
-    if (r.소분류) map.set(`${r.대분류}-${r.중분류}-${r.소분류}`, (map.get(`${r.대분류}-${r.중분류}-${r.소분류}`) ?? 0) + annual);
+    
+    // 4-level keys
+    const 대분류 = r.대분류;
+    const 중분류1 = r.중분류1;
+    const 중분류2 = r.중분류2;
+    const 소분류 = r.소분류;
+    
+    if (대분류) {
+      map.set(대분류, (map.get(대분류) ?? 0) + annual);
+    }
+    if (대분류 && 중분류1) {
+      const key = `${대분류}-${중분류1}`;
+      map.set(key, (map.get(key) ?? 0) + annual);
+    }
+    if (대분류 && 중분류1 && 중분류2) {
+      const key = `${대분류}-${중분류1}-${중분류2}`;
+      map.set(key, (map.get(key) ?? 0) + annual);
+    }
+    if (대분류 && 중분류1 && 중분류2 && 소분류) {
+      const key = `${대분류}-${중분류1}-${중분류2}-${소분류}`;
+      map.set(key, (map.get(key) ?? 0) + annual);
+    }
   }
   return map;
 }
