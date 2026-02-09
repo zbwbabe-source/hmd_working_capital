@@ -87,6 +87,9 @@ export function calculateCF(
   const 자산성지출 = getAccountValues(map, '자산성지출');
   const 투자활동 = 자산성지출;
   
+  // 현금잔액 (CSV에서 직접 읽기)
+  const 현금잔액CSV = getAccountValues(map, '현금잔액');
+  
   // 합계 계산 (12개월)
   const sumArray = (arr: number[]) => arr.reduce((sum: number, v) => sum + v, 0);
   
@@ -292,12 +295,12 @@ export function calculateCF(
       account: '현금잔액',
       level: 0,
       isGroup: false,
-      isCalculated: true,
+      isCalculated: false,
       isBold: true,
       isHighlight: 'yellow',
-      values: [...기말현금, 기말현금[11], calculateYoY(기말현금[11], year === 2026 && previousYearTotals ? (previousYearTotals.get('기말현금') ?? 기말현금2024) : 기말현금2024)],
+      values: [...현금잔액CSV, 현금잔액CSV[11], calculateYoY(현금잔액CSV[11], year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? 기말현금2024) : 기말현금2024)],
       format: 'number',
-      year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('기말현금') ?? 기말현금2024) : 기말현금2024,
+      year2024Value: year === 2026 && previousYearTotals ? (previousYearTotals.get('현금잔액') ?? 기말현금2024) : 기말현금2024,
     },
   ];
 
