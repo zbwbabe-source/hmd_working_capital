@@ -223,7 +223,7 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
       // 백분율
       { regex: /([+△]?\d+(?:\.\d+)?%)/g, color: 'text-green-700 font-semibold' },
       // Target, 개선, 증가, 감소, 플러스 전환 등 중요 단어
-      { regex: /(Target|개선|증가|감소|플러스 전환|구조적|현금창출|상환|투자|재고일수)/g, color: 'text-orange-600 font-medium' },
+      { regex: /(Target|개선|증가|감소|플러스 전환|구조적|현금창출|상환|투자|재고일수|연체분|본사|채무|건전성)/g, color: 'text-orange-600 font-medium' },
     ];
 
     let processedText = text;

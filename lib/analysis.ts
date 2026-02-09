@@ -309,10 +309,13 @@ export function analyzeWorkingCapitalData(
     const trend = analyzeMonthlyTrend(ap.monthlyValues);
     const change = ap.yoyAbsolute ?? 0;
     
-    if (change < 0) {
+    // 매입채무는 음수 잔액이므로 change > 0이 감소(절대값 감소), change < 0이 증가(절대값 증가)
+    if (change > 0) {
+      // 매입채무 감소 (절대값 감소) = 현금 유출
       apInsight = `매입채무가 ${formatMillionYuan(change, true)} 감소하여 현금 유출 요인. `;
-      apInsight += `구매 규모 축소 또는 지급조건 변화 가능성.`;
-    } else {
+      apInsight += `본사 물품대 채무 추가 상환으로 연체분 감소 반영.`;
+    } else if (change < 0) {
+      // 매입채무 증가 (절대값 증가) = 현금 유입
       apInsight = `매입채무가 ${formatMillionYuan(change, true)} 증가하여 현금 유입에 기여. `;
       if (trend.volatility > 0.5) {
         apInsight += `월별 변동성이 높아 단기 타이밍 효과로 판단.`;
@@ -471,18 +474,24 @@ export function generateCashFlowInsights(
     }
     
     // 매입채무 감소 (질적 개선 관점 추가)
-    if (ap && ap.yoyAbsolute && ap.yoyAbsolute < 0) {
+    // 매입채무는 음수 잔액이므로 yoyAbsolute > 0이 감소(절대값 감소)
+    if (ap && ap.yoyAbsolute && ap.yoyAbsolute > 0) {
       if (operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
         // 매입채무 감소에도 영업현금흐름이 개선된 경우 -> 질적 개선
         details.push(
-          `매입채무 ${formatMillionYuan(ap.yoyAbsolute, true)} 감소에도 불구하고 영업현금흐름 개선 → 질적 개선의 증거. ` +
-          `영업 규모 조정에 따른 정상화로 부정 신호 아님`
+          `매입채무 ${formatMillionYuan(ap.yoyAbsolute, true)} 감소 → 본사 물품대 채무 추가 상환으로 연체분 감소. ` +
+          `영업현금흐름 개선으로 재무 건전성 향상`
         );
       } else {
         details.push(
-          `매입채무 ${formatMillionYuan(ap.yoyAbsolute, true)} 감소 → 대부분 본사 매입채무 감소로, 매출 감소에 따른 원재료 구매 축소 영향`
+          `매입채무 ${formatMillionYuan(ap.yoyAbsolute, true)} 감소 → 본사 물품대 채무 추가 상환으로 연체분 감소`
         );
       }
+    } else if (ap && ap.yoyAbsolute && ap.yoyAbsolute < 0) {
+      // 매입채무 증가 (절대값 증가) = 현금 유입
+      details.push(
+        `매입채무 ${formatMillionYuan(ap.yoyAbsolute, true)} 증가 → 지급조건 개선으로 현금흐름 관리 긍정적`
+      );
     }
     
     if (details.length > 0) {
@@ -492,10 +501,11 @@ export function generateCashFlowInsights(
     }
     
     // 연쇄 영향 로직 (질적 개선 관점 강화)
-    if (ap && ap.yoyAbsolute && ap.yoyAbsolute < 0 && operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
+    // 매입채무는 음수 잔액이므로 yoyAbsolute > 0이 감소(절대값 감소)
+    if (ap && ap.yoyAbsolute && ap.yoyAbsolute > 0 && operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
       keyInsights.push(
-        `연쇄 효과: 매출 감소 → 매입채무 감소 → 운전자본 개선 → 영업활동 현금흐름 증가 → 차입금 상환 가능. ` +
-        `운영 규모 축소가 아닌 운전자본 구조 정상화에 기반한 질적 개선으로 해석됨. 중장기 성장 동력 확보 필요.`
+        `연쇄 효과: 본사 채무 상환 → 매입채무 감소 → 운전자본 개선 → 영업활동 현금흐름 증가 → 차입금 상환 가능. ` +
+        `연체분 정리를 통한 재무 건전성 개선으로 해석됨.`
       );
     }
   }
