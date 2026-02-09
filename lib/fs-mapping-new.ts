@@ -122,8 +122,14 @@ export function calculateCashflowTable(
     const key = node.path.join('-');
     const yoy = calculateYoY(annual, previousYearTotals?.get(key));
     
+    // 지역 항목(홍콩마카오, 대만)에 '-' 접두사 추가
+    let displayLabel = node.label;
+    if (node.label === '홍콩마카오' || node.label === '대만') {
+      displayLabel = '-' + node.label;
+    }
+    
     tableRows.push({
-      account: node.label,
+      account: displayLabel,
       level: node.level,
       isGroup: !node.isLeaf && node.children.size > 0,
       isCalculated: !node.isLeaf,
