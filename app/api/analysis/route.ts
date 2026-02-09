@@ -51,3 +51,25 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// DELETE: 저장된 분석 내용 삭제하기
+export async function DELETE(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const year = searchParams.get('year') || '2026';
+    
+    const key = `analysis:${year}`;
+    await kv.del(key);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Analysis deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error deleting analysis:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete analysis' },
+      { status: 500 }
+    );
+  }
+}

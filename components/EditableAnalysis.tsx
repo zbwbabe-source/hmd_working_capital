@@ -80,6 +80,34 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
     }
   };
 
+  // 초기화 (Redis에서 삭제)
+  const handleReset = async () => {
+    if (!confirm('저장된 커스텀 내용을 삭제하고 기본 분석으로 돌아갑니다. 계속하시겠습니까?')) {
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/analysis?year=${year}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setSavedCustomContent(null);
+        alert('초기화되었습니다. 페이지를 새로고침합니다.');
+        window.location.reload();
+      } else {
+        alert('초기화에 실패했습니다: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Reset error:', error);
+      alert('초기화 중 오류가 발생했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 취소
   const handleCancel = () => {
     setIsEditing(false);
@@ -280,12 +308,22 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
     <div>
       <div className="flex items-center justify-between mb-6 pb-3 border-b-2 border-gray-300">
         <h3 className="text-xl font-bold text-gray-900">설명과 분석</h3>
-        <button
-          onClick={handleEdit}
-          className="px-4 py-2 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-        >
-          편집
-        </button>
+        <div className="flex gap-2">
+          {savedCustomContent && (
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 text-sm font-medium rounded bg-gray-500 text-white hover:bg-gray-600 transition-colors"
+            >
+              초기화
+            </button>
+          )}
+          <button
+            onClick={handleEdit}
+            className="px-4 py-2 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            편집
+          </button>
+        </div>
       </div>
       
       {sections.length > 0 ? (
