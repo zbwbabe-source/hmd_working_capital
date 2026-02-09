@@ -97,24 +97,21 @@ export function calculateCashflowTable(
     }
     const l2 = l1.children.get(중분류2)!;
     
-    // For Level 2, set values directly from this row if it's a leaf
-    if (!소분류) {
-      l2.values = [...values];
-      l2.isLeaf = true;
-    } else {
-      // If has children, accumulate only aggregate values
-      if (isAggregate && !isRegional) {
-        for (let i = 0; i < 12; i++) {
-          l2.values[i] += values[i];
-        }
+    // For Level 2, accumulate aggregate values for parent calculation
+    if (isAggregate && !isRegional) {
+      for (let i = 0; i < 12; i++) {
+        l2.values[i] += values[i];
       }
     }
     
     if (!소분류) continue;
     
+    // Skip adding "합계" as a child - it's already represented in the parent level
+    if (소분류 === '합계') continue;
+    
     l2.isLeaf = false;
     
-    // Level 3: 소분류 - always display, set values directly
+    // Level 3: 소분류 - display only regional breakdowns (홍콩마카오, 대만)
     if (!l2.children.has(소분류)) {
       l2.children.set(소분류, {
         label: 소분류,
