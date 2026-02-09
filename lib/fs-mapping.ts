@@ -36,7 +36,10 @@ export async function calculateCF(
   const tree = buildTree(rows2025, rows2026);
   
   // TreeNode를 TableRow로 변환
-  function treeNodeToTableRow(node: TreeNode): TableRow {
+  function treeNodeToTableRow(node: TreeNode, year: number): TableRow {
+    const currentYearValue = year === 2025 ? node.value2025 : node.value2026;
+    const previousYearValue = year === 2025 ? null : node.value2025;
+    
     return {
       account: node.label,
       level: node.depth - 1, // depth 1~4 -> level 0~3
@@ -45,19 +48,21 @@ export async function calculateCF(
       isBold: node.depth <= 2,
       isHighlight: node.depth === 1 ? 'sky' : (node.label === '비용' ? 'gray' : undefined),
       values: [
-        // 2025년 월별 (0으로 채움 - 연간합계만 표시)
+        // 월별 데이터 (0으로 채움 - 연간합계만 표시)
         ...new Array(12).fill(0),
-        // 2025년 합계
-        node.value2025,
-        // YoY
-        node.yoy,
+        // 현재년도 합계
+        currentYearValue,
+        // YoY (2026년일 때만 계산)
+        year === 2026 ? node.yoy : null,
       ],
       format: 'number',
-      children: node.children?.map(treeNodeToTableRow),
+      children: node.children?.map(child => treeNodeToTableRow(child, year)),
+      year2024Value: previousYearValue, // 2025년이면 null, 2026년이면 2025년 값
+      year2023Value: null, // 필요시 추가
     };
   }
   
-  const tableRows = tree.map(treeNodeToTableRow);
+  const tableRows = tree.map(node => treeNodeToTableRow(node, year));
   
   // Flatten the tree structure for rendering
   function flattenTableRows(rows: TableRow[]): TableRow[] {
@@ -65,7 +70,13 @@ export async function calculateCF(
     
     function traverse(row: TableRow) {
       const { children, ...rowWithoutChildren } = row;
-      result.push(rowWithoutChildren);
+      
+      // "합계" 행은 제외 (단, "비용" 제외 - 비용은 유지)
+      const isExcludedTotal = (row.account.endsWith(' 합계') || row.account === '합계') && row.account !== '비용';
+      
+      if (!isExcludedTotal) {
+        result.push(rowWithoutChildren);
+      }
       
       if (children) {
         for (const child of children) {

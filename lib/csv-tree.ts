@@ -222,16 +222,16 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
     calculateParentValues(root);
   }
   
-  // 자동 그룹화: "xxx 합계" 패턴을 감지하여 부모-자식 관계 생성
-  for (const root of roots) {
-    autoGroupSummaryNodes(root);
-  }
+  // 자동 그룹화: "xxx 합계" 패턴 감지 (현금흐름표는 적용하지 않음)
+  // 현금흐름표는 CSV에 이미 구조가 명확하게 정의되어 있으므로 자동 그룹화 불필요
+  // (자동 그룹화 시 이중 계산 문제 발생)
   
   return roots;
 }
 
 /**
  * 부모 노드의 값을 자식들로부터 계산 (재귀)
+ * "합계" 노드는 제외하고 계산 (이중 계산 방지)
  */
 function calculateParentValues(node: TreeNode): void {
   if (node.isLeaf || !node.children || node.children.length === 0) {
@@ -243,10 +243,101 @@ function calculateParentValues(node: TreeNode): void {
     calculateParentValues(child);
   }
   
-  // 자식들의 합산
-  node.value2025 = node.children.reduce((sum, child) => sum + child.value2025, 0);
-  node.value2026 = node.children.reduce((sum, child) => sum + child.value2026, 0);
+  // 자식들의 합산 (단, "합계"로 끝나는 자식은 제외)
+  node.value2025 = node.children
+    .filter(child => !child.label.endsWith(' 합계') && child.label !== '합계')
+    .reduce((sum, child) => sum + child.value2025, 0);
+  node.value2026 = node.children
+    .filter(child => !child.label.endsWith(' 합계') && child.label !== '합계')
+    .reduce((sum, child) => sum + child.value2026, 0);
   node.yoy = node.value2026 - node.value2025;
+}
+
+/**
+ * 비용 노드를 지역별(홍콩마카오/대만)로 재구성
+ */
+function restructureCostByRegion(node: TreeNode): void {
+  if (node.label !== '비용') return;
+  
+  console.log('[비용 재구성 시작] 기존 children:', node.children?.length);
+  
+  // 처리할 비용 항목 (8개만)
+  const COST_ITEMS = ['광고비', '매장 임차료', '매장 운영비', '사무실 운영비', '수입관세', '인건비', '보증금지급', '기타'];
+  
+  const hongkongItems: TreeNode[] = [];
+  const taiwanItems: TreeNode[] = [];
+  
+  for (const child of node.children || []) {
+    console.log('  처리 중:', child.label);
+    
+    // 8개 비용 항목만 처리
+    let itemName = '';
+    let isTarget = false;
+    
+    // "광고비 홍마" → "광고비"
+    if (child.label.includes(' 홍마')) {
+      itemName = child.label.replace(' 홍마', '');
+      if (COST_ITEMS.includes(itemName)) {
+        console.log(`    홍콩 항목 추가: ${child.label} → ${itemName}`);
+        hongkongItems.push({
+          ...child,
+          label: itemName,
+          depth: 4 as 1 | 2 | 3 | 4, // depth 증가
+        });
+        isTarget = true;
+      }
+    } 
+    // "광고비 대만" → "광고비"
+    else if (child.label.includes(' 대만')) {
+      itemName = child.label.replace(' 대만', '');
+      if (COST_ITEMS.includes(itemName)) {
+        console.log(`    대만 항목 추가: ${child.label} → ${itemName}`);
+        taiwanItems.push({
+          ...child,
+          label: itemName,
+          depth: 4 as 1 | 2 | 3 | 4, // depth 증가
+        });
+        isTarget = true;
+      }
+    }
+    
+    // "xxx 합계"는 제외 (표시 안 함)
+    if (!isTarget) {
+      console.log(`    제외됨: ${child.label}`);
+    }
+  }
+  
+  console.log(`[비용 재구성] 홍콩: ${hongkongItems.length}개, 대만: ${taiwanItems.length}개`);
+  
+  // 홍콩마카오 그룹 생성
+  const hongkongGroup: TreeNode = {
+    key: '영업활동|비용|홍콩마카오',
+    label: '홍콩마카오',
+    depth: 3,
+    children: hongkongItems,
+    isLeaf: false,
+    value2025: hongkongItems.reduce((sum, item) => sum + item.value2025, 0),
+    value2026: hongkongItems.reduce((sum, item) => sum + item.value2026, 0),
+    yoy: 0
+  };
+  hongkongGroup.yoy = hongkongGroup.value2026 - hongkongGroup.value2025;
+  
+  // 대만 그룹 생성
+  const taiwanGroup: TreeNode = {
+    key: '영업활동|비용|대만',
+    label: '대만',
+    depth: 3,
+    children: taiwanItems,
+    isLeaf: false,
+    value2025: taiwanItems.reduce((sum, item) => sum + item.value2025, 0),
+    value2026: taiwanItems.reduce((sum, item) => sum + item.value2026, 0),
+    yoy: 0
+  };
+  taiwanGroup.yoy = taiwanGroup.value2026 - taiwanGroup.value2025;
+  
+  // 비용 노드 재구성
+  node.children = [hongkongGroup, taiwanGroup];
+  console.log('[비용 재구성 완료] 새 children:', node.children.length);
 }
 
 /**

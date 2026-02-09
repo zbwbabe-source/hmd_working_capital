@@ -4,28 +4,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { TableRow } from '@/lib/types';
 import { formatNumber, formatPercent } from '@/lib/utils';
 
-// ── CF 합계 그룹 토글: 화이트리스트 (이 8개만 토글 허용) ──
-const ALLOWED_TOTALS = [
-  '광고비 합계',
-  '매장 임차료 합계',
-  '매장 운영비 합계',
-  '사무실 운영비 합계',
-  '수입관세 합계',
-  '인건비 합계',
-  '보증금지급 합계',
-  '기타 합계',
-];
-
-/** ALLOWED_TOTALS 하위 row의 부모 합계 label 반환 (매칭 안 되면 null) */
-function getParentTotalLabel(account: string): string | null {
-  for (const total of ALLOWED_TOTALS) {
-    const prefix = total.replace(' 합계', '');
-    if (account.startsWith(prefix + ' ') && account !== total) {
-      return total;
-    }
-  }
-  return null;
-}
+// ── CF 지역 그룹 토글: 홍콩마카오/대만만 토글 허용 ──
+const REGION_GROUPS = ['홍콩마카오', '대만'];
 
 interface FinancialTableProps {
   data: TableRow[];
@@ -80,26 +60,20 @@ export default function FinancialTable({
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
   const [internalAllRowsCollapsed, setInternalAllRowsCollapsed] = useState<boolean>(true);
 
-  // CF 합계 그룹 토글 상태 (ALLOWED_TOTALS 전용, 기본 접힌 상태)
+  // CF 지역 그룹 토글 상태 (홍콩마카오/대만 전용, 기본 접힌 상태)
   const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({});
   
-  // 헬퍼: ALLOWED_TOTALS 체크 (컴포넌트 내부로 이동)
-  const isAllowedTotal = (account: string): boolean => {
-    return ALLOWED_TOTALS.includes(account);
-  };
-  
-  // 헬퍼: 부모 합계 라벨 반환 (컴포넌트 내부로 이동)
-  const getParentTotal = (account: string): string | null => {
-    if (!account) return null;
-    const trimmedAccount = account.trim();
+  // 헬퍼: 비용의 지역 그룹인지 체크 (row와 이전 rows를 받아서 판단)
+  const isCostRegionGroup = (row: TableRow, allRows: TableRow[], currentIndex: number): boolean => {
+    if (!isCashFlow || !REGION_GROUPS.includes(row.account)) return false;
     
-    for (const total of ALLOWED_TOTALS) {
-      const prefix = total.replace(' 합계', '').trim();
-      if (trimmedAccount.startsWith(prefix + ' ') && trimmedAccount !== total) {
-        return total;
+    // 현재 row보다 앞에 있는 row 중에서 level이 더 낮은(부모) row 찾기
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (allRows[i].level < row.level) {
+        return allRows[i].account === '비용';
       }
     }
-    return null;
+    return false;
   };
   
   const toggleSummary = (label: string) => {
@@ -238,23 +212,32 @@ export default function FinancialTable({
       result.push(row);
 
       // 이 행이 접힌 그룹이면 다음 행부터 스킵
-      // CF ALLOWED_TOTALS는 별도 summaryExpanded로 관리하므로 skipUntilLevel 설정 제외
-      if (row.isGroup && collapsed.has(row.account) && !(isCashFlow && isAllowedTotal(row.account))) {
+      // CF 지역 그룹은 별도 summaryExpanded로 관리하므로 skipUntilLevel 설정 제외
+      if (row.isGroup && collapsed.has(row.account) && !(isCashFlow && REGION_GROUPS.includes(row.account))) {
         skipUntilLevel = row.level;
       }
     }
 
-    // CF 합계 그룹 하위 row: summaryExpanded 기반 조건부 렌더링
+    // CF 지역 그룹 하위 row: summaryExpanded 기반 조건부 렌더링
+    // 비용의 홍콩마카오/대만만 토글 가능
     if (isCashFlow) {
       const filtered: TableRow[] = [];
       let skipUntilLevel = -1;
+      let parentAccount = ''; // 부모 계정 추적
       
       for (let i = 0; i < result.length; i++) {
         const row = result[i];
         
-        // ALLOWED_TOTALS는 항상 표시 (스킵 종료)
-        if (isAllowedTotal(row.account)) {
-          skipUntilLevel = -1; // 새로운 합계를 만나면 스킵 종료
+        // 부모 계정 추적 (level 0 또는 level 1)
+        if (row.level === 0 || row.level === 1) {
+          parentAccount = row.account;
+        }
+        
+        // 지역 그룹이면서 부모가 "비용"인 경우만 토글 처리
+        const isCostRegionGroup = REGION_GROUPS.includes(row.account) && parentAccount === '비용';
+        
+        if (isCostRegionGroup) {
+          skipUntilLevel = -1; // 새로운 그룹을 만나면 스킵 종료
           filtered.push(row);
           
           // 펼쳐져 있지 않으면 하위 항목 스킵 시작
@@ -265,12 +248,12 @@ export default function FinancialTable({
         }
         
         // 스킵 중인 하위 항목 체크
-        if (skipUntilLevel >= 0 && row.level >= skipUntilLevel) {
+        if (skipUntilLevel >= 0 && row.level > skipUntilLevel) {
           continue; // 하위 항목 스킵
         }
         
         // 상위 레벨로 돌아오면 스킵 종료
-        if (skipUntilLevel >= 0 && row.level < skipUntilLevel) {
+        if (skipUntilLevel >= 0 && row.level <= skipUntilLevel) {
           skipUntilLevel = -1;
         }
         
@@ -658,6 +641,8 @@ export default function FinancialTable({
               const isBalanceOk = isBalanceCheck && row.values.every(v => v === null || Math.abs(v) < 10);
               // 전월대비 행: +/- 표시
               const isMomRow = row.account === '전월대비';
+              // 비용의 지역 그룹인지 체크
+              const isCostRegion = isCostRegionGroup(row, visibleRows, rowIndex);
               
               return (
               <tr
@@ -678,7 +663,7 @@ export default function FinancialTable({
                     ${isBalanceCheck && !isBalanceOk ? 'bg-red-100' : ''}
                     ${!isBalanceCheck && (getHighlightClass(row.isHighlight))}
                     ${!isBalanceCheck && (!row.isHighlight || row.isHighlight === 'none') ? 'bg-white' : ''}
-                    ${row.isGroup || (isCashFlow && isAllowedTotal(row.account)) ? 'cursor-pointer' : ''}
+                    ${row.isGroup || isCostRegion ? 'cursor-pointer' : ''}
                     ${row.isBold ? 'font-semibold' : ''}
                     ${compactLayout ? 'overflow-hidden text-ellipsis' : ''}
                   `}
@@ -688,7 +673,7 @@ export default function FinancialTable({
                     whiteSpace: 'nowrap'
                   } : { paddingLeft: `${8 + row.level * 16}px` }}
                   onClick={() => {
-                    if (isCashFlow && isAllowedTotal(row.account)) {
+                    if (isCostRegion) {
                       toggleSummary(row.account);
                     } else if (row.isGroup) {
                       toggleCollapse(row.account);
@@ -708,7 +693,7 @@ export default function FinancialTable({
                         {collapsed.has(row.account) ? '▶' : '▼'}
                       </span>
                     )}
-                    {isCashFlow && isAllowedTotal(row.account) && (
+                    {isCostRegion && (
                       <span className="text-gray-500 flex-shrink-0">
                         {summaryExpanded[row.account] ? '▼' : '▶'}
                       </span>
