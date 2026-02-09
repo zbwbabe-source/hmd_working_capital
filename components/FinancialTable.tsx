@@ -609,7 +609,7 @@ export default function FinancialTable({
                         row.account
                       )}
                     </span>
-                    {row.isGroup && (
+                    {row.isGroup && row.children && row.children.length > 0 && (
                       <span className="text-gray-500 flex-shrink-0">
                         {collapsed.has(row.account) ? '▶' : '▼'}
                       </span>
