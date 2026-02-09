@@ -266,6 +266,35 @@ export default function FinancialTable({
 
     return result;
   }, [data, collapsed, summaryExpanded, isCashFlow]);
+  
+  // 원본 data를 평면화한 전체 리스트 (접힌 행도 포함)
+  const allFlatRows = useMemo(() => {
+    const flattenRows = (rows: TableRow[]): TableRow[] => {
+      const flattened: TableRow[] = [];
+      for (const row of rows) {
+        flattened.push(row);
+        if (row.children && row.children.length > 0) {
+          flattened.push(...row.children);
+        }
+      }
+      return flattened;
+    };
+    return flattenRows(data);
+  }, [data]);
+  
+  // 각 행이 자식을 가지고 있는지 확인하는 헬퍼 함수
+  const hasChildren = (row: TableRow): boolean => {
+    // children 속성이 있으면 그걸로 판단
+    if (row.children && row.children.length > 0) {
+      return true;
+    }
+    // flattened 데이터의 경우: 원본 전체 리스트에서 다음 행의 level이 현재보다 크면 자식이 있음
+    const index = allFlatRows.findIndex(r => r.account === row.account && r.level === row.level);
+    if (index >= 0 && index < allFlatRows.length - 1) {
+      return allFlatRows[index + 1].level > row.level;
+    }
+    return false;
+  };
 
   // 값 포맷팅
   const formatValue = (
@@ -688,7 +717,7 @@ export default function FinancialTable({
                         row.account
                       )}
                     </span>
-                    {row.isGroup && row.children && row.children.length > 0 && (
+                    {hasChildren(row) && (
                       <span className="text-gray-500 flex-shrink-0">
                         {collapsed.has(row.account) ? '▶' : '▼'}
                       </span>

@@ -32,6 +32,8 @@ export interface TreeNode {
   yoy: number;
   children?: TreeNode[];
   isLeaf: boolean;
+  months2025?: number[]; // 12개월 데이터
+  months2026?: number[]; // 12개월 데이터
 }
 
 /**
@@ -43,6 +45,7 @@ export interface CSVRow {
   중분류2: string;
   소분류: string;
   months: number[]; // 12개월 데이터
+  total?: number; // 합계 컬럼 (있으면 사용)
 }
 
 /**
@@ -88,12 +91,16 @@ export async function readCashflowCSV(year: number): Promise<CSVRow[]> {
       months.push(parseMoney(row[j]));
     }
     
+    // 합계 컬럼 (16번째 인덱스, 17번째 컬럼)
+    const total = row[16] ? parseMoney(row[16]) : undefined;
+    
     result.push({
       대분류,
       중분류1,
       중분류2,
       소분류,
       months,
+      total,
     });
   }
   
@@ -104,22 +111,23 @@ export async function readCashflowCSV(year: number): Promise<CSVRow[]> {
  * CSV 데이터로부터 트리 생성
  */
 export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
-  // 맵 생성: key -> { value2025, value2026 }
-  const dataMap = new Map<string, { value2025: number; value2026: number }>();
+  // 맵 생성: key -> { value2025, value2026, months2025, months2026 }
+  const dataMap = new Map<string, { value2025: number; value2026: number; months2025: number[]; months2026: number[] }>();
   
-  // 2025 데이터
+  // 2025 데이터 (합계 컬럼 우선 사용)
   for (const row of rows2025) {
     const key = makeKey(row.대분류, row.중분류1, row.중분류2, row.소분류);
-    const sum = row.months.reduce((a, b) => a + b, 0);
-    dataMap.set(key, { value2025: sum, value2026: 0 });
+    const sum = row.total !== undefined ? row.total : row.months.reduce((a, b) => a + b, 0);
+    dataMap.set(key, { value2025: sum, value2026: 0, months2025: row.months, months2026: [] });
   }
   
-  // 2026 데이터
+  // 2026 데이터 (합계 컬럼 우선 사용)
   for (const row of rows2026) {
     const key = makeKey(row.대분류, row.중분류1, row.중분류2, row.소분류);
-    const sum = row.months.reduce((a, b) => a + b, 0);
-    const existing = dataMap.get(key) || { value2025: 0, value2026: 0 };
+    const sum = row.total !== undefined ? row.total : row.months.reduce((a, b) => a + b, 0);
+    const existing = dataMap.get(key) || { value2025: 0, value2026: 0, months2025: [], months2026: [] };
     existing.value2026 = sum;
+    existing.months2026 = row.months;
     dataMap.set(key, existing);
   }
   
@@ -149,6 +157,8 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
         yoy: 0,
         children: [],
         isLeaf: false,
+        months2025: [],
+        months2026: [],
       });
     }
     const l1Node = rootMap.get(대분류)!;
@@ -167,6 +177,8 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
         yoy: 0,
         children: [],
         isLeaf: false,
+        months2025: [],
+        months2026: [],
       };
       l1Node.children!.push(l2Node);
     }
@@ -179,7 +191,7 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
       // 소분류가 없으면 L3가 leaf
       const isLeaf = !소분류;
       const key = makeKey(대분류, 중분류1, 중분류2, 소분류);
-      const data = dataMap.get(key) || { value2025: 0, value2026: 0 };
+      const data = dataMap.get(key) || { value2025: 0, value2026: 0, months2025: [], months2026: [] };
       
       l3Node = {
         key: `${대분류}|${중분류1}|${중분류2}`,
@@ -190,6 +202,8 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
         yoy: isLeaf ? data.value2026 - data.value2025 : 0,
         children: isLeaf ? undefined : [],
         isLeaf,
+        months2025: isLeaf ? data.months2025 : [],
+        months2026: isLeaf ? data.months2026 : [],
       };
       l2Node.children!.push(l3Node);
     }
@@ -199,7 +213,7 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
       let l4Node = l3Node.children?.find(n => n.label === 소분류);
       if (!l4Node) {
         const key = makeKey(대분류, 중분류1, 중분류2, 소분류);
-        const data = dataMap.get(key) || { value2025: 0, value2026: 0 };
+        const data = dataMap.get(key) || { value2025: 0, value2026: 0, months2025: [], months2026: [] };
         
         l4Node = {
           key: `${대분류}|${중분류1}|${중분류2}|${소분류}`,
@@ -210,6 +224,8 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
           yoy: data.value2026 - data.value2025,
           children: undefined,
           isLeaf: true,
+          months2025: data.months2025,
+          months2026: data.months2026,
         };
         l3Node.children!.push(l4Node);
       }
@@ -225,6 +241,69 @@ export function buildTree(rows2025: CSVRow[], rows2026: CSVRow[]): TreeNode[] {
   // 자동 그룹화: "xxx 합계" 패턴 감지 (현금흐름표는 적용하지 않음)
   // 현금흐름표는 CSV에 이미 구조가 명확하게 정의되어 있으므로 자동 그룹화 불필요
   // (자동 그룹화 시 이중 계산 문제 발생)
+  
+  // Net Cash 계산: 영업활동 + 자산성지출 + 기타수익
+  const 영업활동 = roots.find(r => r.label === '영업활동');
+  const 자산성지출 = roots.find(r => r.label === '자산성지출');
+  const 기타수익 = roots.find(r => r.label === '기타수익');
+  
+  // CSV에서 월별 데이터도 가져오기
+  const 영업활동2025 = rows2025.find(r => r.대분류 === '영업활동' && !r.중분류1);
+  const 영업활동2026 = rows2026.find(r => r.대분류 === '영업활동' && !r.중분류1);
+  const 자산성지출2025 = rows2025.find(r => r.대분류 === '자산성지출' && !r.중분류1);
+  const 자산성지출2026 = rows2026.find(r => r.대분류 === '자산성지출' && !r.중분류1);
+  const 기타수익2025 = rows2025.find(r => r.대분류 === '기타수익' && !r.중분류1);
+  const 기타수익2026 = rows2026.find(r => r.대분류 === '기타수익' && !r.중분류1);
+  
+  if (영업활동 && 자산성지출 && 기타수익) {
+    const val2025 = 영업활동.value2025 + 자산성지출.value2025 + 기타수익.value2025;
+    const val2026 = 영업활동.value2026 + 자산성지출.value2026 + 기타수익.value2026;
+    
+    // 월별 데이터 계산
+    const months2025 = Array(12).fill(0);
+    const months2026 = Array(12).fill(0);
+    
+    if (영업활동2025) {
+      for (let i = 0; i < 12; i++) months2025[i] += 영업활동2025.months[i] || 0;
+    }
+    if (자산성지출2025) {
+      for (let i = 0; i < 12; i++) months2025[i] += 자산성지출2025.months[i] || 0;
+    }
+    if (기타수익2025) {
+      for (let i = 0; i < 12; i++) months2025[i] += 기타수익2025.months[i] || 0;
+    }
+    
+    if (영업활동2026) {
+      for (let i = 0; i < 12; i++) months2026[i] += 영업활동2026.months[i] || 0;
+    }
+    if (자산성지출2026) {
+      for (let i = 0; i < 12; i++) months2026[i] += 자산성지출2026.months[i] || 0;
+    }
+    if (기타수익2026) {
+      for (let i = 0; i < 12; i++) months2026[i] += 기타수익2026.months[i] || 0;
+    }
+    
+    const netCash: TreeNode = {
+      key: 'Net Cash',
+      label: 'Net Cash',
+      depth: 1,
+      value2025: val2025,
+      value2026: val2026,
+      yoy: val2026 - val2025,
+      children: undefined,
+      isLeaf: true,
+      months2025,
+      months2026,
+    };
+    
+    // 현금잔액 바로 앞에 삽입
+    const 현금잔액Index = roots.findIndex(r => r.label === '현금잔액');
+    if (현금잔액Index >= 0) {
+      roots.splice(현금잔액Index, 0, netCash);
+    } else {
+      roots.push(netCash);
+    }
+  }
   
   return roots;
 }
@@ -243,14 +322,31 @@ function calculateParentValues(node: TreeNode): void {
     calculateParentValues(child);
   }
   
-  // 자식들의 합산 (단, "합계"로 끝나는 자식은 제외)
-  node.value2025 = node.children
-    .filter(child => !child.label.endsWith(' 합계') && child.label !== '합계')
-    .reduce((sum, child) => sum + child.value2025, 0);
-  node.value2026 = node.children
-    .filter(child => !child.label.endsWith(' 합계') && child.label !== '합계')
-    .reduce((sum, child) => sum + child.value2026, 0);
+  // 합계가 아닌 자식들만 필터링
+  const validChildren = node.children
+    .filter(child => !child.label.endsWith(' 합계') && child.label !== '합계');
+  
+  // 자식들의 값 합산
+  node.value2025 = validChildren.reduce((sum, child) => sum + child.value2025, 0);
+  node.value2026 = validChildren.reduce((sum, child) => sum + child.value2026, 0);
   node.yoy = node.value2026 - node.value2025;
+  
+  // 월별 데이터도 합산
+  node.months2025 = Array(12).fill(0);
+  node.months2026 = Array(12).fill(0);
+  
+  for (const child of validChildren) {
+    if (child.months2025) {
+      for (let i = 0; i < 12; i++) {
+        node.months2025![i] += child.months2025[i] || 0;
+      }
+    }
+    if (child.months2026) {
+      for (let i = 0; i < 12; i++) {
+        node.months2026![i] += child.months2026[i] || 0;
+      }
+    }
+  }
 }
 
 /**

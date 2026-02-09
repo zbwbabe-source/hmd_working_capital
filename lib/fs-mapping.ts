@@ -39,6 +39,8 @@ export async function calculateCF(
   function treeNodeToTableRow(node: TreeNode, year: number): TableRow {
     const currentYearValue = year === 2025 ? node.value2025 : node.value2026;
     const previousYearValue = year === 2025 ? null : node.value2025;
+    // 2026년만 월별 데이터 표시
+    const monthsData = year === 2026 ? node.months2026 : undefined;
     
     return {
       account: node.label,
@@ -48,8 +50,8 @@ export async function calculateCF(
       isBold: node.depth <= 2,
       isHighlight: node.depth === 1 ? 'sky' : (node.label === '비용' ? 'gray' : undefined),
       values: [
-        // 월별 데이터 (0으로 채움 - 연간합계만 표시)
-        ...new Array(12).fill(0),
+        // 2025년: 월별 0, 2026년: 실제 월별 데이터
+        ...(monthsData && monthsData.length === 12 ? monthsData : new Array(12).fill(0)),
         // 현재년도 합계
         currentYearValue,
         // YoY (2026년일 때만 계산)
