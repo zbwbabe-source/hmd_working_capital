@@ -287,7 +287,7 @@ export function analyzeWorkingCapitalData(
       
       // 2026년 말 재고자산이 약 121M 근처인 경우 Target 달성 메시지 추가
       if (year === 2026 && annualTotal > 115000 && annualTotal < 125000) {
-        inventoryInsight += `26년말 재고자산 121M 수준으로 Target 달성 (재고일수 개선). `;
+        inventoryInsight += `26년말 재고자산 ${Math.round(annualTotal / 1000)}M 수준으로 Target 달성 (재고일수 개선). `;
         inventoryInsight += `현금창출로 매입채무 상환 및 리뉴얼 투자 계획 가능.`;
       } else {
         // 하반기 집중 감소인지 확인
@@ -457,7 +457,7 @@ export function generateCashFlowInsights(
       
       // 2026년 말 재고자산이 약 121M 근처인 경우 Target 정보 추가
       if (year === 2026 && annualTotal > 115000 && annualTotal < 125000) {
-        inventoryDetail += ` → 26년말 재고자산 121M Target 달성, 현금창출로 매입채무 상환 및 리뉴얼 투자 가능`;
+        inventoryDetail += ` → 26년말 재고자산 ${Math.round(annualTotal / 1000)}M Target 달성, 현금창출로 매입채무 상환 및 리뉴얼 투자 가능`;
       }
       
       details.push(inventoryDetail);
