@@ -125,7 +125,7 @@ export default function Home() {
               <div className="px-6 pt-6 pb-6">
                 {workingCapitalMonthsCollapsed ? (
                   <div className="flex gap-6 items-start">
-                    <div className="flex-shrink-0">
+                    <div className="flex-1 flex-shrink-0" style={{ minWidth: 0 }}>
                       {cfData && (
                         <>
                           <div className="flex items-center gap-2 mb-4">
@@ -179,7 +179,7 @@ export default function Home() {
                         </div>
                       )}
                     </div>
-                    <aside className="flex-1 min-w-[500px] rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]">
+                    <aside className="flex-1 rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]" style={{ minWidth: '500px' }}>
                       <EditableAnalysis
                         year={wcYear}
                         initialContent={analysisResults ? {

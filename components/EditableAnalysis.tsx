@@ -289,11 +289,12 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
       </div>
       
       {sections.length > 0 ? (
-        <div className="space-y-6">
+        <div className="space-y-6" style={{ width: '100%' }}>
           {sections.map((section, sectionIdx) => (
             <div 
               key={sectionIdx} 
               className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm"
+              style={{ width: '100%', minWidth: 0, overflowWrap: 'anywhere' }}
             >
               <h4 className="text-base font-bold text-gray-900 mb-4 pb-2 border-b-2 border-blue-500 flex items-center">
                 <span className="w-1 h-5 bg-blue-600 mr-2.5 rounded"></span>
@@ -312,9 +313,9 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
                     const symbol = line.startsWith('✓ ') ? '✓' : '•';
                     const text = line.substring(2);
                     return (
-                      <div key={lineIdx} className="flex items-start mb-3">
+                      <div key={lineIdx} className="flex items-start mb-3" style={{ width: '100%' }}>
                         <span className="text-blue-600 mr-2 mt-0.5 flex-shrink-0">{symbol}</span>
-                        <div className="text-sm text-gray-700 leading-relaxed flex-1" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                        <div className="text-sm text-gray-700 leading-relaxed flex-1" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0 }}>
                           {highlightImportantText(text)}
                         </div>
                       </div>
