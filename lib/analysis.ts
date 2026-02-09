@@ -494,7 +494,7 @@ export function generateCashFlowInsights(
     
     if (details.length > 0) {
       keyInsights.push(
-        `운전자본 변화: ` + details.join(' / ')
+        `✓ 운전자본 변화: ` + details.join(' / ')
       );
     }
     
@@ -502,52 +502,15 @@ export function generateCashFlowInsights(
     // 매입채무는 음수 잔액이므로 yoyAbsolute > 0이 감소(절대값 감소)
     if (ap && ap.yoyAbsolute && ap.yoyAbsolute > 0 && operations && operations.yoyAbsolute && operations.yoyAbsolute > 0) {
       keyInsights.push(
-        `연쇄 효과: ${year}년 실판매출 전년 대비 115% 증가 → 영업현금흐름 개선 → 본사 채무 상환 → 매입채무 감소(연체분 감소) → 운전자본 구조 개선. ` +
+        `✓ 연쇄 효과: ${year}년 실판매출 전년 대비 115% 증가 → 영업현금흐름 개선 → 본사 채무 상환 → 매입채무 감소(연체분 감소) → 운전자본 구조 개선. ` +
         `매출 성장과 재무 건전성 개선이 동시에 달성되어 순현금 흐름 플러스 전환.`
       );
     }
   }
   
-  // Net Cash 인사이트 추가
-  const netCash = cfAnalysis.categories.find(c => c.account === 'net cash');
-  if (netCash && netCash.prevYearTotal !== null) {
-    if (netCash.annualTotal > 0 && netCash.prevYearTotal < 0) {
-      // 플러스 전환
-      keyInsights.push(
-        `✓ Net Cash가 ${formatMillionYuan(netCash.prevYearTotal, true)}에서 ${formatMillionYuan(netCash.annualTotal, true)}으로 플러스 전환. ` +
-        `금액은 작지만 지속 가능한 현금창출 구조로의 전환 출발점으로 해석됨.`
-      );
-    } else if (netCash.annualTotal > 0 && netCash.prevYearTotal > 0) {
-      // 플러스 유지
-      const netCashImprovement = netCash.annualTotal - netCash.prevYearTotal;
-      if (netCashImprovement > 0) {
-        keyInsights.push(
-          `Net Cash ${formatMillionYuan(netCash.annualTotal)}로 플러스 유지. 실질적 현금 체력 ${formatMillionYuan(netCashImprovement, true)} 개선.`
-        );
-      }
-    }
-  }
+  // Net Cash 인사이트 - 삭제됨 (사용자 요청)
   
-  // 지속가능성 평가
-  if (operations) {
-    const assessment = assessStructuralChange(
-      operations.monthlyValues,
-      operations.prevYearTotal,
-      operations.annualTotal
-    );
-    
-    if (assessment.isStructural && assessment.confidence === 'high') {
-      keyInsights.push(
-        `현재 현금흐름 개선은 구조적 변화로 판단되며, ${year + 1}년 지속 가능성 높음. ` +
-        `연중 균등한 개선 추세 확인.`
-      );
-    } else if (!assessment.isStructural) {
-      keyInsights.push(
-        `현금흐름 개선의 일부는 일시적 효과 가능성 존재. ` +
-        `${assessment.reason}로 ${year + 1}년 지속 여부 모니터링 필요.`
-      );
-    }
-  }
+  // 지속가능성 평가 - 삭제됨 (핵심 인사이트에 표시 안함)
   
   // 리스크 요인
   if (inventory && inventory.yoyAbsolute && inventory.yoyAbsolute < 0) {
