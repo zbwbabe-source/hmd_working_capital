@@ -314,20 +314,20 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
                     return (
                       <div key={lineIdx} className="flex items-start mb-3">
                         <span className="text-blue-600 mr-2 mt-0.5 flex-shrink-0">{symbol}</span>
-                        <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                        <p className="text-sm text-gray-700 leading-relaxed flex-1 whitespace-normal break-words">
                           {highlightImportantText(text)}
                         </p>
                       </div>
                     );
                   } else if (line.startsWith('→ ')) {
                     return (
-                      <p key={lineIdx} className="text-sm text-gray-600 pl-6 mb-2">
+                      <p key={lineIdx} className="text-sm text-gray-600 pl-6 mb-2 whitespace-normal break-words">
                         {highlightImportantText(line)}
                       </p>
                     );
                   } else if (line.trim()) {
                     return (
-                      <p key={lineIdx} className="text-sm text-gray-700 mb-2 leading-relaxed">
+                      <p key={lineIdx} className="text-sm text-gray-700 mb-2 leading-relaxed whitespace-normal break-words">
                         {highlightImportantText(line)}
                       </p>
                     );
