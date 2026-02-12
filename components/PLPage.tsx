@@ -90,13 +90,13 @@ export default function PLPage() {
     setIsExpandedAll(!isExpandedAll);
   };
 
-  const years: Year[] = [2024, 2025, 2026];
-  const brands: Brand[] = ['Total', 'MLB', 'KIDS', 'Discovery', 'DUVETICA', 'SUPRA'];
+  const years: Year[] = [2025, 2026];
+  const brands: Brand[] = ['Total', 'MLB', 'Discovery'];
   const brandLabels: Record<Brand, string> = {
-    Total: '법인',
+    Total: '합계',
     MLB: 'MLB',
     KIDS: 'KIDS',
-    Discovery: 'DISCOVERY',
+    Discovery: 'Discovery',
     DUVETICA: 'DUVETICA',
     SUPRA: 'SUPRA'
   };
