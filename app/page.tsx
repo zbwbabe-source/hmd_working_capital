@@ -319,7 +319,7 @@ export default function Home() {
                       const 총자본26 = 자본.values[13] || 0;
                       const 총자산25 = 자산.values[1] || 0;
                       const 총부채25 = 부채.values[1] || 0;
-                      const 총자본25 = 자산.values[1] - 부채.values[1];
+                      const 총자본25 = (자산.values[1] || 0) - (부채.values[1] || 0);
                       
                       // TP채무 찾기
                       const 부채Children = 부채.children || [];
