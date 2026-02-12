@@ -241,6 +241,15 @@ export async function getRows(year: Year, brand: Brand): Promise<Row[]> {
       firstTAGRow = row;
       console.log('[TAG매출 첫 행] m1:', row.months.m1, 'm2:', row.months.m2, 'm3:', row.months.m3);
     }
+    
+    // 매출원가 첫 행 로그
+    if (isDebugTarget && lvl1 === '매출원가') {
+      console.log('[매출원가] lvl2:', lvl2, 'm1:', row.months.m1, 'm2:', row.months.m2);
+    }
+  }
+  
+  if (isDebugTarget) {
+    console.log('[CSV LOADED] Total rows:', rows.length);
   }
   
   return rows;

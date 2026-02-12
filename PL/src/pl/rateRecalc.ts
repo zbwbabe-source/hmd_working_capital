@@ -116,20 +116,31 @@ export function applyRateRecalc(
         // lvl2 leaf 노드 - rows 수정
         const lvl2Label = node.label;
         
-        // 매칭되는 매출원가와 TAG매출의 lvl2 leaf 찾기
-        const 원가Leaf = findLvl2LeafByLabel(매출원가Node, lvl2Label);
-        const TAG매출Leaf = findLvl2LeafByLabel(TAG매출Node, lvl2Label);
-        
-        if (원가Leaf && TAG매출Leaf) {
-          // 비율 재계산
-          const newRateMonths = calculateRateMonths(원가Leaf.rollup, TAG매출Leaf.rollup);
+        // "Tag대비 원가율합계"는 전체 합계이므로 lvl1의 rollup 사용
+        if (lvl2Label === 'Tag대비 원가율합계' || lvl2Label.includes('합계')) {
+          const newRateMonths = calculateRateMonths(매출원가Node.rollup, TAG매출Node.rollup);
           
-          // rows 중 isRateRow=true인 행들의 months 업데이트
           node.rows.forEach(row => {
             if (row.isRateRow && row.lvl1 === 'Tag대비 원가율') {
               row.months = newRateMonths;
             }
           });
+        } else {
+          // 그 외는 매칭되는 매출원가와 TAG매출의 lvl2 leaf 찾기
+          const 원가Leaf = findLvl2LeafByLabel(매출원가Node, lvl2Label);
+          const TAG매출Leaf = findLvl2LeafByLabel(TAG매출Node, lvl2Label);
+          
+          if (원가Leaf && TAG매출Leaf) {
+            // 비율 재계산
+            const newRateMonths = calculateRateMonths(원가Leaf.rollup, TAG매출Leaf.rollup);
+            
+            // rows 중 isRateRow=true인 행들의 months 업데이트
+            node.rows.forEach(row => {
+              if (row.isRateRow && row.lvl1 === 'Tag대비 원가율') {
+                row.months = newRateMonths;
+              }
+            });
+          }
         }
       }
       

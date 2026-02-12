@@ -55,14 +55,34 @@ export default function PLPage() {
       }
 
       // 검증 로그
-      console.log("[TREE] root labels 2025", prevTree2025.map((r: Node) => r.label).slice(0, 5));
       console.log("[TREE] root labels 2026", currTree2026.map((r: Node) => r.label).slice(0, 5));
 
       // 첫 루트 rollup 샘플
-      const p0 = prevTree2025[0];
       const c0 = currTree2026[0];
-      console.log("[SAMPLE] 2025 first root", p0?.label, p0?.rollup?.m1, p0?.rollup?.m2, p0?.rollup?.m3);
       console.log("[SAMPLE] 2026 first root", c0?.label, c0?.rollup?.m1, c0?.rollup?.m2, c0?.rollup?.m3);
+      
+      // TAG매출과 매출원가 rollup 확인
+      const tag매출 = currTree2026.find((r: Node) => r.label === 'TAG매출');
+      const 매출원가 = currTree2026.find((r: Node) => r.label === '매출원가');
+      const 원가율 = currTree2026.find((r: Node) => r.label === 'Tag대비 원가율');
+      
+      console.log("[TAG매출] rollup m1:", tag매출?.rollup?.m1);
+      console.log("[매출원가] rollup m1:", 매출원가?.rollup?.m1);
+      console.log("[원가율] rollup m1:", 원가율?.rollup?.m1, "hasRateRow:", 원가율?.hasRateRow);
+      
+      if (원가율?.children && 원가율.children.length > 0) {
+        const firstChild = 원가율.children[0];
+        console.log("[원가율 첫 child]", firstChild.label, "hasRateRow:", firstChild.hasRateRow);
+        if (firstChild.rows && firstChild.rows.length > 0) {
+          const firstRow = firstChild.rows[0];
+          console.log("[원가율 첫 row]", "isRateRow:", firstRow.isRateRow, "m1:", firstRow.months.m1);
+        }
+      }
+      
+      if (tag매출 && 매출원가 && tag매출.rollup.m1 > 0) {
+        const calculatedRate = (매출원가.rollup.m1 / tag매출.rollup.m1) * 100;
+        console.log("[계산된 원가율] m1:", calculatedRate.toFixed(2) + '%');
+      }
 
       setTree2025(prevTree2025);
       setTree2026(currTree2026);
@@ -113,7 +133,7 @@ export default function PLPage() {
     setIsExpandedAll(!isExpandedAll);
   };
 
-  const years: Year[] = [2025, 2026];
+  const years: Year[] = [2026];
   const brands: Brand[] = ['Total', 'MLB', 'Discovery'];
   const brandLabels: Record<Brand, string> = {
     Total: '합계',
@@ -163,7 +183,7 @@ export default function PLPage() {
           </div>
 
           {/* 브랜드 버튼 그룹 */}
-          <div className="flex gap-2 ml-auto">
+          <div className="flex gap-2">
             {brands.map(brand => (
               <button
                 key={brand}

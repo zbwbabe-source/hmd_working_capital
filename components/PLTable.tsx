@@ -41,7 +41,7 @@ function formatChange(curr: number | null, prev: number | null, isRate: boolean 
 
   if (isRate) {
     // 퍼센트 행은 %p 차이만 표시
-    const diffText = diff >= 0 ? `△${diff.toFixed(1)}` : `△${Math.abs(diff).toFixed(1)}`;
+    const diffText = diff >= 0 ? `+${diff.toFixed(1)}%p` : `${diff.toFixed(1)}%p`;
     return (
       <div className={`text-xs ${color}`}>
         {diffText}
@@ -135,42 +135,42 @@ export default function PLTable({
         <thead className="sticky top-0 z-10">
           <tr className="bg-blue-700 text-white">
             {/* 계정과목 */}
-            <th className="border border-gray-300 px-4 py-3 text-left font-semibold sticky left-0 bg-blue-700 z-20">
+            <th className="border border-white/30 px-4 py-3 text-left font-semibold sticky left-0 bg-blue-700 z-20">
               계정과목
             </th>
 
             {/* 월별 데이터 (showMonthly일 때만) */}
             {showMonthly && monthHeaders.map((month, idx) => (
-              <th key={`month-${idx}`} className="border border-gray-300 px-4 py-3 text-center font-semibold min-w-[100px]">
+              <th key={`month-${idx}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[100px]">
                 {month}
               </th>
             ))}
 
             {/* 전년(기준월) / 당년(기준월) - 항상 표시 */}
-            <th className="border-l-4 border-gray-400 border-r border-gray-300 px-4 py-3 text-center font-semibold min-w-[120px]">
+            <th className="border-l-2 border-l-blue-900 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
               전년({baseMonthIndex}월)
             </th>
-            <th className="border border-gray-300 px-4 py-3 text-center font-semibold min-w-[120px]">
+            <th className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
               당년({baseMonthIndex}월) ▶
             </th>
 
             {/* YTD (showYTD일 때만) */}
             {showYTD && (
               <>
-                <th className="border-l-4 border-gray-400 border-r border-gray-300 px-4 py-3 text-center font-semibold min-w-[120px]">
+                <th className="border-l-2 border-l-blue-900 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
                   전년YTD
                 </th>
-                <th className="border border-gray-300 px-4 py-3 text-center font-semibold min-w-[120px]">
+                <th className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
                   당년YTD ▶
                 </th>
               </>
             )}
 
             {/* 연간 */}
-            <th className="border-l-4 border-gray-400 border-r border-gray-300 px-4 py-3 text-center font-semibold min-w-[120px]">
+            <th className="border-l-2 border-l-blue-900 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
               2025년연간
             </th>
-            <th className="border border-gray-300 px-4 py-3 text-center font-semibold min-w-[120px]">
+            <th className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
               2026년연간 ▶
             </th>
           </tr>
@@ -188,8 +188,43 @@ export default function PLTable({
             const paddingLeft = depth === 1 ? 'pl-4' : depth === 2 ? 'pl-8' : 'pl-12';
 
             // 월별 데이터 계산
-            const prevMonths = (prev?.rollup || {}) as Months;
-            const currMonths = (curr?.rollup || {}) as Months;
+            // rate row는 rows[0].months를, 일반 row는 rollup을 사용
+            const getPrevMonths = (): Months => {
+              if (isRate) {
+                // rate row: leaf node의 rows 또는 첫 번째 child의 rows 사용
+                if (prev?.rows && prev.rows.length > 0) {
+                  return prev.rows[0].months;
+                }
+                // 대분류인 경우 첫 번째 child의 첫 번째 row 사용
+                if (prev?.children && prev.children.length > 0) {
+                  const firstChild = prev.children[0];
+                  if (firstChild.rows && firstChild.rows.length > 0) {
+                    return firstChild.rows[0].months;
+                  }
+                }
+              }
+              return (prev?.rollup || {}) as Months;
+            };
+            
+            const getCurrMonths = (): Months => {
+              if (isRate) {
+                // rate row: leaf node의 rows 또는 첫 번째 child의 rows 사용
+                if (curr?.rows && curr.rows.length > 0) {
+                  return curr.rows[0].months;
+                }
+                // 대분류인 경우 첫 번째 child의 첫 번째 row 사용
+                if (curr?.children && curr.children.length > 0) {
+                  const firstChild = curr.children[0];
+                  if (firstChild.rows && firstChild.rows.length > 0) {
+                    return firstChild.rows[0].months;
+                  }
+                }
+              }
+              return (curr?.rollup || {}) as Months;
+            };
+            
+            const prevMonths = getPrevMonths();
+            const currMonths = getCurrMonths();
 
             // 기준월 계산
             const baseMonthResult = calcCols(baseMonthIndex, prevMonths, currMonths, isRate);
@@ -201,12 +236,23 @@ export default function PLTable({
             }
 
             // 연간 계산
-            const yearResult = calcCols(12, prevMonths, currMonths, isRate);
+            let yearResult = calcCols(12, prevMonths, currMonths, isRate);
+            
+            // rate row일 때는 연간 값을 12개월 합으로 계산
+            if (isRate) {
+              const prevYearTotal = Object.values(prevMonths).reduce((sum, val) => sum + (val || 0), 0) / 12;
+              const currYearTotal = Object.values(currMonths).reduce((sum, val) => sum + (val || 0), 0) / 12;
+              yearResult = {
+                ...yearResult,
+                prevYearTotal,
+                currYearTotal
+              };
+            }
 
             return (
               <tr key={key} className={`${getRowBgColor(node.label)} hover:bg-gray-100 transition-colors`}>
                 {/* 계정과목 */}
-                <td className={`border border-gray-300 px-2 py-2 ${paddingLeft} sticky left-0 ${getRowBgColor(node.label)} z-10`}>
+                <td className={`border border-gray-200 px-2 py-2 ${paddingLeft} sticky left-0 ${getRowBgColor(node.label)} z-10`}>
                   <div className="flex items-center gap-2">
                     {hasChildren && (
                       <button
@@ -230,7 +276,7 @@ export default function PLTable({
                   const currVal = currMonths[monthKey] || 0;
 
                   return (
-                    <td key={`month-${monthIdx}`} className="border border-gray-300 px-2 py-2 text-right">
+                    <td key={`month-${monthIdx}`} className="border border-gray-200 px-2 py-2 text-right">
                       <div className="font-semibold">{isRate ? formatPercent(currVal) : formatNumber(currVal)}</div>
                       {formatChange(currVal, prevVal, isRate)}
                     </td>
@@ -238,14 +284,14 @@ export default function PLTable({
                 })}
 
                 {/* 전년(기준월) */}
-                <td className="border-l-4 border-gray-400 border-r border-gray-300 px-2 py-2 text-right">
+                <td className="border-l-2 border-l-blue-400 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
                   <div className="font-semibold">
                     {isRate ? formatPercent(baseMonthResult.prevMonth) : formatNumber(baseMonthResult.prevMonth)}
                   </div>
                 </td>
 
                 {/* 당년(기준월) */}
-                <td className="border border-gray-300 px-2 py-2 text-right">
+                <td className="border border-gray-200 px-2 py-2 text-right">
                   <div className="font-semibold">
                     {isRate ? formatPercent(baseMonthResult.currMonth) : formatNumber(baseMonthResult.currMonth)}
                   </div>
@@ -255,12 +301,12 @@ export default function PLTable({
                 {/* YTD (showYTD일 때만) */}
                 {showYTD && ytdResult && (
                   <>
-                    <td className="border-l-4 border-gray-400 border-r border-gray-300 px-2 py-2 text-right">
+                    <td className="border-l-2 border-l-blue-400 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
                       <div className="font-semibold">
                         {isRate ? '-' : formatNumber(ytdResult.prevYTD)}
                       </div>
                     </td>
-                    <td className="border border-gray-300 px-2 py-2 text-right">
+                    <td className="border border-gray-200 px-2 py-2 text-right">
                       <div className="font-semibold">
                         {isRate ? '-' : formatNumber(ytdResult.currYTD)}
                       </div>
@@ -270,14 +316,14 @@ export default function PLTable({
                 )}
 
                 {/* 2025년연간 */}
-                <td className="border-l-4 border-gray-400 border-r border-gray-300 px-2 py-2 text-right">
+                <td className="border-l-2 border-l-blue-400 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
                   <div className="font-semibold">
                     {isRate ? formatPercent(yearResult.prevYearTotal) : formatNumber(yearResult.prevYearTotal)}
                   </div>
                 </td>
 
                 {/* 2026년연간 */}
-                <td className="border border-gray-300 px-2 py-2 text-right">
+                <td className="border border-gray-200 px-2 py-2 text-right">
                   <div className="font-semibold">
                     {isRate ? formatPercent(yearResult.currYearTotal) : formatNumber(yearResult.currYearTotal)}
                   </div>
