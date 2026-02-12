@@ -1,4 +1,5 @@
-import { getRows, Row } from './csvLoader';
+import { getRows } from './csvLoader';
+import { Row } from './types';
 import { buildTree } from './tree';
 import { calcCols, calcRateColsFromNumerDenom, Months } from './calc';
 import { applyRateRecalc } from './rateRecalc';
