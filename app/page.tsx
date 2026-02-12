@@ -110,7 +110,7 @@ export default function Home() {
       const result = await response.json();
       
       if (response.ok && result.remarks) {
-        const remarksMap = new Map(Object.entries(result.remarks));
+        const remarksMap = new Map<string, string>(Object.entries(result.remarks));
         setBsRemarks(remarksMap);
       }
     } catch (err) {
@@ -145,7 +145,7 @@ export default function Home() {
       const result = await response.json();
       
       if (response.ok && result.remarks) {
-        const remarksMap = new Map(Object.entries(result.remarks));
+        const remarksMap = new Map<string, string>(Object.entries(result.remarks));
         
         // 기본 비고 내용 설정 (비어있는 항목만)
         const defaultRemarks: { [key: string]: string } = {
