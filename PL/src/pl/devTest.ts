@@ -1,4 +1,4 @@
-import { getRows } from './csvLoader';
+import { getRows, Row } from './csvLoader';
 import { buildTree } from './tree';
 import { calcCols, calcRateColsFromNumerDenom, Months } from './calc';
 import { applyRateRecalc } from './rateRecalc';
@@ -12,7 +12,8 @@ async function test() {
     console.log('=== P/L CSV 로더 & 트리 빌더 & 비율 재계산 테스트 ===\n');
     
     // 2025, 2026 데이터 로드
-    let prevRows, currRows;
+    let prevRows: Row[] = [];
+    let currRows: Row[] = [];
     
     try {
       console.log('📂 Loading: 2025 Total.csv');
