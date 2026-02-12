@@ -34,6 +34,9 @@ export default function Home() {
   // 운전자본표 비고
   const [wcRemarks, setWcRemarks] = useState<Map<string, string>>(new Map());
   
+  // PL remarks skip 로그용 (한 번만 출력)
+  const [plRemarksSkipLogged, setPlRemarksSkipLogged] = useState<boolean>(false);
+  
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,6 +109,15 @@ export default function Home() {
 
   // B/S 비고 로드
   const loadBSRemarks = async () => {
+    // PL 뷰에서는 비활성화
+    if (bsView === 'PL') {
+      if (!plRemarksSkipLogged) {
+        console.log('remarks skipped (PL)');
+        setPlRemarksSkipLogged(true);
+      }
+      return;
+    }
+    
     try {
       const response = await fetch('/api/remarks?type=BS');
       const result = await response.json();
@@ -121,6 +133,11 @@ export default function Home() {
 
   // B/S 비고 저장 (debounce)
   const saveBSRemark = async (account: string, remark: string) => {
+    // PL 뷰에서는 비활성화
+    if (bsView === 'PL') {
+      return;
+    }
+    
     try {
       await fetch('/api/remarks', {
         method: 'POST',
@@ -141,6 +158,15 @@ export default function Home() {
 
   // 운전자본표 비고 로드
   const loadWCRemarks = async () => {
+    // P/L 뷰에서는 비활성화
+    if (bsView === 'PL') {
+      if (!plRemarksSkipLogged) {
+        console.log('remarks skipped (PL)');
+        setPlRemarksSkipLogged(true);
+      }
+      return;
+    }
+    
     try {
       const response = await fetch('/api/remarks?type=wc');
       const result = await response.json();
@@ -181,6 +207,11 @@ export default function Home() {
 
   // 운전자본표 비고 저장
   const saveWCRemark = async (account: string, remark: string) => {
+    // PL 뷰에서는 비활성화
+    if (bsView === 'PL') {
+      return;
+    }
+    
     try {
       await fetch('/api/remarks', {
         method: 'POST',
@@ -203,19 +234,25 @@ export default function Home() {
   useEffect(() => {
     if (activeTab === 0) {
       if (bsView === 'CF') {
-        if (!cfData) loadData('CF', wcYear);
+      if (!cfData) loadData('CF', wcYear);
         if (!wcStatementData) {
-          loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => loadWCRemarks());
-        } else if (wcRemarks.size === 0) {
+          loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
+            if (bsView !== 'PL') loadWCRemarks();
+          });
+        } else if (wcRemarks.size === 0 && bsView !== 'PL') {
           loadWCRemarks();
         }
       } else if (bsView === 'BS') {
         if (!bsFinancialData) loadBSData(wcYear);
         if (!wcStatementData) {
-          loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => loadWCRemarks());
-        } else if (wcRemarks.size === 0) {
+          loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
+            if (bsView !== 'PL') loadWCRemarks();
+          });
+        } else if (wcRemarks.size === 0 && bsView !== 'PL') {
           loadWCRemarks();
         }
+      } else if (bsView === 'PL') {
+        // PL 뷰: WC 데이터 로드하지 않음
       }
     }
   }, [activeTab, bsView]);
@@ -223,14 +260,27 @@ export default function Home() {
   useEffect(() => {
     if (activeTab === 0) {
       if (bsView === 'CF') {
-        loadData('CF', wcYear);
-        loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => loadWCRemarks());
+      loadData('CF', wcYear);
+        loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
+          if (bsView !== 'PL') loadWCRemarks();
+        });
       } else if (bsView === 'BS') {
         loadBSData(wcYear);
-        loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => loadWCRemarks());
+        loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
+          if (bsView !== 'PL') loadWCRemarks();
+        });
+      } else if (bsView === 'PL') {
+        // PL 뷰: WC 데이터 로드하지 않음
       }
     }
   }, [wcYear]);
+
+  // PL 뷰로 전환 시 remarks skip 로그 플래그 리셋
+  useEffect(() => {
+    if (bsView === 'PL') {
+      setPlRemarksSkipLogged(false);
+    }
+  }, [bsView]);
 
   // 월 컬럼 (1월~12월)
   const monthColumns = ['계정과목', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
@@ -561,6 +611,7 @@ export default function Home() {
                     <aside className="flex-1 rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]" style={{ minWidth: '500px' }}>
                       <EditableAnalysis
                         year={wcYear}
+                        disabled={bsView === 'PL'}
                         initialContent={analysisResults ? {
                           keyInsights: analysisResults.insights.keyInsights,
                           cfAnalysis: analysisResults.cfAnalysis,

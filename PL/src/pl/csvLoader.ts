@@ -10,26 +10,99 @@ function getFileName(year: Year, brand: Brand): string {
 }
 
 /**
- * CSV 값 파싱
- * - "" 또는 null -> 0
+ * 헤더/셀 값 정규화
+ * - BOM 제거
+ * - trim
+ * - 연속 공백 정리
+ */
+function normalizeCell(s: string): string {
+  return s
+    .replace(/^\uFEFF/, '')         // BOM 제거
+    .replace(/\u00A0/g, ' ')        // non-breaking space -> space
+    .replace(/\s+/g, ' ')           // 연속 공백 정리
+    .trim();
+}
+
+/**
+ * Delimiter 감지 및 분리
+ * - 기본: \t (탭)
+ * - fallback: , (콤마)
+ * - 큰따옴표로 감싸진 필드 지원
+ */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if ((char === ',' || char === '\t') && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  // 마지막 필드 추가
+  if (current || line.endsWith(',') || line.endsWith('\t')) {
+    result.push(current.trim());
+  }
+  
+  return result;
+}
+
+/**
+ * Delimiter 감지 및 분리 (레거시 - 대체됨)
+ */
+function detectDelimiterAndSplit(line: string, expectedMinCols: number = 5): { delimiter: string; cols: string[] } {
+  // parseCSVLine 사용
+  const cols = parseCSVLine(line);
+  
+  // delimiter는 탭 또는 콤마 중 실제 사용된 것 반환
+  const delimiter = line.includes('\t') ? '\t' : ',';
+  
+  return { delimiter, cols };
+}
+
+/**
+ * CSV 값 파싱 강화
+ * - "(2,344)" -> -2344 (괄호는 음수)
  * - "18,689" -> 18689
+ * - "-" / "" / null -> 0
  * - "33.00%" -> 33.00
  */
 function parseValue(val: string | null | undefined): number {
-  if (!val || val.trim() === '') return 0;
+  if (!val) return 0;
   
-  const trimmed = val.trim();
+  const normalized = normalizeCell(val);
+  
+  if (normalized === '' || normalized === '-') return 0;
+  
+  // 괄호 체크 (음수)
+  let isNegative = false;
+  let cleanValue = normalized;
+  
+  if (normalized.startsWith('(') && normalized.endsWith(')')) {
+    isNegative = true;
+    cleanValue = normalized.slice(1, -1).trim();
+  }
   
   // % 포함 여부 체크
-  if (trimmed.includes('%')) {
+  if (cleanValue.includes('%')) {
     // "33.00%" -> 33.00
-    const numStr = trimmed.replace('%', '').replace(/,/g, '');
+    const numStr = cleanValue.replace('%', '').replace(/,/g, '');
     return parseFloat(numStr) || 0;
   }
   
   // 일반 숫자 (천단위 콤마 제거)
-  const numStr = trimmed.replace(/,/g, '');
-  return parseFloat(numStr) || 0;
+  const numStr = cleanValue.replace(/,/g, '');
+  const num = parseFloat(numStr) || 0;
+  
+  return isNegative ? -num : num;
 }
 
 /**
@@ -40,15 +113,20 @@ function isPercentageRow(values: string[]): boolean {
 }
 
 /**
- * 월 컬럼명에서 월 번호 추출
- * "26년1월" -> 1
- * "25년12월" -> 12
+ * 월 컬럼명에서 월 번호 추출 (정규식 강화)
+ * "26년1월", "26년 1월", "26년01월", "2026년1월", "2026년 01월" 모두 허용
  */
 function extractMonthNumber(colName: string): number | null {
-  const match = colName.match(/(\d+)월/);
+  const normalized = normalizeCell(colName);
+  const match = normalized.match(/(\d{2}|\d{4})년\s*(\d{1,2})월/);
+  
   if (match) {
-    return parseInt(match[1], 10);
+    const monthNum = parseInt(match[2], 10);
+    if (monthNum >= 1 && monthNum <= 12) {
+      return monthNum;
+    }
   }
+  
   return null;
 }
 
@@ -67,16 +145,27 @@ export async function getRows(year: Year, brand: Brand): Promise<Row[]> {
     throw new Error(`CSV 파일이 비어있거나 헤더만 있습니다: ${fileName}`);
   }
   
-  // 헤더 파싱
-  const headerLine = lines[0];
-  const headers = headerLine.split(',').map(h => h.trim());
+  // 검증 로그 여부
+  const isDebugTarget = year === 2026 && brand === 'Total';
   
-  // 월 컬럼 인덱스 찾기 (예: "26년1월", "26년2월", ...)
-  const monthColumnIndices: Array<{ index: number; monthNum: number }> = [];
+  // 헤더 파싱
+  const headers = parseCSVLine(lines[0]).map(h => normalizeCell(h));
+  
+  if (isDebugTarget) {
+    console.log('DELIMITER', lines[0].includes('\t') ? 'TAB' : 'COMMA');
+    console.log('HEADERS LEN', headers.length);
+  }
+  
+  // 월 컬럼 인덱스 찾기 및 매핑
+  const monthColumnIndices: Array<{ index: number; monthNum: number; header: string }> = [];
+  const monthMap: Record<string, string> = {};
+  
   headers.forEach((header, idx) => {
     const monthNum = extractMonthNumber(header);
     if (monthNum !== null && monthNum >= 1 && monthNum <= 12) {
-      monthColumnIndices.push({ index: idx, monthNum });
+      monthColumnIndices.push({ index: idx, monthNum, header });
+      const monthKey = `m${monthNum}`;
+      monthMap[monthKey] = header;
     }
   });
   
@@ -95,13 +184,19 @@ export async function getRows(year: Year, brand: Brand): Promise<Row[]> {
   
   // 데이터 행 파싱
   const rows: Row[] = [];
+  let firstTAGRow: Row | null = null;
   
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
-    const cells = line.split(',').map(c => c.trim());
+    const cells = parseCSVLine(line).map(c => normalizeCell(c));
     
-    if (cells.length < headers.length) {
-      // 행이 불완전하면 스킵
+    // 첫 데이터 행 검증 로그
+    if (isDebugTarget && i === 1) {
+      console.log('COLS LEN', cells.length);
+    }
+    
+    if (cells.length < headers.length - 5) {
+      // 행이 너무 짧으면 스킵 (일부 컬럼 누락은 허용)
       continue;
     }
     
@@ -124,10 +219,12 @@ export async function getRows(year: Year, brand: Brand): Promise<Row[]> {
     
     monthColumnIndices.forEach(col => {
       const monthKey = `m${col.monthNum}` as MonthKey;
-      months[monthKey] = parseValue(cells[col.index]);
+      const rawValue = cells[col.index] || '';
+      const parsedValue = parseValue(rawValue);
+      months[monthKey] = parsedValue;
     });
     
-    rows.push({
+    const row: Row = {
       year,
       brand,
       lvl1,
@@ -135,8 +232,18 @@ export async function getRows(year: Year, brand: Brand): Promise<Row[]> {
       lvl3: lvl3 && lvl3.trim() !== '' ? lvl3 : null,
       months,
       isRateRow: isRate
-    });
+    };
+    
+    rows.push(row);
+    
+    // 첫 TAG매출 행 검증 로그
+    if (isDebugTarget && !firstTAGRow && lvl1 === 'TAG매출') {
+      firstTAGRow = row;
+      console.log('[TAG매출 첫 행] m1:', row.months.m1, 'm2:', row.months.m2, 'm3:', row.months.m3);
+    }
   }
   
   return rows;
 }
+
+

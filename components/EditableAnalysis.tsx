@@ -12,9 +12,10 @@ interface EditableAnalysisProps {
     actionItems: string[];
   } | null;
   onSave?: () => void;
+  disabled?: boolean; // PL 뷰에서 비활성화용
 }
 
-export default function EditableAnalysis({ year, initialContent, onSave }: EditableAnalysisProps) {
+export default function EditableAnalysis({ year, initialContent, onSave, disabled = false }: EditableAnalysisProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState<string>('');
   const [savedCustomContent, setSavedCustomContent] = useState<string | null>(null);
@@ -23,6 +24,12 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
   // 초기 로드 시 저장된 내용 불러오기
   useEffect(() => {
     const loadSavedContent = async () => {
+      // disabled면 비활성화
+      if (disabled) {
+        console.log('analysis load skipped (PL)');
+        return;
+      }
+      
       try {
         const response = await fetch(`/api/analysis?year=${year}`);
         const result = await response.json();
@@ -35,7 +42,7 @@ export default function EditableAnalysis({ year, initialContent, onSave }: Edita
     };
     
     loadSavedContent();
-  }, [year]);
+  }, [year, disabled]);
 
   // 편집 모드 시작
   const handleEdit = () => {

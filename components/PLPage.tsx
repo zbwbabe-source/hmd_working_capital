@@ -11,63 +11,86 @@ type Brand = 'Total' | 'MLB' | 'Discovery' | 'KIDS' | 'DUVETICA' | 'SUPRA';
 export default function PLPage() {
   // 상태 관리
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
-  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(5); // 기본 5월
+  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(1); // 기본 1월
   const [selectedBrand, setSelectedBrand] = useState<Brand>('Total');
   
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
   const [showMonthly, setShowMonthly] = useState<boolean>(false);
-  const [showYTD, setShowYTD] = useState<boolean>(true);
+  const [showYTD, setShowYTD] = useState<boolean>(false); // YTD 초기값 숨김
   
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   
-  // 데이터 상태
-  const [prevTree, setPrevTree] = useState<Node[]>([]);
-  const [currTree, setCurrTree] = useState<Node[]>([]);
+  // 데이터 상태 - 항상 2025/2026 두 세트만 저장
+  const [tree2025, setTree2025] = useState<Node[]>([]);
+  const [tree2026, setTree2026] = useState<Node[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 데이터 로드
-  const loadData = async (year: Year, brand: Brand) => {
+  // 데이터 로드 - 항상 2025, 2026 둘 다 로드
+  const loadData = async (brand: Brand) => {
     setLoading(true);
     setError(null);
 
     try {
-      const prevYear = (year - 1) as Year;
+      console.log("[LOAD] brand", brand);
 
-      // 전년도 데이터 로드
-      const prevResponse = await fetch(`/api/fs/pl?year=${prevYear}&brand=${brand}`);
-      const prevData = await prevResponse.json();
+      // 2025 데이터 로드
+      const response2025 = await fetch(`/api/fs/pl?year=2025&brand=${brand}`);
+      const data2025 = await response2025.json();
 
-      // 당년도 데이터 로드
-      const currResponse = await fetch(`/api/fs/pl?year=${year}&brand=${brand}`);
-      const currData = await currResponse.json();
+      // 2026 데이터 로드
+      const response2026 = await fetch(`/api/fs/pl?year=2026&brand=${brand}`);
+      const data2026 = await response2026.json();
 
-      let prevTreeData = prevData.tree || [];
-      let currTreeData = currData.tree || [];
+      let prevTree2025 = data2025.tree || [];
+      let currTree2026 = data2026.tree || [];
+
+      console.log("[LOAD] rows2025", prevTree2025.length, "rows2026", currTree2026.length);
 
       // 비율 재계산 적용
-      if (prevTreeData.length > 0 || currTreeData.length > 0) {
-        const recalcResult = applyRateRecalc(prevTreeData, currTreeData);
-        prevTreeData = recalcResult.prevTree;
-        currTreeData = recalcResult.currTree;
+      if (prevTree2025.length > 0 || currTree2026.length > 0) {
+        const recalcResult = applyRateRecalc(prevTree2025, currTree2026);
+        prevTree2025 = recalcResult.prevTree;
+        currTree2026 = recalcResult.currTree;
       }
 
-      setPrevTree(prevTreeData);
-      setCurrTree(currTreeData);
+      // 검증 로그
+      console.log("[TREE] root labels 2025", prevTree2025.map(r => r.label).slice(0, 5));
+      console.log("[TREE] root labels 2026", currTree2026.map(r => r.label).slice(0, 5));
+
+      // 첫 루트 rollup 샘플
+      const p0 = prevTree2025[0];
+      const c0 = currTree2026[0];
+      console.log("[SAMPLE] 2025 first root", p0?.label, p0?.rollup?.m1, p0?.rollup?.m2, p0?.rollup?.m3);
+      console.log("[SAMPLE] 2026 first root", c0?.label, c0?.rollup?.m1, c0?.rollup?.m2, c0?.rollup?.m3);
+
+      setTree2025(prevTree2025);
+      setTree2026(currTree2026);
     } catch (err) {
       console.error('P/L 데이터 로드 오류:', err);
       setError('데이터를 불러올 수 없습니다.');
-      setPrevTree([]);
-      setCurrTree([]);
+      setTree2025([]);
+      setTree2026([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // 초기 로드 및 연도/브랜드 변경 시 로드
+  // 브랜드 변경 시에만 데이터 로드
   useEffect(() => {
-    loadData(selectedYear, selectedBrand);
-  }, [selectedYear, selectedBrand]);
+    loadData(selectedBrand);
+  }, [selectedBrand]);
+
+  // 화면 표시용 prev/curr 매핑
+  const displayPrevTree = selectedYear === 2026 ? tree2025 : null;
+  const displayCurrTree = selectedYear === 2026 ? tree2026 : selectedYear === 2025 ? tree2025 : null;
+
+  // 디버깅용 로그
+  useEffect(() => {
+    console.log("[DISPLAY] selectedYear", selectedYear,
+      "displayPrev?", !!displayPrevTree, "displayCurr?", !!displayCurrTree
+    );
+  }, [selectedYear, displayPrevTree, displayCurrTree]);
 
   // 노드 토글
   const handleToggleNode = (nodeKey: string) => {
@@ -202,16 +225,16 @@ export default function PLPage() {
           </div>
         )}
 
-        {!loading && !error && (prevTree.length === 0 && currTree.length === 0) && (
+        {!loading && !error && !displayPrevTree && !displayCurrTree && (
           <div className="text-center py-12 text-gray-600">
-            선택한 연도/브랜드의 데이터가 없습니다.
+            선택한 연도의 데이터가 없습니다.
           </div>
         )}
 
-        {!loading && !error && (prevTree.length > 0 || currTree.length > 0) && (
+        {!loading && !error && (displayPrevTree || displayCurrTree) && (
           <PLTable
-            prevTree={prevTree}
-            currTree={currTree}
+            prevTree={displayPrevTree || []}
+            currTree={displayCurrTree || []}
             baseMonthIndex={baseMonthIndex}
             showMonthly={showMonthly}
             showYTD={showYTD}

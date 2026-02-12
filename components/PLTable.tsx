@@ -72,6 +72,8 @@ export default function PLTable({
 }: PLTableProps) {
   // 트리를 플랫하게 펼치기
   const flattenTree = (nodes: Node[], parentExpanded: boolean = true): Array<Node & { depth: number }> => {
+    if (!nodes || nodes.length === 0) return [];
+    
     const result: Array<Node & { depth: number }> = [];
 
     nodes.forEach(node => {
