@@ -189,13 +189,14 @@ export default function FinancialTable({
   const visibleRows = useMemo(() => {
     const result: TableRow[] = [];
     
-    // children을 포함한 평면화
+    // children을 포함한 재귀적 평면화
     const flattenRows = (rows: TableRow[]): TableRow[] => {
       const flattened: TableRow[] = [];
       for (const row of rows) {
         flattened.push(row);
         if (row.children && row.children.length > 0) {
-          flattened.push(...row.children);
+          // 재귀적으로 children의 children도 평면화
+          flattened.push(...flattenRows(row.children));
         }
       }
       return flattened;
@@ -282,7 +283,8 @@ export default function FinancialTable({
       for (const row of rows) {
         flattened.push(row);
         if (row.children && row.children.length > 0) {
-          flattened.push(...row.children);
+          // 재귀적으로 children의 children도 평면화
+          flattened.push(...flattenRows(row.children));
         }
       }
       return flattened;
@@ -409,6 +411,17 @@ export default function FinancialTable({
           totalColumnHeader,
           'YoY',
         ];
+      }
+    } else if (isBalanceSheet && !showComparisons) {
+      // B/S 전용: 24년말, 25년말, 2601~2612
+      // 접힌 상태: ['계정과목', '24년말', '25년말', '26년1월', '26년기말', 'YoY', '비고']
+      // 펼친 상태: ['계정과목', '24년말', '25년말', '1월'~'12월', 'YoY', '비고']
+      if (monthsCollapsed) {
+        // 접힌 상태: 이미 올바른 컬럼들이 전달됨
+        return columns.slice(0, -1); // 비고 제외
+      } else {
+        // 펼친 상태: 모든 월 표시 (비고 제외, 비고는 별도 렌더링)
+        return columns.slice(0, -1);
       }
     } else if (showComparisons) {
       if (isBalanceSheet) {
@@ -630,15 +643,19 @@ export default function FinancialTable({
                   return undefined;
                 };
                 
+                // B/S 26년1월 강조
+                const is26년1월Header = isBalanceSheet && col === '26년1월';
+                
                 return (
                   <th
                     key={index}
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
                       ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : 'min-w-[100px] px-4'}
-                      ${isNonBaseMonthCol ? 'bg-gray-600' : ''}
-                      ${!isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
-                      ${!isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
+                      ${is26년1월Header ? 'bg-blue-600' : ''}
+                      ${!is26년1월Header && isNonBaseMonthCol ? 'bg-gray-600' : ''}
+                      ${!is26년1월Header && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
+                      ${!is26년1월Header && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
                       ${isBrandCol ? 'bg-gray-700' : ''}
                       ${(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) ? 'cursor-pointer hover:bg-gray-700' : ''}
                     `}
@@ -673,9 +690,8 @@ export default function FinancialTable({
           </thead>
           <tbody>
             {visibleRows.map((row, rowIndex) => {
-              // Balance Check 행 스타일링 (절대값 10 미만이면 정합)
+              // Balance Check 행 스타일링
               const isBalanceCheck = row.account === 'Balance Check';
-              const isBalanceOk = isBalanceCheck && row.values.every(v => v === null || Math.abs(v) < 10);
               // 전월대비 행: +/- 표시
               const isMomRow = row.account === '전월대비';
               // 비용의 지역 그룹인지 체크 (원본 데이터에서 찾기)
@@ -686,9 +702,7 @@ export default function FinancialTable({
               <tr
                 key={rowIndex}
                 className={`
-                  ${isBalanceCheck && isBalanceOk ? 'bg-green-100' : ''}
-                  ${isBalanceCheck && !isBalanceOk ? 'bg-red-100' : ''}
-                  ${!isBalanceCheck ? getHighlightClass(row.isHighlight) : ''}
+                  ${getHighlightClass(row.isHighlight)}
                   ${row.isBold ? 'font-semibold' : ''}
                   hover:bg-gray-50
                 `}
@@ -697,10 +711,8 @@ export default function FinancialTable({
                 <td
                   className={`
                     border border-gray-300 px-4 py-2 sticky left-0 z-20
-                    ${isBalanceCheck && isBalanceOk ? 'bg-green-100' : ''}
-                    ${isBalanceCheck && !isBalanceOk ? 'bg-red-100' : ''}
-                    ${!isBalanceCheck && (getHighlightClass(row.isHighlight))}
-                    ${!isBalanceCheck && (!row.isHighlight || row.isHighlight === 'none') ? 'bg-white' : ''}
+                    ${getHighlightClass(row.isHighlight)}
+                    ${(!row.isHighlight || row.isHighlight === 'none') ? 'bg-white' : ''}
                     ${row.isGroup || isCostRegion ? 'cursor-pointer' : ''}
                     ${row.isBold ? 'font-semibold' : ''}
                     ${compactLayout ? 'overflow-hidden text-ellipsis' : ''}
@@ -720,11 +732,7 @@ export default function FinancialTable({
                 >
                   <div className="flex items-center gap-2">
                     <span className={`${compactLayout ? 'overflow-hidden text-ellipsis' : ''} ${isMomRow ? 'italic' : ''}`}>
-                      {isBalanceCheck ? (
-                        isBalanceOk ? 'Balance Check ✓ 정합' : 'Balance Check (차대변 불일치)'
-                      ) : (
-                        row.account
-                      )}
+                      {row.account}
                     </span>
                     {hasChildren(row) && !isCostRegion && (
                       <span className="text-gray-500 flex-shrink-0">
@@ -828,6 +836,66 @@ export default function FinancialTable({
                     >
                       {formatValue(row.values[13], row.format, true, false)}
                     </td>
+                  </>
+                )}
+
+                {/* B/S 전용: 데이터 렌더링 */}
+                {isBalanceSheet && !showComparisons && (
+                  <>
+                    {/* displayColumns를 순회하며 렌더링 (계정과목 제외) */}
+                    {displayColumns.slice(1).map((col, colIndex) => {
+                      // 컬럼명에 따라 적절한 values 인덱스 매핑
+                      let valueIndex = -1;
+                      
+                      if (col === '24년말') {
+                        valueIndex = 0;
+                      } else if (col === '25년말') {
+                        valueIndex = 1;
+                      } else if (col === '26년1월') {
+                        valueIndex = 2; // 2601 = values[2]
+                      } else if (col === '26년기말' || col === '26년기말(e)') {
+                        valueIndex = 13; // 2612 = values[13]
+                      } else if (col === 'YoY' || col === 'YoY(증감)') {
+                        valueIndex = 14;
+                      } else if (col.includes('월') && !col.includes('년')) {
+                        // 1월~12월 매핑
+                        const monthMatch = col.match(/(\d+)월/);
+                        if (monthMatch) {
+                          const monthNum = parseInt(monthMatch[1]);
+                          valueIndex = monthNum + 1; // 1월=values[2], 2월=values[3], ..., 12월=values[13]
+                        }
+                      }
+                      
+                      if (valueIndex === -1) return null;
+                      
+                      const value = row.values[valueIndex];
+                      const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
+                      const is26년1월 = col === '26년1월'; // 당월 강조
+                      
+                      // Balance Check일 때 각 셀별로 체크 (YoY 제외)
+                      const isCellOk = isBalanceCheck && !isYoYCol && (value === null || Math.abs(value) < 1000);
+                      const showCheckMark = isBalanceCheck && !isYoYCol && isCellOk;
+                      
+                      return (
+                        <td
+                          key={`bs-col-${colIndex}`}
+                          className={`
+                            border border-gray-300 px-4 py-2 text-right
+                            ${is26년1월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
+                            ${row.isBold ? 'font-semibold' : ''}
+                            ${isNegative(value) && !showCheckMark ? 'text-red-600' : ''}
+                          `}
+                        >
+                          {showCheckMark ? (
+                            <span className="text-green-600 font-bold">✓</span>
+                          ) : isYoYCol && value !== null && value !== undefined ? (
+                            `${value < 0 ? '△' : value > 0 ? '+' : ''}${formatValue(Math.abs(value), 'number', false, true)}`
+                          ) : (
+                            formatValue(value, row.format, false, true)
+                          )}
+                        </td>
+                      );
+                    })}
                   </>
                 )}
 
