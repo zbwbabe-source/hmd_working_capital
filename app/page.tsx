@@ -36,7 +36,7 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const tabs = ['홍콩법인 B/S'];
+  const tabs = ['홍콩법인 F/S'];
   const tabTypes: TabType[] = ['CF'];
 
   // 데이터 로딩: 현금흐름표=CF 폴더, 운전자본표=운전자본 폴더
@@ -255,7 +255,7 @@ export default function Home() {
 
       {/* 내용 - 상단 탭 높이만큼 패딩 추가 */}
       <div className="p-0 pt-16">
-        {/* 홍콩법인 B/S - 현금흐름표 */}
+        {/* 홍콩법인 F/S - 현금흐름표 */}
         {activeTab === 0 && (
           <div>
             <div className="bg-gray-100 border-b border-gray-300">
