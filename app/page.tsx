@@ -611,7 +611,7 @@ export default function Home() {
                     <aside className="flex-1 rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]" style={{ minWidth: '500px' }}>
                       <EditableAnalysis
                         year={wcYear}
-                        disabled={bsView === 'PL'}
+                        disabled={false}
                         initialContent={analysisResults ? {
                           keyInsights: analysisResults.insights.keyInsights,
                           cfAnalysis: analysisResults.cfAnalysis,
