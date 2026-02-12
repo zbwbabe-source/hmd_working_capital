@@ -5,6 +5,7 @@ import Tabs from '@/components/Tabs';
 import YearTabs from '@/components/YearTabs';
 import FinancialTable from '@/components/FinancialTable';
 import EditableAnalysis from '@/components/EditableAnalysis';
+import PLPage from '@/components/PLPage';
 import { TableRow, TabType } from '@/lib/types';
 import {
   analyzeCashFlowData,
@@ -488,6 +489,11 @@ export default function Home() {
                   </div>
                 )}
               </div>
+            )}
+            
+            {/* P/L 화면 */}
+            {bsView === 'PL' && !loading && (
+              <PLPage />
             )}
             
             {/* C/F 화면 */}
