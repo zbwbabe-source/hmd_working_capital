@@ -55,8 +55,8 @@ export default function PLPage() {
       }
 
       // 검증 로그
-      console.log("[TREE] root labels 2025", prevTree2025.map(r => r.label).slice(0, 5));
-      console.log("[TREE] root labels 2026", currTree2026.map(r => r.label).slice(0, 5));
+      console.log("[TREE] root labels 2025", prevTree2025.map((r: Node) => r.label).slice(0, 5));
+      console.log("[TREE] root labels 2026", currTree2026.map((r: Node) => r.label).slice(0, 5));
 
       // 첫 루트 rollup 샘플
       const p0 = prevTree2025[0];
