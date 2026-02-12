@@ -237,18 +237,18 @@ export default function Home() {
       if (!cfData) loadData('CF', wcYear);
         if (!wcStatementData) {
           loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
-            if (bsView !== 'PL') loadWCRemarks();
+            loadWCRemarks();
           });
-        } else if (wcRemarks.size === 0 && bsView !== 'PL') {
+        } else if (wcRemarks.size === 0) {
           loadWCRemarks();
         }
       } else if (bsView === 'BS') {
         if (!bsFinancialData) loadBSData(wcYear);
         if (!wcStatementData) {
           loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
-            if (bsView !== 'PL') loadWCRemarks();
+            loadWCRemarks();
           });
-        } else if (wcRemarks.size === 0 && bsView !== 'PL') {
+        } else if (wcRemarks.size === 0) {
           loadWCRemarks();
         }
       } else if (bsView === 'PL') {
@@ -262,12 +262,12 @@ export default function Home() {
       if (bsView === 'CF') {
       loadData('CF', wcYear);
         loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
-          if (bsView !== 'PL') loadWCRemarks();
+          loadWCRemarks();
         });
       } else if (bsView === 'BS') {
         loadBSData(wcYear);
         loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
-          if (bsView !== 'PL') loadWCRemarks();
+          loadWCRemarks();
         });
       } else if (bsView === 'PL') {
         // PL 뷰: WC 데이터 로드하지 않음
