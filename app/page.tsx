@@ -16,7 +16,7 @@ import { formatNumber, formatMillionYuan } from '@/lib/utils';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [bsView, setBsView] = useState<'BS' | 'CF'>('BS'); // 초기값을 BS로 변경
+  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('BS'); // 초기값을 BS로 변경
   const [wcYear, setWcYear] = useState<number>(2026);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
@@ -270,6 +270,16 @@ export default function Home() {
                     }`}
                   >
                     B/S
+                  </button>
+                  <button 
+                    onClick={() => setBsView('PL')}
+                    className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                      bsView === 'PL' 
+                        ? 'bg-navy text-white' 
+                        : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                    }`}
+                  >
+                    P/L
                   </button>
                   <button 
                     onClick={() => setBsView('CF')}
