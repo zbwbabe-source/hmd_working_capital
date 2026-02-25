@@ -19,6 +19,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('BS'); // 초기값을 BS로 변경
   const [wcYear, setWcYear] = useState<number>(2026);
+  const [salesYoYRate, setSalesYoYRate] = useState<number>(115);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
   const [wcStatementAllRowsCollapsed, setWcStatementAllRowsCollapsed] = useState<boolean>(true);
@@ -285,19 +286,174 @@ export default function Home() {
   // 월 컬럼 (1월~12월)
   const monthColumns = ['계정과목', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
+  const adjustedCfData = useMemo(() => {
+    if (!cfData || wcYear !== 2026) return cfData;
+
+    const delta = (salesYoYRate - 115) / 100;
+    if (delta === 0) return cfData;
+
+    const ACC_OPERATING = '\uC601\uC5C5\uD65C\uB3D9';
+    const ACC_INFLOW = '\uC785\uAE08';
+    const ACC_SALES_RECEIPT = '\uB9E4\uCD9C\uC218\uAE08';
+    const ACC_HK = '\uD64D\uCF69\uB9C8\uCE74\uC624';
+    const ACC_TW = '\uB300\uB9CC';
+    const ACC_CASH_BALANCE = '\uD604\uAE08\uC794\uC561';
+    const ACC_BALANCE = '\uC794\uC561';
+    const ACC_END_BALANCE = '\uAE30\uB9D0\uC794\uC561';
+    const norm = (v: string | null | undefined) => (v ?? '').replace(/\s+/g, '').trim();
+    const isNetCashAccount = (v: string | null | undefined) => {
+      const n = norm(v);
+      return n === 'NetCash' || n.includes('\uC21C\uD604\uAE08') || n.includes('\uC21C\uD604\uAE08\uD750\uB984');
+    };
+
+    const clonedRows: TableRow[] = cfData.map((row) => ({
+      ...row,
+      values: [...row.values],
+    }));
+
+    const hkDeltaByMonth = new Array(12).fill(0);
+    const twDeltaByMonth = new Array(12).fill(0);
+    const parentByLevel: string[] = [];
+
+    clonedRows.forEach((row) => {
+      parentByLevel[row.level] = row.account;
+      parentByLevel.length = row.level + 1;
+
+      const inSalesReceiptPath =
+        row.level >= 3 &&
+        norm(parentByLevel[0]) === norm(ACC_OPERATING) &&
+        norm(parentByLevel[1]) === norm(ACC_INFLOW) &&
+        norm(parentByLevel[2]) === norm(ACC_SALES_RECEIPT);
+
+      if (!inSalesReceiptPath) return;
+
+      let factor: number | null = null;
+      if (norm(row.account) === norm(ACC_HK)) factor = 1 + delta;
+      if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
+      if (factor === null) return;
+
+      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        const current = row.values[monthIdx];
+        if (typeof current !== 'number') continue;
+
+        const updated = current * factor;
+        const diff = updated - current;
+        row.values[monthIdx] = updated;
+
+        if (norm(row.account) === norm(ACC_HK)) hkDeltaByMonth[monthIdx] += diff;
+        if (norm(row.account) === norm(ACC_TW)) twDeltaByMonth[monthIdx] += diff;
+      }
+    });
+
+    const toCumulative = (arr: number[]): number[] => {
+      const result = new Array(arr.length).fill(0);
+      let running = 0;
+      for (let i = 0; i < arr.length; i++) {
+        running += arr[i];
+        result[i] = running;
+      }
+      return result;
+    };
+
+    const hkCumulative = toCumulative(hkDeltaByMonth);
+    const twCumulative = toCumulative(twDeltaByMonth);
+
+    parentByLevel.length = 0;
+    clonedRows.forEach((row) => {
+      parentByLevel[row.level] = row.account;
+      parentByLevel.length = row.level + 1;
+
+      const inCashBalancePath =
+        row.level >= 3 &&
+        norm(parentByLevel[0]) === norm(ACC_CASH_BALANCE) &&
+        norm(parentByLevel[1]) === norm(ACC_BALANCE) &&
+        norm(parentByLevel[2]) === norm(ACC_END_BALANCE) &&
+        (norm(row.account) === norm(ACC_HK) || norm(row.account) === norm(ACC_TW));
+
+      if (!inCashBalancePath) return;
+
+      const cumulative = norm(row.account) === norm(ACC_HK) ? hkCumulative : twCumulative;
+      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        const current = row.values[monthIdx];
+        if (typeof current === 'number') {
+          row.values[monthIdx] = current + cumulative[monthIdx];
+        }
+      }
+    });
+
+    for (let i = clonedRows.length - 1; i >= 0; i--) {
+      const row = clonedRows[i];
+      if (!row.isGroup) continue;
+
+      const summed = new Array(row.values.length).fill(0);
+      for (let j = i + 1; j < clonedRows.length; j++) {
+        const child = clonedRows[j];
+        if (child.level <= row.level) break;
+        if (child.level !== row.level + 1) continue;
+
+        for (let k = 0; k < summed.length; k++) {
+          const value = child.values[k];
+          summed[k] += typeof value === 'number' ? value : 0;
+        }
+      }
+      row.values = summed;
+    }
+
+    clonedRows.forEach((row) => {
+      if (row.values.length < 13) return;
+      const annual = row.values
+        .slice(0, 12)
+        .reduce<number>((sum, value) => sum + (typeof value === 'number' ? value : 0), 0);
+      row.values[12] = annual;
+
+      if (row.values.length >= 14 && row.year2024Value !== null && row.year2024Value !== undefined) {
+        row.values[13] = annual - row.year2024Value;
+      }
+    });
+
+    const netCashRow = clonedRows.find((r) => r.level === 0 && isNetCashAccount(r.account));
+
+    if (netCashRow) {
+      const operatingRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm(ACC_OPERATING));
+      const capexRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm('\uC790\uC0B0\uC131\uC9C0\uCD9C'));
+      const otherRow = clonedRows.find(
+        (r) => r.level === 0 && (norm(r.account) === norm('\uAE30\uD0C0\uC218\uC775') || norm(r.account) === norm('\uAE30\uD0C0'))
+      );
+
+      for (let i = 0; i < netCashRow.values.length; i++) {
+        const op = operatingRow?.values[i];
+        const capex = capexRow?.values[i];
+        const other = otherRow?.values[i];
+        netCashRow.values[i] =
+          (typeof op === 'number' ? op : 0) +
+          (typeof capex === 'number' ? capex : 0) +
+          (typeof other === 'number' ? other : 0);
+      }
+
+      if (netCashRow.values.length >= 14 && netCashRow.year2024Value !== null && netCashRow.year2024Value !== undefined) {
+        const annual = netCashRow.values[12];
+        netCashRow.values[13] = (typeof annual === 'number' ? annual : 0) - netCashRow.year2024Value;
+      }
+    }
+
+    return clonedRows;
+  }, [cfData, wcYear, salesYoYRate]);
+
+  const cfDataForView = adjustedCfData ?? cfData;
+
   // 분석 결과 계산 (useMemo로 캐싱): 현금흐름표=cfData(CF 폴더), 운전자본표=wcStatementData(운전자본 폴더)
   const analysisResults = useMemo(() => {
-    if (!cfData && !wcStatementData) {
+    if (!cfDataForView && !wcStatementData) {
       return null;
     }
 
-    const cfAnalysis = analyzeCashFlowData(cfData, wcYear);
+    const cfAnalysis = analyzeCashFlowData(cfDataForView, wcYear);
     const wcAnalysis = analyzeWorkingCapitalData(wcStatementData, wcYear);
-    const insights = generateCashFlowInsights(cfData, wcStatementData, wcYear);
-    const cfoQA = generateCFOQA(cfData, wcStatementData, wcYear);
+    const insights = generateCashFlowInsights(cfDataForView, wcStatementData, wcYear);
+    const cfoQA = generateCFOQA(cfDataForView, wcStatementData, wcYear);
 
     return { cfAnalysis, wcAnalysis, insights, cfoQA };
-  }, [cfData, wcStatementData, wcYear]);
+  }, [cfDataForView, wcStatementData, wcYear]);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -355,6 +511,24 @@ export default function Home() {
                 >
                   {(bsView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed) ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
                 </button>
+                {bsView === 'CF' && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 bg-white">
+                    <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                      매출 YoY
+                    </label>
+                    <input
+                      id="sales-yoy-slider"
+                      type="range"
+                      min={100}
+                      max={130}
+                      step={1}
+                      value={salesYoYRate}
+                      onChange={(e) => setSalesYoYRate(Number(e.target.value))}
+                      className="w-36 accent-navy"
+                    />
+                    <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{salesYoYRate}%</span>
+                  </div>
+                )}
                 <span className="ml-auto text-sm font-medium text-gray-600">단위: 천 HKD</span>
               </div>
             </div>
@@ -547,12 +721,12 @@ export default function Home() {
             )}
             
             {/* C/F 화면 */}
-            {(cfData || wcStatementData) && !loading && bsView === 'CF' && (
+            {(cfDataForView || wcStatementData) && !loading && bsView === 'CF' && (
               <div className="px-6 pt-6 pb-6">
                 {workingCapitalMonthsCollapsed ? (
                   <div className="flex gap-6 items-start">
                     <div className="flex-1 flex-shrink-0" style={{ minWidth: 0 }}>
-                      {cfData && (
+                      {cfDataForView && (
                         <>
                           <div className="flex items-center gap-2 mb-4">
                             <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
@@ -565,7 +739,7 @@ export default function Home() {
                             </button>
                           </div>
                           <FinancialTable 
-                            data={cfData} 
+                            data={cfDataForView} 
                             columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
                             showTotal
                             isCashFlow={true}
@@ -624,7 +798,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    {cfData && (
+                    {cfDataForView && (
                       <>
                         <div className="flex items-center gap-2 mb-4">
                           <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
@@ -637,7 +811,7 @@ export default function Home() {
                           </button>
                         </div>
                         <FinancialTable 
-                          data={cfData} 
+                          data={cfDataForView} 
                           columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
                           showTotal
                           isCashFlow={true}

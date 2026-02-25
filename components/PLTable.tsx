@@ -35,12 +35,10 @@ function formatChange(curr: number | null, prev: number | null, isRate: boolean 
   }
 
   const diff = curr - prev;
-  const rate = prev === 0 ? null : (curr / prev) * 100;
-
-  const color = diff >= 0 ? 'text-green-600' : 'text-red-600';
 
   if (isRate) {
     // 퍼센트 행은 %p 차이만 표시
+    const color = diff >= 0 ? 'text-green-600' : 'text-red-600';
     const diffText = diff >= 0 ? `+${diff.toFixed(1)}%p` : `${diff.toFixed(1)}%p`;
     return (
       <div className={`text-xs ${color}`}>
@@ -49,7 +47,28 @@ function formatChange(curr: number | null, prev: number | null, isRate: boolean 
     );
   }
 
-  // 금액 행은 증감값, 증감률 표시
+  // 금액 행: 적자↔흑자 전환 체크
+  // 적자에서 흑자로 전환 (prev < 0 && curr > 0)
+  if (prev < 0 && curr > 0) {
+    return (
+      <div className="text-xs text-blue-600 font-semibold">
+        흑자전환
+      </div>
+    );
+  }
+
+  // 흑자에서 적자로 전환 (prev > 0 && curr < 0)
+  if (prev > 0 && curr < 0) {
+    return (
+      <div className="text-xs text-red-600 font-semibold">
+        적자전환
+      </div>
+    );
+  }
+
+  // 일반적인 증감 (둘 다 같은 부호)
+  const rate = prev === 0 ? null : (curr / prev) * 100;
+  const color = diff >= 0 ? 'text-green-600' : 'text-red-600';
   const diffText = diff >= 0 ? `+${formatNumber(diff)}` : `△${formatNumber(Math.abs(diff))}`;
   const rateText = rate === null ? '-' : `${rate.toFixed(0)}%`;
 

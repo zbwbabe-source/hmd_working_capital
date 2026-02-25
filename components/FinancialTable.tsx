@@ -85,6 +85,7 @@ export default function FinancialTable({
 
   const isAllRowsControlled = externalAllRowsCollapsed !== undefined && onAllRowsToggle !== undefined;
   const allRowsCollapsed = isAllRowsControlled ? externalAllRowsCollapsed : internalAllRowsCollapsed;
+  const defaultExpandedAccountsKey = (defaultExpandedAccounts ?? []).join('|');
   
   // 브랜드별 컬럼 접기/펼치기 상태 (3가지 독립적)
   const [brandMonthCollapsed, setBrandMonthCollapsed] = useState<boolean>(true); // 당월
@@ -177,12 +178,13 @@ export default function FinancialTable({
         return groups;
       };
       const allGroups = collectAllGroups(data);
+      const defaultExpandedSet = new Set(defaultExpandedAccounts ?? []);
       const toCollapse = allRowsCollapsed
-        ? (defaultExpandedAccounts?.length ? allGroups.filter(g => !defaultExpandedAccounts.includes(g)) : allGroups)
+        ? (defaultExpandedSet.size > 0 ? allGroups.filter(g => !defaultExpandedSet.has(g)) : allGroups)
         : [];
       setCollapsed(new Set(toCollapse));
     }
-  }, [isAllRowsControlled, allRowsCollapsed, data, defaultExpandedAccounts]);
+  }, [isAllRowsControlled, allRowsCollapsed, defaultExpandedAccountsKey]);
 
   // 표시할 행 필터링 (접힌 그룹의 자식은 숨김)
   // children 속성이 있는 행은 평면화하여 처리
@@ -291,6 +293,33 @@ export default function FinancialTable({
     };
     return flattenRows(data);
   }, [data]);
+
+  const recomputedNetCashValues = useMemo(() => {
+    if (!isCashFlow) return null;
+    const norm = (v: string) => v.replace(/\s+/g, '').trim();
+    const topRows = data.filter((r) => r.level === 0);
+    const operating = topRows.find((r) => norm(r.account) === norm('영업활동'));
+    const capex = topRows.find((r) => norm(r.account) === norm('자산성지출'));
+    const other = topRows.find((r) => norm(r.account) === norm('기타수익') || norm(r.account) === norm('기타'));
+    if (!operating && !capex && !other) return null;
+
+    const length = Math.max(
+      operating?.values.length ?? 0,
+      capex?.values.length ?? 0,
+      other?.values.length ?? 0
+    );
+    const values: (number | null)[] = new Array(length).fill(0);
+    for (let i = 0; i < length; i++) {
+      const op = operating?.values[i];
+      const ca = capex?.values[i];
+      const ot = other?.values[i];
+      values[i] =
+        (typeof op === 'number' ? op : 0) +
+        (typeof ca === 'number' ? ca : 0) +
+        (typeof ot === 'number' ? ot : 0);
+    }
+    return values;
+  }, [data, isCashFlow]);
   
   // 각 행이 자식을 가지고 있는지 확인하는 헬퍼 함수
   const hasChildren = (row: TableRow): boolean => {
@@ -697,6 +726,13 @@ export default function FinancialTable({
               // 비용의 지역 그룹인지 체크 (원본 데이터에서 찾기)
               const originalIndex = allFlatRows.findIndex(r => r.account === row.account && r.level === row.level);
               const isCostRegion = originalIndex >= 0 ? isCostRegionGroup(row, allFlatRows, originalIndex) : false;
+              const normalizedAccount = row.account.replace(/\s+/g, '').trim();
+              const isNetCashRow =
+                isCashFlow &&
+                (normalizedAccount === 'NetCash' ||
+                  normalizedAccount.includes('순현금') ||
+                  normalizedAccount.includes('순현금흐름'));
+              const effectiveValues = isNetCashRow && recomputedNetCashValues ? recomputedNetCashValues : row.values;
               
               return (
               <tr
@@ -785,7 +821,7 @@ export default function FinancialTable({
                 )}
 
                 {/* 월별 값 (토글에 따라 표시/숨김) */}
-                {!monthsCollapsed && row.values.map((value, colIndex) => {
+                {!monthsCollapsed && effectiveValues.map((value, colIndex) => {
                   // CF: 합계 컬럼(index 12)과 YoY(index 13)는 여기서 제외 (나중에 따로 렌더링)
                   if (isCashFlow && colIndex >= 12) {
                     return null;
@@ -820,10 +856,10 @@ export default function FinancialTable({
                         border border-gray-300 px-4 py-2 text-right
                         ${getHighlightClass(row.isHighlight)}
                         ${row.isBold ? 'font-semibold' : ''}
-                        ${isNegative(row.values[12]) ? 'text-red-600' : ''}
+                        ${isNegative(effectiveValues[12]) ? 'text-red-600' : ''}
                       `}
                     >
-                      {formatValue(row.values[12], row.format, isMomRow, !row.isCalculated)}
+                      {formatValue(effectiveValues[12], row.format, isMomRow, !row.isCalculated)}
                     </td>
                     {/* CF: YoY 컬럼 (25년 - 24년) */}
                     <td
@@ -831,10 +867,10 @@ export default function FinancialTable({
                         border border-gray-300 px-4 py-2 text-right
                         ${getHighlightClass(row.isHighlight)}
                         ${row.isBold ? 'font-semibold' : ''}
-                        ${isNegative(row.values[13]) ? 'text-red-600' : ''}
+                        ${isNegative(effectiveValues[13]) ? 'text-red-600' : ''}
                       `}
                     >
-                      {formatValue(row.values[13], row.format, true, false)}
+                      {formatValue(effectiveValues[13], row.format, true, false)}
                     </td>
                   </>
                 )}
