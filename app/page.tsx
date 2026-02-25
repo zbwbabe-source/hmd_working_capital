@@ -17,7 +17,7 @@ import { formatNumber, formatMillionYuan } from '@/lib/utils';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('BS'); // 초기값을 BS로 변경
+  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('CF');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(115);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
@@ -294,7 +294,11 @@ export default function Home() {
 
     const ACC_OPERATING = '\uC601\uC5C5\uD65C\uB3D9';
     const ACC_INFLOW = '\uC785\uAE08';
+    const ACC_OUTFLOW = '\uC9C0\uCD9C';
+    const ACC_COST = '\uBE44\uC6A9';
     const ACC_SALES_RECEIPT = '\uB9E4\uCD9C\uC218\uAE08';
+    const ACC_GOODS_PAYMENT = '\uBB3C\uD488\uB300';
+    const ACC_STORE_RENT = '\uB9E4\uC7A5 \uC784\uCC28\uB8CC';
     const ACC_HK = '\uD64D\uCF69\uB9C8\uCE74\uC624';
     const ACC_TW = '\uB300\uB9CC';
     const ACC_CASH_BALANCE = '\uD604\uAE08\uC794\uC561';
@@ -311,8 +315,9 @@ export default function Home() {
       values: [...row.values],
     }));
 
-    const hkDeltaByMonth = new Array(12).fill(0);
-    const twDeltaByMonth = new Array(12).fill(0);
+    const hkNetDeltaByMonth = new Array(12).fill(0);
+    const twNetDeltaByMonth = new Array(12).fill(0);
+    const hkAdjustedSalesByMonth = new Array(12).fill(0);
     const parentByLevel: string[] = [];
 
     clonedRows.forEach((row) => {
@@ -325,23 +330,85 @@ export default function Home() {
         norm(parentByLevel[1]) === norm(ACC_INFLOW) &&
         norm(parentByLevel[2]) === norm(ACC_SALES_RECEIPT);
 
-      if (!inSalesReceiptPath) return;
+      if (inSalesReceiptPath) {
+        let factor: number | null = null;
+        if (norm(row.account) === norm(ACC_HK)) factor = 1 + delta;
+        if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
+        if (factor === null) return;
 
-      let factor: number | null = null;
-      if (norm(row.account) === norm(ACC_HK)) factor = 1 + delta;
-      if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
-      if (factor === null) return;
+        for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+          const current = row.values[monthIdx];
+          if (typeof current !== 'number') continue;
+
+          const updated = current * factor;
+          const diff = updated - current;
+          row.values[monthIdx] = updated;
+
+          if (norm(row.account) === norm(ACC_HK)) {
+            hkAdjustedSalesByMonth[monthIdx] = updated;
+            hkNetDeltaByMonth[monthIdx] += diff;
+          }
+          if (norm(row.account) === norm(ACC_TW)) {
+            twNetDeltaByMonth[monthIdx] += diff;
+          }
+        }
+      }
+
+      const level1 = norm(parentByLevel[1]);
+      const inHongKongRentPath =
+        row.level >= 3 &&
+        norm(parentByLevel[0]) === norm(ACC_OPERATING) &&
+        (level1 === norm(ACC_OUTFLOW) || level1 === norm(ACC_COST)) &&
+        norm(parentByLevel[2]) === norm(ACC_HK) &&
+        norm(row.account) === norm(ACC_STORE_RENT);
+
+      if (inHongKongRentPath) {
+        for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+          const current = row.values[monthIdx];
+          const adjustedSales = hkAdjustedSalesByMonth[monthIdx];
+          if (typeof current !== 'number' || adjustedSales <= 0) continue;
+
+          const fixedMinimumRent = Math.abs(current);
+          const variableRentBySales = adjustedSales * 0.2;
+          const adjustedRentAbs = Math.max(fixedMinimumRent, variableRentBySales);
+          const updatedRent = -adjustedRentAbs;
+          const diff = updatedRent - current;
+
+          row.values[monthIdx] = updatedRent;
+          hkNetDeltaByMonth[monthIdx] += diff;
+        }
+      }
+    });
+
+    // 물품대 지출을 버퍼로 사용해 현금잔액(기준 115%)이 유지되도록 월별 증감 상쇄
+    parentByLevel.length = 0;
+    clonedRows.forEach((row) => {
+      parentByLevel[row.level] = row.account;
+      parentByLevel.length = row.level + 1;
+
+      const inGoodsPaymentPath =
+        row.level >= 3 &&
+        norm(parentByLevel[0]) === norm(ACC_OPERATING) &&
+        norm(parentByLevel[1]) === norm(ACC_OUTFLOW) &&
+        norm(parentByLevel[2]) === norm(ACC_GOODS_PAYMENT) &&
+        (norm(row.account) === norm(ACC_HK) || norm(row.account) === norm(ACC_TW));
+
+      if (!inGoodsPaymentPath) return;
+
+      const deltaByMonth = norm(row.account) === norm(ACC_HK) ? hkNetDeltaByMonth : twNetDeltaByMonth;
 
       for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
 
-        const updated = current * factor;
+        const offset = deltaByMonth[monthIdx];
+        if (offset === 0) continue;
+
+        // 순증감(offset)을 반대로 적용해 해당 월 현금 증감을 0으로 맞춤
+        const updated = current - offset;
         const diff = updated - current;
         row.values[monthIdx] = updated;
-
-        if (norm(row.account) === norm(ACC_HK)) hkDeltaByMonth[monthIdx] += diff;
-        if (norm(row.account) === norm(ACC_TW)) twDeltaByMonth[monthIdx] += diff;
+        deltaByMonth[monthIdx] += diff;
       }
     });
 
@@ -355,8 +422,8 @@ export default function Home() {
       return result;
     };
 
-    const hkCumulative = toCumulative(hkDeltaByMonth);
-    const twCumulative = toCumulative(twDeltaByMonth);
+    const hkCumulative = toCumulative(hkNetDeltaByMonth);
+    const twCumulative = toCumulative(twNetDeltaByMonth);
 
     parentByLevel.length = 0;
     clonedRows.forEach((row) => {
@@ -401,9 +468,11 @@ export default function Home() {
 
     clonedRows.forEach((row) => {
       if (row.values.length < 13) return;
-      const annual = row.values
-        .slice(0, 12)
-        .reduce<number>((sum, value) => sum + (typeof value === 'number' ? value : 0), 0);
+      const annual = norm(row.account) === norm(ACC_CASH_BALANCE)
+        ? (typeof row.values[11] === 'number' ? row.values[11] : 0)
+        : row.values
+            .slice(0, 12)
+            .reduce<number>((sum, value) => sum + (typeof value === 'number' ? value : 0), 0);
       row.values[12] = annual;
 
       if (row.values.length >= 14 && row.year2024Value !== null && row.year2024Value !== undefined) {
@@ -441,19 +510,304 @@ export default function Home() {
 
   const cfDataForView = adjustedCfData ?? cfData;
 
+  const adjustedWcStatementData = useMemo(() => {
+    if (!wcStatementData || wcYear !== 2026) return wcStatementData;
+
+    const delta = (salesYoYRate - 115) / 100;
+    if (delta === 0) return wcStatementData;
+
+    const AR_SENSITIVITY = 1 - 0.2; // 매출 증감률의 80%만 매출채권에 반영
+    const COGS_RATE = 0.43; // 2025년 연간 매출원가율
+    const norm = (v: string | null | undefined) => (v ?? '').replace(/\s+/g, '').trim();
+    const ACC_AR = '매출채권';
+    const ACC_TW = '대만';
+    const ACC_OPERATING = '영업활동';
+    const ACC_INFLOW = '입금';
+    const ACC_SALES_RECEIPT = '매출수금';
+    const ACC_HK = '홍콩마카오';
+    const ACC_INVENTORY = '재고자산';
+    const ACC_OUTFLOW = '지출';
+    const ACC_GOODS_PAYMENT = '물품대';
+    const ACC_AP = '매입채무';
+    const ACC_WC_TOTAL = '운전자본합계';
+    const ACC_MOM = '전월대비';
+
+    const clonedRows: TableRow[] = wcStatementData.map((row) => ({
+      ...row,
+      values: [...row.values],
+    }));
+
+    const recalcEndingAndYoy = (row: TableRow) => {
+      if (row.values.length < 13) return;
+      const endingValue = typeof row.values[11] === 'number' ? row.values[11] : 0;
+      row.values[12] = endingValue;
+      if (row.values.length >= 14 && row.year2024Value !== null && row.year2024Value !== undefined) {
+        row.values[13] = endingValue - row.year2024Value;
+      }
+    };
+
+    const totalSalesDeltaByMonth = new Array(12).fill(0);
+    if (cfData) {
+      const cfParentByLevel: string[] = [];
+      cfData.forEach((row) => {
+        cfParentByLevel[row.level] = row.account;
+        cfParentByLevel.length = row.level + 1;
+
+        const inSalesReceiptPath =
+          row.level >= 3 &&
+          norm(cfParentByLevel[0]) === norm(ACC_OPERATING) &&
+          norm(cfParentByLevel[1]) === norm(ACC_INFLOW) &&
+          norm(cfParentByLevel[2]) === norm(ACC_SALES_RECEIPT);
+
+        if (!inSalesReceiptPath) return;
+
+        let factor: number | null = null;
+        if (norm(row.account) === norm(ACC_HK)) factor = 1 + delta;
+        if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
+        if (factor === null) return;
+
+        for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+          const current = row.values[monthIdx];
+          if (typeof current !== 'number') continue;
+          totalSalesDeltaByMonth[monthIdx] += (current * factor) - current;
+        }
+      });
+    }
+
+    const goodsPaymentDeltaByMonth = new Array(12).fill(0);
+    if (cfData && cfDataForView) {
+      const collectGoodsPaymentByMonth = (rows: TableRow[]): number[] => {
+        const monthly = new Array(12).fill(0);
+        const parentByLevelInCf: string[] = [];
+
+        rows.forEach((row) => {
+          parentByLevelInCf[row.level] = row.account;
+          parentByLevelInCf.length = row.level + 1;
+
+          const inGoodsPaymentPath =
+            row.level >= 3 &&
+            norm(parentByLevelInCf[0]) === norm(ACC_OPERATING) &&
+            norm(parentByLevelInCf[1]) === norm(ACC_OUTFLOW) &&
+            norm(parentByLevelInCf[2]) === norm(ACC_GOODS_PAYMENT) &&
+            (norm(row.account) === norm(ACC_HK) || norm(row.account) === norm(ACC_TW));
+
+          if (!inGoodsPaymentPath) return;
+
+          for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+            const value = row.values[monthIdx];
+            monthly[monthIdx] += typeof value === 'number' ? value : 0;
+          }
+        });
+
+        return monthly;
+      };
+
+      const baseGoodsPaymentByMonth = collectGoodsPaymentByMonth(cfData);
+      const adjustedGoodsPaymentByMonth = collectGoodsPaymentByMonth(cfDataForView);
+      for (let i = 0; i < 12; i++) {
+        goodsPaymentDeltaByMonth[i] = adjustedGoodsPaymentByMonth[i] - baseGoodsPaymentByMonth[i];
+      }
+    }
+
+    const parentByLevel: string[] = [];
+    clonedRows.forEach((row) => {
+      parentByLevel[row.level] = row.account;
+      parentByLevel.length = row.level + 1;
+
+      const isTaiwanArLeaf =
+        row.level >= 1 &&
+        norm(parentByLevel[0]) === norm(ACC_AR) &&
+        norm(row.account).includes(norm(ACC_TW));
+
+      if (!isTaiwanArLeaf) return;
+
+      const factor = 1 + (delta * AR_SENSITIVITY);
+      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        const current = row.values[monthIdx];
+        if (typeof current !== 'number') continue;
+        row.values[monthIdx] = current * factor;
+      }
+
+      recalcEndingAndYoy(row);
+    });
+
+    parentByLevel.length = 0;
+    const apLeafRows: TableRow[] = [];
+    clonedRows.forEach((row) => {
+      parentByLevel[row.level] = row.account;
+      parentByLevel.length = row.level + 1;
+
+      const isApLeaf = row.level >= 1 && norm(parentByLevel[0]) === norm(ACC_AP) && !row.isGroup;
+      if (isApLeaf) apLeafRows.push(row);
+    });
+
+    if (apLeafRows.length > 0) {
+      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        // 물품대 증감과 동일금액, 반대방향으로 매입채무 반영
+        const apTotalDelta = -goodsPaymentDeltaByMonth[monthIdx];
+        if (apTotalDelta === 0) continue;
+
+        const weights = apLeafRows.map((row) => {
+          const value = row.values[monthIdx];
+          const numericValue = typeof value === 'number' ? value : 0;
+          return Math.abs(numericValue);
+        });
+        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+        let distributed = 0;
+        for (let i = 0; i < apLeafRows.length; i++) {
+          const row = apLeafRows[i];
+          const current = row.values[monthIdx];
+          if (typeof current !== 'number') continue;
+
+          let deltaShare = 0;
+          if (i === apLeafRows.length - 1) {
+            deltaShare = apTotalDelta - distributed;
+          } else if (totalWeight > 0) {
+            deltaShare = apTotalDelta * (weights[i] / totalWeight);
+            distributed += deltaShare;
+          } else if (i === 0) {
+            deltaShare = apTotalDelta;
+            distributed += deltaShare;
+          }
+
+          row.values[monthIdx] = current + deltaShare;
+        }
+      }
+
+      apLeafRows.forEach(recalcEndingAndYoy);
+    }
+
+    parentByLevel.length = 0;
+    clonedRows.forEach((row) => {
+      parentByLevel[row.level] = row.account;
+      parentByLevel.length = row.level + 1;
+
+      const isInventoryLeaf =
+        row.level >= 1 &&
+        norm(parentByLevel[0]) === norm(ACC_INVENTORY) &&
+        !row.isGroup;
+
+      if (!isInventoryLeaf) return;
+
+      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        const current = row.values[monthIdx];
+        if (typeof current !== 'number') continue;
+
+        const salesDelta = totalSalesDeltaByMonth[monthIdx];
+        const inventoryDelta = -(salesDelta * COGS_RATE); // 매출과 반대방향
+        row.values[monthIdx] = current + inventoryDelta;
+      }
+
+      recalcEndingAndYoy(row);
+    });
+
+    for (let i = clonedRows.length - 1; i >= 0; i--) {
+      const row = clonedRows[i];
+      if (row.level !== 0 || !row.isGroup) continue;
+
+      const summed = new Array(row.values.length).fill(0);
+      let hasChild = false;
+      for (let j = i + 1; j < clonedRows.length; j++) {
+        const child = clonedRows[j];
+        if (child.level <= row.level) break;
+        if (child.level !== row.level + 1) continue;
+        hasChild = true;
+        for (let k = 0; k < 12; k++) {
+          summed[k] += typeof child.values[k] === 'number' ? child.values[k] : 0;
+        }
+      }
+
+      if (!hasChild) continue;
+      for (let k = 0; k < 12; k++) row.values[k] = summed[k];
+      recalcEndingAndYoy(row);
+    }
+
+    const arRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm(ACC_AR));
+    const inventoryRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm('재고자산'));
+    const apRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm(ACC_AP));
+    const totalRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm(ACC_WC_TOTAL));
+
+    if (arRow && inventoryRow && apRow && totalRow) {
+      const arValues = arRow.values;
+      const inventoryValues = inventoryRow.values;
+      const apValues = apRow.values;
+      for (let i = 0; i < 12; i++) {
+        const arValue = arValues[i] ?? 0;
+        const inventoryValue = inventoryValues[i] ?? 0;
+        const apValue = apValues[i] ?? 0;
+        totalRow.values[i] =
+          (typeof arValue === 'number' ? arValue : 0) +
+          (typeof inventoryValue === 'number' ? inventoryValue : 0) +
+          (typeof apValue === 'number' ? apValue : 0);
+      }
+      recalcEndingAndYoy(totalRow);
+
+      const momRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm(ACC_MOM));
+      if (momRow) {
+        const prevYear = totalRow.year2024Value;
+        momRow.values[0] =
+          typeof totalRow.values[0] === 'number' && prevYear !== null && prevYear !== undefined
+            ? totalRow.values[0] - prevYear
+            : null;
+        for (let i = 1; i < 12; i++) {
+          const curr = totalRow.values[i];
+          const prev = totalRow.values[i - 1];
+          momRow.values[i] = typeof curr === 'number' && typeof prev === 'number' ? curr - prev : null;
+        }
+        momRow.values[12] =
+          typeof totalRow.values[12] === 'number' && prevYear !== null && prevYear !== undefined
+            ? totalRow.values[12] - prevYear
+            : null;
+        if (momRow.values.length >= 14) momRow.values[13] = null;
+      }
+    }
+
+    return clonedRows;
+  }, [wcStatementData, cfData, cfDataForView, wcYear, salesYoYRate]);
+
+  const wcStatementDataForView = adjustedWcStatementData ?? wcStatementData;
+
+  const dynamicWcRemarks = useMemo(() => {
+    const remarksMap = new Map<string, string>(wcRemarks);
+    if (!wcStatementDataForView) return remarksMap;
+
+    const buildRemark = (account: string, narrative: string) => {
+      const row = wcStatementDataForView.find((r) => r.level === 0 && r.account === account);
+      if (!row) return;
+
+      const ending = row.values[12];
+      const yoy = row.values[13];
+      if (typeof ending !== 'number' || typeof yoy !== 'number') return;
+
+      const direction = yoy > 0 ? '증가' : yoy < 0 ? '감소' : '유지';
+      const yoyText = yoy === 0 ? '0 K HKD' : formatMillionYuan(yoy, true);
+      remarksMap.set(
+        account,
+        `${account} ${yoyText} ${direction} (기말 ${Math.round(ending).toLocaleString('ko-KR')} K HKD). ${narrative}`
+      );
+    };
+
+    buildRemark('매출채권', '매출 연동 시나리오에 따라 대만 AR이 자동 조정됨.');
+    buildRemark('재고자산', '매출 증감분의 43%를 매출과 반대방향으로 반영.');
+    buildRemark('매입채무', '물품대 지출 증감과 동일금액 반대방향으로 반영.');
+
+    return remarksMap;
+  }, [wcRemarks, wcStatementDataForView]);
+
   // 분석 결과 계산 (useMemo로 캐싱): 현금흐름표=cfData(CF 폴더), 운전자본표=wcStatementData(운전자본 폴더)
   const analysisResults = useMemo(() => {
-    if (!cfDataForView && !wcStatementData) {
+    if (!cfDataForView && !wcStatementDataForView) {
       return null;
     }
 
     const cfAnalysis = analyzeCashFlowData(cfDataForView, wcYear);
-    const wcAnalysis = analyzeWorkingCapitalData(wcStatementData, wcYear);
-    const insights = generateCashFlowInsights(cfDataForView, wcStatementData, wcYear);
-    const cfoQA = generateCFOQA(cfDataForView, wcStatementData, wcYear);
+    const wcAnalysis = analyzeWorkingCapitalData(wcStatementDataForView, wcYear);
+    const insights = generateCashFlowInsights(cfDataForView, wcStatementDataForView, wcYear);
+    const cfoQA = generateCFOQA(cfDataForView, wcStatementDataForView, wcYear);
 
     return { cfAnalysis, wcAnalysis, insights, cfoQA };
-  }, [cfDataForView, wcStatementData, wcYear]);
+  }, [cfDataForView, wcStatementDataForView, wcYear]);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -536,7 +890,7 @@ export default function Home() {
             {error && <div className="p-6 text-center text-red-500">{error}</div>}
             
             {/* B/S 화면 */}
-            {bsView === 'BS' && (bsFinancialData || wcStatementData) && !loading && (
+            {bsView === 'BS' && (bsFinancialData || wcStatementDataForView) && !loading && (
               <div className="px-6 pt-6 pb-6">
                 {bsFinancialData && (
                   <>
@@ -683,7 +1037,7 @@ export default function Home() {
                     />
                   </>
                 )}
-                {wcStatementData && (
+                {wcStatementDataForView && (
                   <div className="mt-8 pt-6 border-t-2 border-gray-400">
                     <div className="flex items-center gap-2 mb-4">
                       <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
@@ -696,7 +1050,7 @@ export default function Home() {
                       </button>
                     </div>
                     <FinancialTable 
-                      data={wcStatementData} 
+                      data={wcStatementDataForView} 
                       columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY', '비고']} 
                       showTotal
                       isCashFlow={true}
@@ -707,7 +1061,7 @@ export default function Home() {
                       allRowsCollapsed={wcStatementAllRowsCollapsed}
                       onAllRowsToggle={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                       showRemarks={true}
-                      remarks={wcRemarks}
+                      remarks={dynamicWcRemarks}
                       onRemarkChange={saveWCRemark}
                     />
                   </div>
@@ -721,7 +1075,7 @@ export default function Home() {
             )}
             
             {/* C/F 화면 */}
-            {(cfDataForView || wcStatementData) && !loading && bsView === 'CF' && (
+            {(cfDataForView || wcStatementDataForView) && !loading && bsView === 'CF' && (
               <div className="px-6 pt-6 pb-6">
                 {workingCapitalMonthsCollapsed ? (
                   <div className="flex gap-6 items-start">
@@ -752,7 +1106,7 @@ export default function Home() {
                           />
                         </>
                       )}
-                      {wcStatementData && (
+                      {wcStatementDataForView && (
                         <div className="mt-8 pt-6 border-t-2 border-gray-400">
                           <div className="flex items-center gap-2 mb-4">
                             <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
@@ -765,7 +1119,7 @@ export default function Home() {
                             </button>
                           </div>
                           <FinancialTable 
-                            data={wcStatementData} 
+                            data={wcStatementDataForView} 
                             columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY', '비고']} 
                             showTotal
                             isCashFlow={true}
@@ -776,7 +1130,7 @@ export default function Home() {
                             allRowsCollapsed={wcStatementAllRowsCollapsed}
                             onAllRowsToggle={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                             showRemarks={true}
-                            remarks={wcRemarks}
+                            remarks={dynamicWcRemarks}
                             onRemarkChange={saveWCRemark}
                           />
                         </div>
@@ -824,7 +1178,7 @@ export default function Home() {
                         />
                       </>
                     )}
-                    {wcStatementData && (
+                    {wcStatementDataForView && (
                       <div className="mt-8 pt-6 border-t-2 border-gray-400">
                         <div className="flex items-center gap-2 mb-4">
                           <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
@@ -837,7 +1191,7 @@ export default function Home() {
                           </button>
                         </div>
                         <FinancialTable 
-                          data={wcStatementData} 
+                          data={wcStatementDataForView} 
                           columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY', '비고']} 
                           showTotal
                           isCashFlow={true}
@@ -848,7 +1202,7 @@ export default function Home() {
                           allRowsCollapsed={wcStatementAllRowsCollapsed}
                           onAllRowsToggle={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                           showRemarks={true}
-                          remarks={wcRemarks}
+                          remarks={dynamicWcRemarks}
                           onRemarkChange={saveWCRemark}
                         />
                       </div>
