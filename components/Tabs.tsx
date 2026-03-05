@@ -1,32 +1,37 @@
 'use client';
+import { ReactNode } from 'react';
 
 interface TabsProps {
   tabs: string[];
   activeTab: number;
   onChange: (index: number) => void;
+  rightContent?: ReactNode;
 }
 
-export default function Tabs({ tabs, activeTab, onChange }: TabsProps) {
+export default function Tabs({ tabs, activeTab, onChange, rightContent }: TabsProps) {
   return (
     <div className="fixed top-0 left-0 right-0 z-50 bg-navy shadow-md">
-      <div className="flex border-b border-gray-700">
-        {tabs.map((tab, index) => (
-          <button
-            key={index}
-            onClick={() => onChange(index)}
-            className={`
-              px-6 py-4 text-sm font-medium transition-colors relative
-              ${activeTab === index 
-                ? 'text-white' 
-                : 'text-gray-300 hover:text-white'}
-            `}
-          >
-            {tab}
-            {activeTab === index && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-accent-yellow" />
-            )}
-          </button>
-        ))}
+      <div className="flex items-center border-b border-gray-700">
+        <div className="flex">
+          {tabs.map((tab, index) => (
+            <button
+              key={index}
+              onClick={() => onChange(index)}
+              className={`
+                px-6 py-4 text-sm font-medium transition-colors relative
+                ${activeTab === index
+                  ? 'text-white'
+                  : 'text-gray-300 hover:text-white'}
+              `}
+            >
+              {tab}
+              {activeTab === index && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-accent-yellow" />
+              )}
+            </button>
+          ))}
+        </div>
+        {rightContent && <div className="ml-auto pr-6">{rightContent}</div>}
       </div>
     </div>
   );

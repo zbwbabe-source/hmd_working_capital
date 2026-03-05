@@ -18,6 +18,7 @@ import { formatNumber, formatMillionYuan } from '@/lib/utils';
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('CF');
+  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(115);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
@@ -40,6 +41,7 @@ export default function Home() {
   
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const effectiveView: 'BS' | 'PL' | 'CF' = reportMode === 'FUND_MONTHLY' ? 'CF' : bsView;
 
   const tabs = ['홍콩법인 F/S'];
   const tabTypes: TabType[] = ['CF'];
@@ -111,7 +113,7 @@ export default function Home() {
   // B/S 비고 로드
   const loadBSRemarks = async () => {
     // PL 뷰에서는 비활성화
-    if (bsView === 'PL') {
+    if (effectiveView === 'PL') {
       if (!plRemarksSkipLogged) {
         console.log('remarks skipped (PL)');
         setPlRemarksSkipLogged(true);
@@ -135,7 +137,7 @@ export default function Home() {
   // B/S 비고 저장 (debounce)
   const saveBSRemark = async (account: string, remark: string) => {
     // PL 뷰에서는 비활성화
-    if (bsView === 'PL') {
+    if (effectiveView === 'PL') {
       return;
     }
     
@@ -160,7 +162,7 @@ export default function Home() {
   // 운전자본표 비고 로드
   const loadWCRemarks = async () => {
     // P/L 뷰에서는 비활성화
-    if (bsView === 'PL') {
+    if (effectiveView === 'PL') {
       if (!plRemarksSkipLogged) {
         console.log('remarks skipped (PL)');
         setPlRemarksSkipLogged(true);
@@ -209,7 +211,7 @@ export default function Home() {
   // 운전자본표 비고 저장
   const saveWCRemark = async (account: string, remark: string) => {
     // PL 뷰에서는 비활성화
-    if (bsView === 'PL') {
+    if (effectiveView === 'PL') {
       return;
     }
     
@@ -234,7 +236,7 @@ export default function Home() {
   // 탭 변경 시 데이터 로드
   useEffect(() => {
     if (activeTab === 0) {
-      if (bsView === 'CF') {
+      if (effectiveView === 'CF') {
       if (!cfData) loadData('CF', wcYear);
         if (!wcStatementData) {
           loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
@@ -243,7 +245,7 @@ export default function Home() {
         } else if (wcRemarks.size === 0) {
           loadWCRemarks();
         }
-      } else if (bsView === 'BS') {
+      } else if (effectiveView === 'BS') {
         if (!bsFinancialData) loadBSData(wcYear);
         if (!wcStatementData) {
           loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
@@ -252,25 +254,25 @@ export default function Home() {
         } else if (wcRemarks.size === 0) {
           loadWCRemarks();
         }
-      } else if (bsView === 'PL') {
+      } else if (effectiveView === 'PL') {
         // PL 뷰: WC 데이터 로드하지 않음
       }
     }
-  }, [activeTab, bsView]);
+  }, [activeTab, effectiveView]);
 
   useEffect(() => {
     if (activeTab === 0) {
-      if (bsView === 'CF') {
+      if (effectiveView === 'CF') {
       loadData('CF', wcYear);
         loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
           loadWCRemarks();
         });
-      } else if (bsView === 'BS') {
+      } else if (effectiveView === 'BS') {
         loadBSData(wcYear);
         loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
           loadWCRemarks();
         });
-      } else if (bsView === 'PL') {
+      } else if (effectiveView === 'PL') {
         // PL 뷰: WC 데이터 로드하지 않음
       }
     }
@@ -278,10 +280,10 @@ export default function Home() {
 
   // PL 뷰로 전환 시 remarks skip 로그 플래그 리셋
   useEffect(() => {
-    if (bsView === 'PL') {
+    if (effectiveView === 'PL') {
       setPlRemarksSkipLogged(false);
     }
-  }, [bsView]);
+  }, [effectiveView]);
 
   // 월 컬럼 (1월~12월)
   const monthColumns = ['계정과목', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
@@ -812,7 +814,35 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* 상단 탭 */}
-      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+      <Tabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        rightContent={
+          <div className="inline-flex gap-2">
+            <button
+              onClick={() => setReportMode('FUND_MONTHLY')}
+              className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                reportMode === 'FUND_MONTHLY'
+                  ? 'bg-white text-navy'
+                  : 'bg-blue-800 text-white hover:bg-blue-700'
+              }`}
+            >
+              자금월보
+            </button>
+            <button
+              onClick={() => setReportMode('PERFORMANCE')}
+              className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                reportMode === 'PERFORMANCE'
+                  ? 'bg-white text-navy'
+                  : 'bg-blue-800 text-white hover:bg-blue-700'
+              }`}
+            >
+              실적보고
+            </button>
+          </div>
+        }
+      />
 
       {/* 내용 - 상단 탭 높이만큼 패딩 추가 */}
       <div className="p-0 pt-16">
@@ -822,40 +852,48 @@ export default function Home() {
             <div className="bg-gray-100 border-b border-gray-300">
               <div className="flex items-center gap-4 px-6 py-3">
                 <div className="inline-flex gap-2">
-                  <button 
-                    onClick={() => setBsView('BS')}
-                    className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                      bsView === 'BS' 
-                        ? 'bg-navy text-white' 
-                        : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
-                    }`}
-                  >
-                    B/S
-                  </button>
-                  <button 
-                    onClick={() => setBsView('PL')}
-                    className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                      bsView === 'PL' 
-                        ? 'bg-navy text-white' 
-                        : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
-                    }`}
-                  >
-                    P/L
-                  </button>
-                  <button 
-                    onClick={() => setBsView('CF')}
-                    className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                      bsView === 'CF' 
-                        ? 'bg-navy text-white' 
-                        : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
-                    }`}
-                  >
-                    C/F
-                  </button>
+                  {reportMode === 'PERFORMANCE' ? (
+                    <>
+                      <button
+                        onClick={() => setBsView('BS')}
+                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                          effectiveView === 'BS'
+                            ? 'bg-navy text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                        }`}
+                      >
+                        B/S
+                      </button>
+                      <button
+                        onClick={() => setBsView('PL')}
+                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                          effectiveView === 'PL'
+                            ? 'bg-navy text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                        }`}
+                      >
+                        P/L
+                      </button>
+                      <button
+                        onClick={() => setBsView('CF')}
+                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                          effectiveView === 'CF'
+                            ? 'bg-navy text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                        }`}
+                      >
+                        C/F
+                      </button>
+                    </>
+                  ) : (
+                    <button className="px-4 py-2 text-sm font-medium rounded bg-navy text-white">
+                      C/F
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={() => {
-                    if (bsView === 'BS') {
+                    if (effectiveView === 'BS') {
                       setBsMonthsCollapsed(!bsMonthsCollapsed);
                     } else {
                       setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed);
@@ -863,9 +901,9 @@ export default function Home() {
                   }}
                   className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
                 >
-                  {(bsView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed) ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
+                  {(effectiveView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed) ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
                 </button>
-                {bsView === 'CF' && (
+                {effectiveView === 'CF' && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 bg-white">
                     <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                       매출 YoY
@@ -890,7 +928,7 @@ export default function Home() {
             {error && <div className="p-6 text-center text-red-500">{error}</div>}
             
             {/* B/S 화면 */}
-            {bsView === 'BS' && (bsFinancialData || wcStatementDataForView) && !loading && (
+            {effectiveView === 'BS' && (bsFinancialData || wcStatementDataForView) && !loading && (
               <div className="px-6 pt-6 pb-6">
                 {bsFinancialData && (
                   <>
@@ -1070,12 +1108,12 @@ export default function Home() {
             )}
             
             {/* P/L 화면 */}
-            {bsView === 'PL' && !loading && (
+            {effectiveView === 'PL' && !loading && (
               <PLPage />
             )}
             
             {/* C/F 화면 */}
-            {(cfDataForView || wcStatementDataForView) && !loading && bsView === 'CF' && (
+            {(cfDataForView || wcStatementDataForView) && !loading && effectiveView === 'CF' && (
               <div className="px-6 pt-6 pb-6">
                 {workingCapitalMonthsCollapsed ? (
                   <div className="flex gap-6 items-start">
@@ -1217,4 +1255,3 @@ export default function Home() {
     </main>
   );
 }
-
