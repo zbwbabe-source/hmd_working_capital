@@ -672,8 +672,8 @@ export default function FinancialTable({
                   return undefined;
                 };
                 
-                // B/S 26년1월 강조
-                const is26년1월Header = isBalanceSheet && col === '26년1월';
+                // B/S 26년1월(실적) 강조
+                const is26년1월Header = isBalanceSheet && col.startsWith('26년1월');
                 
                 return (
                   <th
@@ -887,7 +887,7 @@ export default function FinancialTable({
                         valueIndex = 0;
                       } else if (col === '25년말') {
                         valueIndex = 1;
-                      } else if (col === '26년1월') {
+                      } else if (col.startsWith('26년1월')) {
                         valueIndex = 2; // 2601 = values[2]
                       } else if (col === '26년기말' || col === '26년기말(e)') {
                         valueIndex = 13; // 2612 = values[13]
@@ -906,7 +906,7 @@ export default function FinancialTable({
                       
                       const value = row.values[valueIndex];
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
-                      const is26년1월 = col === '26년1월'; // 당월 강조
+                      const is26년1월 = col.startsWith('26년1월'); // 당월 강조
                       
                       // Balance Check일 때 각 셀별로 체크 (YoY 제외)
                       const isCellOk = isBalanceCheck && !isYoYCol && (value === null || Math.abs(value) < 1000);

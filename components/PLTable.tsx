@@ -145,8 +145,10 @@ export default function PLTable({
     return 'bg-blue-50/30';
   };
 
-  // 월별 컬럼 헤더
-  const monthHeaders = Array.from({ length: 12 }, (_, i) => `${i + 1}월`);
+  // 월별 컬럼 헤더 (1월 실적, 2~12월 계획)
+  const monthHeaders = Array.from({ length: 12 }, (_, i) =>
+    i === 0 ? `${i + 1}월(실적)` : `${i + 1}월(계획)`
+  );
 
   return (
     <div className="overflow-x-auto">

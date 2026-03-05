@@ -285,8 +285,22 @@ export default function Home() {
     }
   }, [effectiveView]);
 
-  // 월 컬럼 (1월~12월)
-  const monthColumns = ['계정과목', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+  // 월 컬럼 (1월 실적, 2~12월 계획)
+  const monthColumns = [
+    '계정과목',
+    '1월(실적)',
+    '2월(계획)',
+    '3월(계획)',
+    '4월(계획)',
+    '5월(계획)',
+    '6월(계획)',
+    '7월(계획)',
+    '8월(계획)',
+    '9월(계획)',
+    '10월(계획)',
+    '11월(계획)',
+    '12월(계획)',
+  ];
 
   const adjustedCfData = useMemo(() => {
     if (!cfData || wcYear !== 2026) return cfData;
@@ -1059,8 +1073,8 @@ export default function Home() {
                       data={bsFinancialData}
                       columns={
                         bsMonthsCollapsed 
-                          ? ['계정과목', '24년말', '25년말', '26년1월', '26년기말(e)', 'YoY(증감)', '비고']
-                          : ['계정과목', '24년말', '25년말', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', 'YoY(증감)', '비고']
+                          ? ['계정과목', '24년말', '25년말', '26년1월(실적)', '26년기말(e)', 'YoY(증감)', '비고']
+                          : [...monthColumns, 'YoY(증감)', '비고']
                       }
                       showTotal={false}
                       isBalanceSheet={true}
