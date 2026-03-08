@@ -355,6 +355,23 @@ export default function FinancialTable({
     return value !== null && value !== undefined && value < 0;
   };
 
+  const formatNetCashYoY = (
+    current: number | null | undefined,
+    previous: number | null | undefined
+  ): string => {
+    if (current === null || current === undefined || previous === null || previous === undefined) return '-';
+    if (previous < 0 && current > 0) return '\uD751\uC790\uC804\uD658';
+    if (previous > 0 && current < 0) return '\uC801\uC790\uC804\uD658';
+    if (previous <= 0) return '-';
+    return formatPercent(current / previous, false, false, 0);
+  };
+
+  const getNetCashYoYClass = (label: string): string => {
+    if (label === '\uD751\uC790\uC804\uD658') return 'text-green-600';
+    if (label === '\uC801\uC790\uC804\uD658') return 'text-red-600';
+    return '';
+  };
+
   // 배경색 클래스
   const getHighlightClass = (highlight?: 'sky' | 'yellow' | 'gray' | 'darkGray' | 'none') => {
     if (highlight === 'sky') return 'bg-highlight-sky';
@@ -449,9 +466,9 @@ export default function FinancialTable({
         return [
           ...accountCol,
           `${prevYearShort}\uB144 ${valueLabel}`,
-          ...monthCols,
           `${currentYearShort}\uB144 \uACC4\uD68D`,
           'YoY',
+          ...monthCols,
           `${currentYearShort}\uB144 ${valueLabel}`,
           'YoY',
           '\uACC4\uD68D\uB300\uBE44',
@@ -770,6 +787,11 @@ export default function FinancialTable({
                   normalizedAccount.includes('순현금') ||
                   normalizedAccount.includes('순현금흐름'));
               const effectiveValues = isNetCashRow && recomputedNetCashValues ? recomputedNetCashValues : row.values;
+              const isNetCashStrict =
+                isCashFlow &&
+                (/netcash/i.test(normalizedAccount) || /\uC21C\uD604\uAE08\uD750\uB984/.test(normalizedAccount));
+              const netCashPlanYoYLabel = isNetCashStrict ? formatNetCashYoY(row.planValue ?? null, row.year2024Value ?? null) : '';
+              const netCashRollingYoYLabel = isNetCashStrict ? formatNetCashYoY(effectiveValues[12] ?? null, row.year2024Value ?? null) : '';
               
               return (
               <tr
@@ -845,6 +867,18 @@ export default function FinancialTable({
                     >
                       {formatValue(row.year2024Value ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
+                    {!monthsCollapsed && hasPlanMetrics && (
+                      <>
+                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
+                          {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
+                        </td>
+                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
+                          {isNetCashStrict
+                            ? netCashPlanYoYLabel
+                            : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
+                        </td>
+                      </>
+                    )}
                     {/* 빈 컬럼 (2024년 뒤) */}
                     {monthsCollapsed && !hasPlanMetrics && <td className="bg-white border-0" style={{ minWidth: '16px', maxWidth: '16px', padding: 0 }}></td>}
                   </>
@@ -888,17 +922,27 @@ export default function FinancialTable({
                 {/* CF: 합계 컬럼 (2025년) */}
                 {isCashFlow && hasPlanMetrics && (
                   <>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
-                      {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
-                    </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planYoY) ? 'text-red-600' : ''}`}>
-                      {row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-'}
-                    </td>
+                    {monthsCollapsed && (
+                      <>
+                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
+                          {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
+                        </td>
+                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
+                          {isNetCashStrict
+                            ? netCashPlanYoYLabel
+                            : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
+                        </td>
+                      </>
+                    )}
                     <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(effectiveValues[12]) ? 'text-red-600' : ''}`}>
                       {formatValue(effectiveValues[12], row.format, isMomRow, !row.isCalculated)}
                     </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : ''}`}>
-                      {(row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined ? formatPercent((row.rollingYoY ?? effectiveValues[13] ?? null) as number, false, false, 0) : '-'}
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
+                      {isNetCashStrict
+                        ? netCashRollingYoYLabel
+                        : ((row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined
+                          ? formatPercent((row.rollingYoY ?? effectiveValues[13] ?? null) as number, false, false, 0)
+                          : '-')}
                     </td>
                     <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDelta) ? 'text-red-600' : ''}`}>
                       {formatValue(row.planDelta ?? null, row.format, true, false)}
@@ -926,10 +970,12 @@ export default function FinancialTable({
                         border border-gray-300 px-4 py-2 text-right
                         ${getHighlightClass(row.isHighlight)}
                         ${row.isBold ? 'font-semibold' : ''}
-                        ${isNegative(effectiveValues[13]) ? 'text-red-600' : ''}
+                        ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(effectiveValues[13]) ? 'text-red-600' : '')}
                       `}
                     >
-                      {formatValue(effectiveValues[13], row.format, true, false)}
+                      {isNetCashStrict
+                        ? netCashRollingYoYLabel
+                        : formatValue(effectiveValues[13], row.format, true, false)}
                     </td>
                   </>
                 )}
