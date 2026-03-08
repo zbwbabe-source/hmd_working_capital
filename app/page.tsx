@@ -25,7 +25,9 @@ export default function Home() {
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
   const [wcStatementAllRowsCollapsed, setWcStatementAllRowsCollapsed] = useState<boolean>(true);
   const [cfData, setCfData] = useState<TableRow[] | null>(null);
+  const [cfPlanData, setCfPlanData] = useState<TableRow[] | null>(null);
   const [wcStatementData, setWcStatementData] = useState<TableRow[] | null>(null);
+  const [wcStatementPlanData, setWcStatementPlanData] = useState<TableRow[] | null>(null);
   
   // B/S 상태
   const [bsFinancialData, setBsFinancialData] = useState<TableRow[] | null>(null);
@@ -54,14 +56,14 @@ export default function Home() {
     try {
       let url = '';
       if (type === 'CF') {
-        url = `/api/fs/cf?year=${year}`;
+        url = `/api/fs/cf?year=${year}&mode=rolling`;
       } else if (type === 'WORKING_CAPITAL_STATEMENT') {
-        url = `/api/fs/working-capital-statement?year=${year}`;
+        url = `/api/fs/working-capital-statement?year=${year}&mode=rolling`;
       }
 
       if (!url) return;
 
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: 'no-store' });
       const result = await response.json();
 
       if (!response.ok) {
@@ -71,8 +73,26 @@ export default function Home() {
 
       if (type === 'CF') {
         setCfData(result.rows);
+        if (year === 2026) {
+          const planResponse = await fetch(`/api/fs/cf?year=${year}&mode=plan`, { cache: 'no-store' });
+          const planResult = await planResponse.json();
+          if (planResponse.ok) {
+            setCfPlanData(planResult.rows);
+          }
+        } else {
+          setCfPlanData(null);
+        }
       } else if (type === 'WORKING_CAPITAL_STATEMENT') {
         setWcStatementData(result.rows);
+        if (year === 2026) {
+          const planResponse = await fetch(`/api/fs/working-capital-statement?year=${year}&mode=plan`, { cache: 'no-store' });
+          const planResult = await planResponse.json();
+          if (planResponse.ok) {
+            setWcStatementPlanData(planResult.rows);
+          }
+        } else {
+          setWcStatementPlanData(null);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -289,7 +309,7 @@ export default function Home() {
   const monthColumns = [
     '계정과목',
     '1월(실적)',
-    '2월(계획)',
+    '2월(실적)',
     '3월(계획)',
     '4월(계획)',
     '5월(계획)',
@@ -352,7 +372,7 @@ export default function Home() {
         if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
         if (factor === null) return;
 
-        for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
 
@@ -379,7 +399,7 @@ export default function Home() {
         norm(row.account) === norm(ACC_STORE_RENT);
 
       if (inHongKongRentPath) {
-        for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           const adjustedSales = hkAdjustedSalesByMonth[monthIdx];
           if (typeof current !== 'number' || adjustedSales <= 0) continue;
@@ -413,7 +433,7 @@ export default function Home() {
 
       const deltaByMonth = norm(row.account) === norm(ACC_HK) ? hkNetDeltaByMonth : twNetDeltaByMonth;
 
-      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
 
@@ -456,7 +476,7 @@ export default function Home() {
       if (!inCashBalancePath) return;
 
       const cumulative = norm(row.account) === norm(ACC_HK) ? hkCumulative : twCumulative;
-      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current === 'number') {
           row.values[monthIdx] = current + cumulative[monthIdx];
@@ -521,6 +541,14 @@ export default function Home() {
       }
     }
 
+    // 1~2월은 실적 고정: 슬라이더 영향 완전 차단
+    for (let i = 0; i < clonedRows.length; i++) {
+      const source = cfData[i];
+      if (!source) continue;
+      if (typeof source.values[0] === 'number') clonedRows[i].values[0] = source.values[0];
+      if (typeof source.values[1] === 'number') clonedRows[i].values[1] = source.values[1];
+    }
+
     return clonedRows;
   }, [cfData, wcYear, salesYoYRate]);
 
@@ -582,7 +610,7 @@ export default function Home() {
         if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
         if (factor === null) return;
 
-        for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
           totalSalesDeltaByMonth[monthIdx] += (current * factor) - current;
@@ -609,7 +637,7 @@ export default function Home() {
 
           if (!inGoodsPaymentPath) return;
 
-          for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+          for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
             const value = row.values[monthIdx];
             monthly[monthIdx] += typeof value === 'number' ? value : 0;
           }
@@ -638,7 +666,7 @@ export default function Home() {
       if (!isTaiwanArLeaf) return;
 
       const factor = 1 + (delta * AR_SENSITIVITY);
-      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
         row.values[monthIdx] = current * factor;
@@ -658,7 +686,7 @@ export default function Home() {
     });
 
     if (apLeafRows.length > 0) {
-      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
         // 물품대 증감과 동일금액, 반대방향으로 매입채무 반영
         const apTotalDelta = -goodsPaymentDeltaByMonth[monthIdx];
         if (apTotalDelta === 0) continue;
@@ -706,7 +734,7 @@ export default function Home() {
 
       if (!isInventoryLeaf) return;
 
-      for (let monthIdx = 1; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
 
@@ -779,10 +807,65 @@ export default function Home() {
       }
     }
 
+    // 1~2월은 실적 고정: 슬라이더 영향 완전 차단
+    for (let i = 0; i < clonedRows.length; i++) {
+      const source = wcStatementData[i];
+      if (!source) continue;
+      if (typeof source.values[0] === 'number') clonedRows[i].values[0] = source.values[0];
+      if (typeof source.values[1] === 'number') clonedRows[i].values[1] = source.values[1];
+    }
+
     return clonedRows;
   }, [wcStatementData, cfData, cfDataForView, wcYear, salesYoYRate]);
 
   const wcStatementDataForView = adjustedWcStatementData ?? wcStatementData;
+
+  const withPlanMetrics = useMemo(() => {
+    const attach = (rollingRows: TableRow[] | null, planRows: TableRow[] | null): TableRow[] | null => {
+      if (!rollingRows) return null;
+      if (wcYear !== 2026 || !planRows) return rollingRows;
+
+      const planMap = new Map<string, TableRow>();
+      for (const row of planRows) {
+        planMap.set(`${row.level}__${row.account}`, row);
+      }
+
+      return rollingRows.map((row, index) => {
+        if (row.account === '전월대비') return row;
+        const planRow = planRows[index] ?? planMap.get(`${row.level}__${row.account}`);
+        const prev = row.year2024Value;
+        const rollingValue = row.values[12];
+        const planValue = planRow?.values[12];
+
+        const planYoY = typeof planValue === 'number' && typeof prev === 'number' && prev !== 0
+          ? planValue / prev
+          : null;
+        const rollingYoY = typeof rollingValue === 'number' && typeof prev === 'number' && prev !== 0
+          ? rollingValue / prev
+          : null;
+        const planDelta = typeof rollingValue === 'number' && typeof planValue === 'number'
+          ? rollingValue - planValue
+          : null;
+        const planDeltaRate = typeof rollingValue === 'number' && typeof planValue === 'number' && planValue !== 0
+          ? rollingValue / planValue
+          : null;
+
+        return {
+          ...row,
+          planValue: typeof planValue === 'number' ? planValue : null,
+          planYoY,
+          rollingYoY,
+          planDelta,
+          planDeltaRate,
+        } as TableRow;
+      });
+    };
+
+    return {
+      cf: attach(cfDataForView, cfPlanData),
+      wc: attach(wcStatementDataForView, wcStatementPlanData),
+    };
+  }, [cfDataForView, cfPlanData, wcStatementDataForView, wcStatementPlanData, wcYear]);
 
   const dynamicWcRemarks = useMemo(() => {
     const remarksMap = new Map<string, string>(wcRemarks);
@@ -832,8 +915,28 @@ export default function Home() {
         tabs={tabs}
         activeTab={activeTab}
         onChange={setActiveTab}
+        afterTabsContent={
+          effectiveView === 'CF' ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-700 bg-blue-800">
+              <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-white whitespace-nowrap">
+                매출 YoY
+              </label>
+              <input
+                id="sales-yoy-slider"
+                type="range"
+                min={100}
+                max={130}
+                step={1}
+                value={salesYoYRate}
+                onChange={(e) => setSalesYoYRate(Number(e.target.value))}
+                className="w-32 accent-yellow-400"
+              />
+              <span className="text-sm font-semibold text-white whitespace-nowrap">{salesYoYRate}%</span>
+            </div>
+          ) : null
+        }
         rightContent={
-          <div className="inline-flex gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setReportMode('FUND_MONTHLY')}
               className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
@@ -917,7 +1020,7 @@ export default function Home() {
                 >
                   {(effectiveView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed) ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
                 </button>
-                {effectiveView === 'CF' && (
+                {false && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 bg-white">
                     <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                       매출 YoY
@@ -1102,8 +1205,8 @@ export default function Home() {
                       </button>
                     </div>
                     <FinancialTable 
-                      data={wcStatementDataForView} 
-                      columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY', '비고']} 
+                      data={withPlanMetrics.wc ?? wcStatementDataForView} 
+                      columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']} 
                       showTotal
                       isCashFlow={true}
                       isWorkingCapital={true}
@@ -1145,8 +1248,8 @@ export default function Home() {
                             </button>
                           </div>
                           <FinancialTable 
-                            data={cfDataForView} 
-                            columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
+                            data={withPlanMetrics.cf ?? cfDataForView} 
+                            columns={[...monthColumns, `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
                             showTotal
                             isCashFlow={true}
                             monthsCollapsed={workingCapitalMonthsCollapsed}
@@ -1171,8 +1274,8 @@ export default function Home() {
                             </button>
                           </div>
                           <FinancialTable 
-                            data={wcStatementDataForView} 
-                            columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY', '비고']} 
+                            data={withPlanMetrics.wc ?? wcStatementDataForView} 
+                            columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']} 
                             showTotal
                             isCashFlow={true}
                             isWorkingCapital={true}
@@ -1217,8 +1320,8 @@ export default function Home() {
                           </button>
                         </div>
                         <FinancialTable 
-                          data={cfDataForView} 
-                          columns={[...monthColumns, `${wcYear}년(합계)`, 'YoY']} 
+                          data={withPlanMetrics.cf ?? cfDataForView} 
+                          columns={[...monthColumns, `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
                           showTotal
                           isCashFlow={true}
                           monthsCollapsed={workingCapitalMonthsCollapsed}
@@ -1243,8 +1346,8 @@ export default function Home() {
                           </button>
                         </div>
                         <FinancialTable 
-                          data={wcStatementDataForView} 
-                          columns={[...monthColumns, `${wcYear}년(기말)`, 'YoY', '비고']} 
+                          data={withPlanMetrics.wc ?? wcStatementDataForView} 
+                          columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']} 
                           showTotal
                           isCashFlow={true}
                           isWorkingCapital={true}

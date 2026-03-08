@@ -404,6 +404,11 @@ export default function FinancialTable({
     }
   }, [showComparisons, isBalanceSheet, baseMonth, currentYear]);
 
+  const hasPlanMetrics = useMemo(
+    () => isCashFlow && data.some((row) => row.planValue !== undefined),
+    [isCashFlow, data]
+  );
+
   // 실제 표시할 컬럼 (월 토글 고려, 빈 컬럼 포함)
   const displayColumns = useMemo(() => {
     const accountCol = [columns[0]]; // "계정과목"
@@ -421,6 +426,38 @@ export default function FinancialTable({
         : (currentYear === 2026 ? '2025년(합계)' : '2024년(합계)');
       const year2023Header = use기말 ? '2023년(기말)' : '2023년(합계)';
       const show2023 = currentYear === 2025;
+      const currentYearShort = String(currentYear ?? 2025).slice(-2);
+      const prevYearShort = String((currentYear ?? 2025) - 1).slice(-2);
+      const useBaseLabel = /\uAE30\uB9D0/.test(yearColumnFromProps ?? '');
+      const valueLabel = useBaseLabel ? '\uAE30\uB9D0' : '\uD569\uACC4';
+
+      if (hasPlanMetrics) {
+        if (monthsCollapsed) {
+          return [
+            ...accountCol,
+            `${prevYearShort}\uB144 ${valueLabel}`,
+            `${currentYearShort}\uB144 \uACC4\uD68D`,
+            'YoY',
+            `${currentYearShort}\uB144 ${valueLabel}`,
+            'YoY',
+            '\uACC4\uD68D\uB300\uBE44',
+            '\uACC4\uD68D\uB300\uBE44%',
+          ];
+        }
+
+        const monthCols = columns.slice(1, 13); // 1??12??
+        return [
+          ...accountCol,
+          `${prevYearShort}\uB144 ${valueLabel}`,
+          ...monthCols,
+          `${currentYearShort}\uB144 \uACC4\uD68D`,
+          'YoY',
+          `${currentYearShort}\uB144 ${valueLabel}`,
+          'YoY',
+          '\uACC4\uD68D\uB300\uBE44',
+          '\uACC4\uD68D\uB300\uBE44%',
+        ];
+      }
       if (monthsCollapsed) {
         return [
           ...accountCol,
@@ -572,7 +609,7 @@ export default function FinancialTable({
       // 기본: 모든 컬럼
       return columns;
     }
-  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear]);
+  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, hasPlanMetrics, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear]);
 
   return (
     <div>
@@ -809,7 +846,7 @@ export default function FinancialTable({
                       {formatValue(row.year2024Value ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
                     {/* 빈 컬럼 (2024년 뒤) */}
-                    {monthsCollapsed && <td className="bg-white border-0" style={{ minWidth: '16px', maxWidth: '16px', padding: 0 }}></td>}
+                    {monthsCollapsed && !hasPlanMetrics && <td className="bg-white border-0" style={{ minWidth: '16px', maxWidth: '16px', padding: 0 }}></td>}
                   </>
                 )}
 
@@ -849,7 +886,29 @@ export default function FinancialTable({
                 })}
 
                 {/* CF: 합계 컬럼 (2025년) */}
-                {isCashFlow && (
+                {isCashFlow && hasPlanMetrics && (
+                  <>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
+                      {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
+                    </td>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planYoY) ? 'text-red-600' : ''}`}>
+                      {row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-'}
+                    </td>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(effectiveValues[12]) ? 'text-red-600' : ''}`}>
+                      {formatValue(effectiveValues[12], row.format, isMomRow, !row.isCalculated)}
+                    </td>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : ''}`}>
+                      {(row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined ? formatPercent((row.rollingYoY ?? effectiveValues[13] ?? null) as number, false, false, 0) : '-'}
+                    </td>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDelta) ? 'text-red-600' : ''}`}>
+                      {formatValue(row.planDelta ?? null, row.format, true, false)}
+                    </td>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDeltaRate) ? 'text-red-600' : ''}`}>
+                      {row.planDeltaRate !== null && row.planDeltaRate !== undefined ? formatPercent(row.planDeltaRate, false, false, 0) : '-'}
+                    </td>
+                  </>
+                )}
+                {isCashFlow && !hasPlanMetrics && (
                   <>
                     <td
                       className={`

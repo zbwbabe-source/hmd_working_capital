@@ -1,13 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
+import fs from 'fs';
 import { readWorkingCapitalStatementCSV } from '@/lib/csv';
 import { calculateWorkingCapitalStatementTable } from '@/lib/fs-mapping';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function resolveWcFile(year: number, mode: 'plan' | 'rolling'): string {
+  const candidates =
+    year === 2026
+      ? [
+          path.join(process.cwd(), '운전자본', `2026_wc_${mode}.csv`),
+          path.join(process.cwd(), '운전자본', '2026.csv'),
+        ]
+      : [
+          path.join(process.cwd(), '운전자본', `${year}_wc.csv`),
+          path.join(process.cwd(), '운전자본', `${year}.csv`),
+        ];
+  const hit = candidates.find((p) => fs.existsSync(p));
+  if (!hit) {
+    throw new Error(`운전자본 CSV 파일을 찾을 수 없습니다. year=${year}, mode=${mode}`);
+  }
+  return hit;
+}
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const yearParam = searchParams.get('year');
+    const modeParam = searchParams.get('mode');
     const year = yearParam ? parseInt(yearParam, 10) : 2025;
+    const mode: 'plan' | 'rolling' = modeParam === 'plan' ? 'plan' : 'rolling';
 
     if (![2025, 2026].includes(year)) {
       return NextResponse.json(
@@ -16,14 +40,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const filePath = path.join(process.cwd(), '운전자본', `${year}.csv`);
+    const filePath = resolveWcFile(year, mode);
     const data = await readWorkingCapitalStatementCSV(filePath, year);
 
     let previousYearTotals: Map<string, number> | undefined = undefined;
     const prevYear = year - 1;
 
     try {
-      const prevFilePath = path.join(process.cwd(), '운전자본', `${prevYear}.csv`);
+      const prevFilePath = resolveWcFile(prevYear, 'rolling');
       const prevData = await readWorkingCapitalStatementCSV(prevFilePath, prevYear);
 
       previousYearTotals = new Map<string, number>();
@@ -73,7 +97,7 @@ export async function GET(request: NextRequest) {
           }
           return values.length - 1;
         };
-        const path2023 = path.join(process.cwd(), '운전자본', '2023.csv');
+        const path2023 = resolveWcFile(2023, 'rolling');
         const data2023 = await readWorkingCapitalStatementCSV(path2023, 2023);
         year2023Totals = new Map<string, number>();
         const grouped2023 = new Map<string, typeof data2023>();
@@ -108,7 +132,7 @@ export async function GET(request: NextRequest) {
           }
           return values.length - 1;
         };
-        const path2024 = path.join(process.cwd(), '운전자본', '2024.csv');
+        const path2024 = resolveWcFile(2024, 'rolling');
         const data2024 = await readWorkingCapitalStatementCSV(path2024, 2024);
         twoYearsAgoTotals = new Map<string, number>();
         const grouped2024 = new Map<string, typeof data2024>();
@@ -137,6 +161,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       year,
+      mode,
       type: 'WORKING_CAPITAL_STATEMENT',
       rows: tableRows,
     });

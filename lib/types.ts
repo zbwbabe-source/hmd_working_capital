@@ -21,6 +21,11 @@ export interface TableRow {
   year2024Value?: number | null; // CF용 2024년 값
   year2023Value?: number | null; // 2025년 선택 시 2023년 합계/기말
   brandComparisons?: BrandComparisonData; // 브랜드별 비교 데이터 (FinancialTable 범용 지원용)
+  planValue?: number | null; // 2026년 계획값(합계/기말)
+  planYoY?: number | null; // 계획 YoY 비율 (계획/전년)
+  rollingYoY?: number | null; // Rolling YoY 비율 (Rolling/전년)
+  planDelta?: number | null; // 계획대비 증감 (Rolling-계획)
+  planDeltaRate?: number | null; // 계획대비 증감률 (Rolling/계획)
 }
 
 // 비교 데이터 (FinancialTable 범용 지원용)

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateCF } from '@/lib/fs-mapping';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const yearParam = searchParams.get('year');
+    const modeParam = searchParams.get('mode');
     const year = yearParam ? parseInt(yearParam, 10) : 2025;
+    const mode: 'plan' | 'rolling' = modeParam === 'plan' ? 'plan' : 'rolling';
 
     if (![2025, 2026].includes(year)) {
       return NextResponse.json(
@@ -15,10 +20,11 @@ export async function GET(request: NextRequest) {
     }
 
     // buildTree 기반 calculateCF 사용
-    const tableRows = await calculateCF(year);
+    const tableRows = await calculateCF(year, mode);
 
     return NextResponse.json({
       year,
+      mode,
       type: 'CF',
       rows: tableRows,
     });

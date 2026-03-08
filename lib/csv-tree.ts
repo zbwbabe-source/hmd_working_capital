@@ -51,8 +51,17 @@ export interface CSVRow {
 /**
  * CSV 파일 읽기
  */
-export async function readCashflowCSV(year: number): Promise<CSVRow[]> {
-  const filePath = `${process.cwd()}/cashflow/${year}.csv`;
+export async function readCashflowCSV(
+  year: number,
+  scenario: 'plan' | 'rolling' = 'rolling'
+): Promise<CSVRow[]> {
+  const fileName =
+    year === 2025
+      ? '2025_cf.csv'
+      : year === 2026
+      ? `2026_cf_${scenario}.csv`
+      : `${year}.csv`;
+  const filePath = `${process.cwd()}/cashflow/${fileName}`;
   
   if (!fs.existsSync(filePath)) {
     throw new Error(`CSV file not found: ${filePath}`);

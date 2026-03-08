@@ -26,11 +26,12 @@ export function getAccountValues(map: Map<string, number[]>, account: string): n
 import { readCashflowCSV, buildTree, flattenTree, TreeNode } from './csv-tree';
 
 export async function calculateCF(
-  year: number = 2025
+  year: number = 2025,
+  scenario: 'plan' | 'rolling' = 'rolling'
 ): Promise<TableRow[]> {
   // CSV 데이터 읽기
-  const rows2025 = await readCashflowCSV(2025);
-  const rows2026 = await readCashflowCSV(2026);
+  const rows2025 = await readCashflowCSV(2025, 'rolling');
+  const rows2026 = await readCashflowCSV(2026, scenario);
   
   // 트리 구조 생성
   const tree = buildTree(rows2025, rows2026);
