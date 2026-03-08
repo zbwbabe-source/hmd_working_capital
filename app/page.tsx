@@ -20,7 +20,7 @@ export default function Home() {
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('CF');
   const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
   const [wcYear, setWcYear] = useState<number>(2026);
-  const [salesYoYRate, setSalesYoYRate] = useState<number>(115);
+  const [salesYoYRate, setSalesYoYRate] = useState<number>(116);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
   const [wcStatementAllRowsCollapsed, setWcStatementAllRowsCollapsed] = useState<boolean>(true);
@@ -325,7 +325,7 @@ export default function Home() {
   const adjustedCfData = useMemo(() => {
     if (!cfData || wcYear !== 2026) return cfData;
 
-    const delta = (salesYoYRate - 115) / 100;
+    const delta = (salesYoYRate - 116) / 100;
     if (delta === 0) return cfData;
 
     const ACC_OPERATING = '\uC601\uC5C5\uD65C\uB3D9';
@@ -557,7 +557,7 @@ export default function Home() {
   const adjustedWcStatementData = useMemo(() => {
     if (!wcStatementData || wcYear !== 2026) return wcStatementData;
 
-    const delta = (salesYoYRate - 115) / 100;
+    const delta = (salesYoYRate - 116) / 100;
     if (delta === 0) return wcStatementData;
 
     const AR_SENSITIVITY = 1 - 0.2; // 매출 증감률의 80%만 매출채권에 반영
@@ -574,7 +574,7 @@ export default function Home() {
     const ACC_GOODS_PAYMENT = '물품대';
     const ACC_AP = '매입채무';
     const ACC_WC_TOTAL = '운전자본합계';
-    const ACC_MOM = '전월대비';
+    const ACC_MOM = '전년대비';
 
     const clonedRows: TableRow[] = wcStatementData.map((row) => ({
       ...row,
@@ -831,7 +831,7 @@ export default function Home() {
       }
 
       return rollingRows.map((row, index) => {
-        if (row.account === '전월대비') return row;
+        if (row.account === '전월대비' || row.account === '전년대비') return row;
         const planRow = planRows[index] ?? planMap.get(`${row.level}__${row.account}`);
         const prev = row.year2024Value;
         const rollingValue = row.values[12];

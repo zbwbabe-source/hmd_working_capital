@@ -776,7 +776,7 @@ export default function FinancialTable({
               // Balance Check 행 스타일링
               const isBalanceCheck = row.account === 'Balance Check';
               // 전월대비 행: +/- 표시
-              const isMomRow = row.account === '전월대비';
+              const isMomRow = row.account === '전월대비' || row.account === '전년대비';
               // 비용의 지역 그룹인지 체크 (원본 데이터에서 찾기)
               const originalIndex = allFlatRows.findIndex(r => r.account === row.account && r.level === row.level);
               const isCostRegion = originalIndex >= 0 ? isCostRegionGroup(row, allFlatRows, originalIndex) : false;

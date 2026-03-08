@@ -567,7 +567,7 @@ export function calculateWorkingCapitalStatementTable(
     momValues[12] = sumYear2024 != null ? sum기말 - sumYear2024 : null;
     momValues[13] = null; // YoY 컬럼 비움
     rows.splice(1, 0, {
-      account: '전월대비',
+      account: '전년대비',
       level: 0,
       isGroup: false,
       isCalculated: true,
