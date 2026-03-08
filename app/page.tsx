@@ -831,18 +831,22 @@ export default function Home() {
       }
 
       return rollingRows.map((row, index) => {
-        if (row.account === '전월대비' || row.account === '전년대비') return row;
+        const isYoYRow = row.account === '전월대비' || row.account === '전년대비';
         const planRow = planRows[index] ?? planMap.get(`${row.level}__${row.account}`);
         const prev = row.year2024Value;
         const rollingValue = row.values[12];
         const planValue = planRow?.values[12];
 
-        const planYoY = typeof planValue === 'number' && typeof prev === 'number' && prev !== 0
-          ? planValue / prev
-          : null;
-        const rollingYoY = typeof rollingValue === 'number' && typeof prev === 'number' && prev !== 0
-          ? rollingValue / prev
-          : null;
+        const planYoY = isYoYRow
+          ? null
+          : (typeof planValue === 'number' && typeof prev === 'number' && prev !== 0
+              ? planValue / prev
+              : null);
+        const rollingYoY = isYoYRow
+          ? null
+          : (typeof rollingValue === 'number' && typeof prev === 'number' && prev !== 0
+              ? rollingValue / prev
+              : null);
         const planDelta = typeof rollingValue === 'number' && typeof planValue === 'number'
           ? rollingValue - planValue
           : null;
