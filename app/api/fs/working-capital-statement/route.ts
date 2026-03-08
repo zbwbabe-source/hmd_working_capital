@@ -25,6 +25,25 @@ function resolveWcFile(year: number, mode: 'plan' | 'rolling'): string {
   return hit;
 }
 
+function resolveWcFileSafe(year: number, mode: 'plan' | 'rolling'): string {
+  const wcDir = path.join(process.cwd(), '\uC6B4\uC804\uC790\uBCF8');
+  const candidates =
+    year === 2026
+      ? [
+          path.join(wcDir, `2026_wc_${mode}.csv`),
+          path.join(wcDir, '2026.csv'),
+        ]
+      : [
+          path.join(wcDir, `${year}_wc.csv`),
+          path.join(wcDir, `${year}.csv`),
+        ];
+  const hit = candidates.find((p) => fs.existsSync(p));
+  if (!hit) {
+    throw new Error(`운전자본 CSV 파일을 찾을 수 없습니다. year=${year}, mode=${mode}`);
+  }
+  return hit;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -40,14 +59,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const filePath = resolveWcFile(year, mode);
+    const filePath = resolveWcFileSafe(year, mode);
     const data = await readWorkingCapitalStatementCSV(filePath, year);
 
     let previousYearTotals: Map<string, number> | undefined = undefined;
     const prevYear = year - 1;
 
     try {
-      const prevFilePath = resolveWcFile(prevYear, 'rolling');
+      const prevFilePath = resolveWcFileSafe(prevYear, 'rolling');
       const prevData = await readWorkingCapitalStatementCSV(prevFilePath, prevYear);
 
       previousYearTotals = new Map<string, number>();
@@ -97,7 +116,7 @@ export async function GET(request: NextRequest) {
           }
           return values.length - 1;
         };
-        const path2023 = resolveWcFile(2023, 'rolling');
+        const path2023 = resolveWcFileSafe(2023, 'rolling');
         const data2023 = await readWorkingCapitalStatementCSV(path2023, 2023);
         year2023Totals = new Map<string, number>();
         const grouped2023 = new Map<string, typeof data2023>();
@@ -132,7 +151,7 @@ export async function GET(request: NextRequest) {
           }
           return values.length - 1;
         };
-        const path2024 = resolveWcFile(2024, 'rolling');
+        const path2024 = resolveWcFileSafe(2024, 'rolling');
         const data2024 = await readWorkingCapitalStatementCSV(path2024, 2024);
         twoYearsAgoTotals = new Map<string, number>();
         const grouped2024 = new Map<string, typeof data2024>();
