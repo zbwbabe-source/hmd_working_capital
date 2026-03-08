@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Tabs from '@/components/Tabs';
 import YearTabs from '@/components/YearTabs';
 import FinancialTable from '@/components/FinancialTable';
@@ -22,6 +22,9 @@ export default function Home() {
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(116);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
+  const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(520);
+  const [isResizingAnalysis, setIsResizingAnalysis] = useState<boolean>(false);
+  const analysisResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
   const [wcStatementAllRowsCollapsed, setWcStatementAllRowsCollapsed] = useState<boolean>(true);
   const [cfData, setCfData] = useState<TableRow[] | null>(null);
@@ -47,6 +50,41 @@ export default function Home() {
 
   const tabs = ['홍콩법인 F/S'];
   const tabTypes: TabType[] = ['CF'];
+
+  const startAnalysisResize = (event: React.MouseEvent<HTMLDivElement>) => {
+    analysisResizeRef.current = { startX: event.clientX, startWidth: analysisPanelWidth };
+    setIsResizingAnalysis(true);
+    event.preventDefault();
+  };
+
+  useEffect(() => {
+    if (!isResizingAnalysis) return;
+
+    const onMouseMove = (event: MouseEvent) => {
+      if (!analysisResizeRef.current) return;
+      const { startX, startWidth } = analysisResizeRef.current;
+      const nextWidth = startWidth + (startX - event.clientX);
+      const clamped = Math.max(240, Math.min(Math.floor(window.innerWidth * 0.68), nextWidth));
+      setAnalysisPanelWidth(clamped);
+    };
+
+    const onMouseUp = () => {
+      setIsResizingAnalysis(false);
+      analysisResizeRef.current = null;
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingAnalysis, analysisPanelWidth]);
 
   // 데이터 로딩: 현금흐름표=CF 폴더, 운전자본표=운전자본 폴더
   const loadData = async (type: TabType, year?: number) => {
@@ -1237,7 +1275,7 @@ export default function Home() {
             {(cfDataForView || wcStatementDataForView) && !loading && effectiveView === 'CF' && (
               <div className="px-6 pt-6 pb-6">
                 {workingCapitalMonthsCollapsed ? (
-                  <div className="flex gap-6 items-start">
+                  <div className="flex items-start">
                     <div className="flex-1 flex-shrink-0" style={{ minWidth: 0 }}>
                       {cfDataForView && (
                         <>
@@ -1295,7 +1333,15 @@ export default function Home() {
                         </div>
                       )}
                     </div>
-                    <aside className="flex-1 rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]" style={{ minWidth: '500px' }}>
+                    <div
+                      className="hidden md:block mx-3 w-1.5 rounded cursor-col-resize bg-gray-300 hover:bg-blue-400 transition-colors"
+                      style={{ height: 'calc(100vh - 220px)' }}
+                      onMouseDown={startAnalysisResize}
+                    />
+                    <aside
+                      className="rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0"
+                      style={{ width: `${analysisPanelWidth}px`, minWidth: '240px' }}
+                    >
                       <EditableAnalysis
                         year={wcYear}
                         disabled={false}
