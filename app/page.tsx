@@ -231,6 +231,12 @@ export default function Home() {
     try {
       const response = await fetch('/api/remarks?type=wc');
       const result = await response.json();
+
+      if (response.ok) {
+        const remarksMap = new Map<string, string>(Object.entries(result.remarks ?? {}));
+        setWcRemarks(remarksMap);
+        return;
+      }
       
       if (response.ok && result.remarks) {
         const remarksMap = new Map<string, string>(Object.entries(result.remarks));
@@ -1258,7 +1264,7 @@ export default function Home() {
                       allRowsCollapsed={wcStatementAllRowsCollapsed}
                       onAllRowsToggle={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                       showRemarks={true}
-                      remarks={dynamicWcRemarks}
+                      remarks={wcRemarks}
                       onRemarkChange={saveWCRemark}
                     />
                   </div>
@@ -1327,7 +1333,7 @@ export default function Home() {
                             allRowsCollapsed={wcStatementAllRowsCollapsed}
                             onAllRowsToggle={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                             showRemarks={true}
-                            remarks={dynamicWcRemarks}
+                            remarks={wcRemarks}
                             onRemarkChange={saveWCRemark}
                           />
                         </div>
@@ -1407,7 +1413,7 @@ export default function Home() {
                           allRowsCollapsed={wcStatementAllRowsCollapsed}
                           onAllRowsToggle={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                           showRemarks={true}
-                          remarks={dynamicWcRemarks}
+                          remarks={wcRemarks}
                           onRemarkChange={saveWCRemark}
                         />
                       </div>
