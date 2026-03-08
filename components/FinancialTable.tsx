@@ -447,6 +447,7 @@ export default function FinancialTable({
       const prevYearShort = String((currentYear ?? 2025) - 1).slice(-2);
       const useBaseLabel = /\uAE30\uB9D0/.test(yearColumnFromProps ?? '');
       const valueLabel = useBaseLabel ? '\uAE30\uB9D0' : '\uD569\uACC4';
+      const rollingLabel = currentYear === 2026 ? '\uB864\uB9C1' : valueLabel;
 
       if (hasPlanMetrics) {
         if (monthsCollapsed) {
@@ -455,7 +456,7 @@ export default function FinancialTable({
             `${prevYearShort}\uB144 ${valueLabel}`,
             `${currentYearShort}\uB144 \uACC4\uD68D`,
             'YoY',
-            `${currentYearShort}\uB144 ${valueLabel}`,
+            `${currentYearShort}\uB144 ${rollingLabel}`,
             'YoY',
             '\uACC4\uD68D\uB300\uBE44',
             '\uACC4\uD68D\uB300\uBE44%',
@@ -469,7 +470,7 @@ export default function FinancialTable({
           `${currentYearShort}\uB144 \uACC4\uD68D`,
           'YoY',
           ...monthCols,
-          `${currentYearShort}\uB144 ${valueLabel}`,
+          `${currentYearShort}\uB144 ${rollingLabel}`,
           'YoY',
           '\uACC4\uD68D\uB300\uBE44',
           '\uACC4\uD68D\uB300\uBE44%',
