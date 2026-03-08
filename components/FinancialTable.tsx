@@ -701,6 +701,7 @@ export default function FinancialTable({
                 
                 const isComparisonCol = showComparisons && comparisonColumns.includes(col);
                 const isBrandCol = showBrandBreakdown && brands.includes(col);
+                const isYoYHeader = col === 'YoY' || col.startsWith('YoY');
                 
                 // CF: 기준월 개념 없음 (모든 월 동일하게 표시)
                 const isMonthCol = col.includes('월') && !col.includes('합계');
@@ -734,7 +735,7 @@ export default function FinancialTable({
                     key={index}
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
-                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : 'min-w-[100px] px-4'}
+                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : isYoYHeader ? 'min-w-[72px] px-2' : 'min-w-[100px] px-4'}
                       ${is26년1월Header ? 'bg-blue-600' : ''}
                       ${!is26년1월Header && isNonBaseMonthCol ? 'bg-gray-600' : ''}
                       ${!is26년1월Header && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
@@ -872,7 +873,7 @@ export default function FinancialTable({
                         <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
                         </td>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
+                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
                           {isNetCashStrict
                             ? netCashPlanYoYLabel
                             : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
@@ -927,7 +928,7 @@ export default function FinancialTable({
                         <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
                         </td>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
+                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
                           {isNetCashStrict
                             ? netCashPlanYoYLabel
                             : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
@@ -937,7 +938,7 @@ export default function FinancialTable({
                     <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(effectiveValues[12]) ? 'text-red-600' : ''}`}>
                       {formatValue(effectiveValues[12], row.format, isMomRow, !row.isCalculated)}
                     </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
+                    <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
                       {isNetCashStrict
                         ? netCashRollingYoYLabel
                         : ((row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined
@@ -967,7 +968,8 @@ export default function FinancialTable({
                     {/* CF: YoY 컬럼 (25년 - 24년) */}
                     <td
                       className={`
-                        border border-gray-300 px-4 py-2 text-right
+                        border border-gray-300 px-2 py-2 text-right
+                        ${isNetCashStrict ? 'text-xs' : ''}
                         ${getHighlightClass(row.isHighlight)}
                         ${row.isBold ? 'font-semibold' : ''}
                         ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(effectiveValues[13]) ? 'text-red-600' : '')}
