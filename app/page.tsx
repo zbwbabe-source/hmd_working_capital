@@ -17,8 +17,8 @@ import { formatNumber, formatMillionYuan } from '@/lib/utils';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('CF');
-  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
+  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('BS');
+  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(116);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
@@ -34,12 +34,14 @@ export default function Home() {
   
   // B/S 상태
   const [bsFinancialData, setBsFinancialData] = useState<TableRow[] | null>(null);
+  const [bsPlanData, setBsPlanData] = useState<TableRow[] | null>(null);
   const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(true);
   const [bsFinancialCollapsed, setBsFinancialCollapsed] = useState<boolean>(true);
   const [bsRemarks, setBsRemarks] = useState<Map<string, string>>(new Map());
   
   // 운전자본표 비고
   const [wcRemarks, setWcRemarks] = useState<Map<string, string>>(new Map());
+  const [cfRemarks, setCfRemarks] = useState<Map<string, string>>(new Map());
   
   // PL remarks skip 로그용 (한 번만 출력)
   const [plRemarksSkipLogged, setPlRemarksSkipLogged] = useState<boolean>(false);
@@ -147,7 +149,7 @@ export default function Home() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/fs/bs?year=${year}`);
+      const response = await fetch(`/api/fs/bs?year=${year}&mode=rolling`);
       const result = await response.json();
 
       if (!response.ok) {
@@ -156,6 +158,17 @@ export default function Home() {
       }
 
       setBsFinancialData(result.financialPosition);
+      if (year === 2026) {
+        const planResponse = await fetch(`/api/fs/bs?year=${year}&mode=plan`, { cache: 'no-store' });
+        const planResult = await planResponse.json();
+        if (planResponse.ok) {
+          setBsPlanData(planResult.financialPosition);
+        } else {
+          setBsPlanData(null);
+        }
+      } else {
+        setBsPlanData(null);
+      }
       
       // 비고 데이터 로드
       await loadBSRemarks();
@@ -218,6 +231,50 @@ export default function Home() {
   };
 
   // 운전자본표 비고 로드
+  const loadCFRemarks = async () => {
+    if (effectiveView === 'PL') {
+      if (!plRemarksSkipLogged) {
+        console.log('remarks skipped (PL)');
+        setPlRemarksSkipLogged(true);
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/remarks?type=cf');
+      const result = await response.json();
+
+      if (response.ok) {
+        const remarksMap = new Map<string, string>(Object.entries(result.remarks ?? {}));
+        setCfRemarks(remarksMap);
+      }
+    } catch (err) {
+      console.error('CF remarks load error:', err);
+    }
+  };
+
+  const saveCFRemark = async (account: string, remark: string) => {
+    if (effectiveView === 'PL') {
+      return;
+    }
+
+    try {
+      await fetch('/api/remarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account, remark, type: 'cf' }),
+      });
+
+      setCfRemarks(prev => {
+        const newMap = new Map(prev);
+        newMap.set(account, remark);
+        return newMap;
+      });
+    } catch (err) {
+      console.error('CF remarks save error:', err);
+    }
+  };
+
   const loadWCRemarks = async () => {
     // P/L 뷰에서는 비활성화
     if (effectiveView === 'PL') {
@@ -302,6 +359,9 @@ export default function Home() {
     if (activeTab === 0) {
       if (effectiveView === 'CF') {
       if (!cfData) loadData('CF', wcYear);
+        if (cfRemarks.size === 0) {
+          loadCFRemarks();
+        }
         if (!wcStatementData) {
           loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
             loadWCRemarks();
@@ -328,6 +388,7 @@ export default function Home() {
     if (activeTab === 0) {
       if (effectiveView === 'CF') {
       loadData('CF', wcYear);
+        loadCFRemarks();
         loadData('WORKING_CAPITAL_STATEMENT', wcYear).then(() => {
           loadWCRemarks();
         });
@@ -865,7 +926,11 @@ export default function Home() {
   const wcStatementDataForView = adjustedWcStatementData ?? wcStatementData;
 
   const withPlanMetrics = useMemo(() => {
-    const attach = (rollingRows: TableRow[] | null, planRows: TableRow[] | null): TableRow[] | null => {
+    const attach = (
+      rollingRows: TableRow[] | null,
+      planRows: TableRow[] | null,
+      config?: { previousValueIndex?: number; targetValueIndex?: number }
+    ): TableRow[] | null => {
       if (!rollingRows) return null;
       if (wcYear !== 2026 || !planRows) return rollingRows;
 
@@ -874,12 +939,19 @@ export default function Home() {
         planMap.set(`${row.level}__${row.account}`, row);
       }
 
+      const previousValueIndex = config?.previousValueIndex ?? null;
+      const targetValueIndex = config?.targetValueIndex ?? 12;
+
       return rollingRows.map((row, index) => {
         const isYoYRow = row.account === '전월대비' || row.account === '전년대비';
         const planRow = planRows[index] ?? planMap.get(`${row.level}__${row.account}`);
-        const prev = row.year2024Value;
-        const rollingValue = row.values[12];
-        const planValue = planRow?.values[12];
+        const prev =
+          row.year2024Value ??
+          (typeof previousValueIndex === 'number' && typeof row.values[previousValueIndex] === 'number'
+            ? row.values[previousValueIndex]
+            : null);
+        const rollingValue = row.values[targetValueIndex];
+        const planValue = planRow?.values[targetValueIndex];
 
         const planYoY = isYoYRow
           ? null
@@ -900,7 +972,9 @@ export default function Home() {
 
         return {
           ...row,
+          year2024Value: typeof prev === 'number' ? prev : row.year2024Value ?? null,
           planValue: typeof planValue === 'number' ? planValue : null,
+          rollingValue: typeof rollingValue === 'number' ? rollingValue : null,
           planYoY,
           rollingYoY,
           planDelta,
@@ -912,8 +986,9 @@ export default function Home() {
     return {
       cf: attach(cfDataForView, cfPlanData),
       wc: attach(wcStatementDataForView, wcStatementPlanData),
+      bs: attach(bsFinancialData, bsPlanData, { previousValueIndex: 1, targetValueIndex: 13 }),
     };
-  }, [cfDataForView, cfPlanData, wcStatementDataForView, wcStatementPlanData, wcYear]);
+  }, [cfDataForView, cfPlanData, wcStatementDataForView, wcStatementPlanData, bsFinancialData, bsPlanData, wcYear]);
 
   const dynamicWcRemarks = useMemo(() => {
     const remarksMap = new Map<string, string>(wcRemarks);
@@ -1221,14 +1296,10 @@ export default function Home() {
                       </button>
                     </div>
                     <FinancialTable 
-                      data={bsFinancialData}
-                      columns={
-                        bsMonthsCollapsed 
-                          ? ['계정과목', '24년말', '25년말', '26년1월(실적)', '26년기말(e)', 'YoY(증감)', '비고']
-                          : [...monthColumns, 'YoY(증감)', '비고']
-                      }
-                      showTotal={false}
-                      isBalanceSheet={true}
+                      data={withPlanMetrics.bs ?? bsFinancialData}
+                      columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']}
+                      showTotal
+                      isCashFlow={true}
                       monthsCollapsed={bsMonthsCollapsed}
                       onMonthsToggle={() => setBsMonthsCollapsed(!bsMonthsCollapsed)}
                       currentYear={wcYear}
@@ -1306,6 +1377,9 @@ export default function Home() {
                             allRowsCollapsed={wcAllRowsCollapsed}
                             onAllRowsToggle={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
                             defaultExpandedAccounts={['영업활동']}
+                            showRemarks={true}
+                            remarks={cfRemarks}
+                            onRemarkChange={saveCFRemark}
                           />
                         </>
                       )}
@@ -1386,6 +1460,9 @@ export default function Home() {
                           allRowsCollapsed={wcAllRowsCollapsed}
                           onAllRowsToggle={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
                           defaultExpandedAccounts={['영업활동']}
+                          showRemarks={true}
+                          remarks={cfRemarks}
+                          onRemarkChange={saveCFRemark}
                         />
                       </>
                     )}

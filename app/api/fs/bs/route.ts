@@ -5,7 +5,9 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const yearParam = searchParams.get('year');
+    const modeParam = searchParams.get('mode');
     const year = yearParam ? parseInt(yearParam, 10) : 2026;
+    const mode = modeParam === 'plan' ? 'plan' : 'rolling';
 
     if (![2025, 2026].includes(year)) {
       return NextResponse.json(
@@ -15,10 +17,11 @@ export async function GET(request: NextRequest) {
     }
 
     // B/S 데이터 로드
-    const { financialPosition, workingCapital } = await readBSCSV(year);
+    const { financialPosition, workingCapital } = await readBSCSV(year, mode);
 
     return NextResponse.json({
       year,
+      mode,
       type: 'BS',
       financialPosition,
       workingCapital,

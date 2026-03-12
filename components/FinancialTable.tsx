@@ -447,19 +447,19 @@ export default function FinancialTable({
       const prevYearShort = String((currentYear ?? 2025) - 1).slice(-2);
       const useBaseLabel = /\uAE30\uB9D0/.test(yearColumnFromProps ?? '');
       const valueLabel = useBaseLabel ? '\uAE30\uB9D0' : '\uD569\uACC4';
-      const rollingLabel = currentYear === 2026 ? '\uB864\uB9C1' : valueLabel;
+      const rollingLabel = currentYear === 2026 ? '\uC608\uC0C1' : valueLabel;
 
       if (hasPlanMetrics) {
         if (monthsCollapsed) {
           return [
             ...accountCol,
             `${prevYearShort}\uB144 ${valueLabel}`,
-            `${currentYearShort}\uB144 \uACC4\uD68D`,
+            `${currentYearShort}\uB144 \uC804\uC6D4\uACC4\uD68D`,
             'YoY',
             `${currentYearShort}\uB144 ${rollingLabel}`,
             'YoY',
-            '\uACC4\uD68D\uB300\uBE44',
-            '\uACC4\uD68D\uB300\uBE44%',
+            '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44',
+            '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44%',
           ];
         }
 
@@ -467,13 +467,13 @@ export default function FinancialTable({
         return [
           ...accountCol,
           `${prevYearShort}\uB144 ${valueLabel}`,
-          `${currentYearShort}\uB144 \uACC4\uD68D`,
+          `${currentYearShort}\uB144 \uC804\uC6D4\uACC4\uD68D`,
           'YoY',
           ...monthCols,
           `${currentYearShort}\uB144 ${rollingLabel}`,
           'YoY',
-          '\uACC4\uD68D\uB300\uBE44',
-          '\uACC4\uD68D\uB300\uBE44%',
+          '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44',
+          '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44%',
         ];
       }
       if (monthsCollapsed) {
@@ -498,7 +498,7 @@ export default function FinancialTable({
       }
     } else if (isBalanceSheet && !showComparisons) {
       // B/S 전용: 24년말, 25년말, 2601~2612
-      // 접힌 상태: ['계정과목', '24년말', '25년말', '26년1월', '26년기말', 'YoY', '비고']
+      // 접힌 상태: ['계정과목', '24년말', '25년말', '26년2월', '26년기말', 'YoY', '비고']
       // 펼친 상태: ['계정과목', '24년말', '25년말', '1월'~'12월', 'YoY', '비고']
       if (monthsCollapsed) {
         // 접힌 상태: 이미 올바른 컬럼들이 전달됨
@@ -728,19 +728,29 @@ export default function FinancialTable({
                   return undefined;
                 };
                 
-                // B/S 26년1월(실적) 강조
-                const is26년1월Header = isBalanceSheet && col.startsWith('26년1월');
+                // B/S 26년2월(실적) 강조
+                const is26년2월Header = isBalanceSheet && col.startsWith('26년2월');
                 
+                const headerLabel =
+                  /^\d{2}년 전월계획$/.test(col) ? col.replace('년 ', '년\n') : col;
+                const isPrevPlanHeader = isCashFlow && col.includes('전월계획');
+                const isPrevPlanYoYHeader =
+                  isCashFlow &&
+                  col === 'YoY' &&
+                  (displayColumns[index - 1]?.includes('전월계획') ?? false);
+                const isMutedHeader = isPrevPlanHeader || isPrevPlanYoYHeader;
+
                 return (
                   <th
                     key={index}
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
                       ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : isYoYHeader ? 'min-w-[72px] px-2' : 'min-w-[100px] px-4'}
-                      ${is26년1월Header ? 'bg-blue-600' : ''}
-                      ${!is26년1월Header && isNonBaseMonthCol ? 'bg-gray-600' : ''}
-                      ${!is26년1월Header && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
-                      ${!is26년1월Header && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
+                      ${!isMutedHeader && is26년2월Header ? 'bg-blue-600' : ''}
+                      ${!isMutedHeader && !is26년2월Header && isNonBaseMonthCol ? 'bg-gray-600' : ''}
+                      ${!isMutedHeader && !is26년2월Header && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
+                      ${!isMutedHeader && !is26년2월Header && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
+                      ${isMutedHeader ? 'bg-gray-800' : ''}
                       ${isBrandCol ? 'bg-gray-700' : ''}
                       ${(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) ? 'cursor-pointer hover:bg-gray-700' : ''}
                     `}
@@ -751,8 +761,8 @@ export default function FinancialTable({
                       if (isAnnualGroupHeader) setBrandAnnualCollapsed(!brandAnnualCollapsed);
                     }}
                   >
-                    <div className="flex items-center justify-center gap-1">
-                    {col}
+                    <div className="flex items-center justify-center gap-1 whitespace-pre-line leading-tight">
+                    {headerLabel}
                       {(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) && (
                         <span className="text-xs">
                           {((isMonthGroupHeader && brandMonthCollapsed) || 
@@ -792,8 +802,9 @@ export default function FinancialTable({
               const isNetCashStrict =
                 isCashFlow &&
                 (/netcash/i.test(normalizedAccount) || /\uC21C\uD604\uAE08\uD750\uB984/.test(normalizedAccount));
+              const rollingDisplayValue = row.rollingValue ?? effectiveValues[12];
               const netCashPlanYoYLabel = isNetCashStrict ? formatNetCashYoY(row.planValue ?? null, row.year2024Value ?? null) : '';
-              const netCashRollingYoYLabel = isNetCashStrict ? formatNetCashYoY(effectiveValues[12] ?? null, row.year2024Value ?? null) : '';
+              const netCashRollingYoYLabel = isNetCashStrict ? formatNetCashYoY(rollingDisplayValue ?? null, row.year2024Value ?? null) : '';
               
               return (
               <tr
@@ -936,8 +947,8 @@ export default function FinancialTable({
                         </td>
                       </>
                     )}
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(effectiveValues[12]) ? 'text-red-600' : ''}`}>
-                      {formatValue(effectiveValues[12], row.format, isMomRow, !row.isCalculated)}
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(rollingDisplayValue) ? 'text-red-600' : ''}`}>
+                      {formatValue(rollingDisplayValue ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
                     <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
                       {isNetCashStrict
@@ -995,8 +1006,8 @@ export default function FinancialTable({
                         valueIndex = 0;
                       } else if (col === '25년말') {
                         valueIndex = 1;
-                      } else if (col.startsWith('26년1월')) {
-                        valueIndex = 2; // 2601 = values[2]
+                      } else if (col.startsWith('26년2월')) {
+                        valueIndex = 3; // 2602 = values[3]
                       } else if (col === '26년기말' || col === '26년기말(e)') {
                         valueIndex = 13; // 2612 = values[13]
                       } else if (col === 'YoY' || col === 'YoY(증감)') {
@@ -1014,7 +1025,7 @@ export default function FinancialTable({
                       
                       const value = row.values[valueIndex];
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
-                      const is26년1월 = col.startsWith('26년1월'); // 당월 강조
+                      const is26년2월 = col.startsWith('26년2월'); // 당월 강조
                       
                       // Balance Check일 때 각 셀별로 체크 (YoY 제외)
                       const isCellOk = isBalanceCheck && !isYoYCol && (value === null || Math.abs(value) < 1000);
@@ -1025,7 +1036,7 @@ export default function FinancialTable({
                           key={`bs-col-${colIndex}`}
                           className={`
                             border border-gray-300 px-4 py-2 text-right
-                            ${is26년1월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
+                            ${is26년2월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
                             ${row.isBold ? 'font-semibold' : ''}
                             ${isNegative(value) && !showCheckMark ? 'text-red-600' : ''}
                           `}

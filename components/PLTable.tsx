@@ -89,6 +89,8 @@ export default function PLTable({
   onToggleNode,
   expandedNodes,
 }: PLTableProps) {
+  const baseWindowLabel = baseMonthIndex <= 1 ? '1월 YTD' : `1~${baseMonthIndex}월 YTD`;
+
   // 트리를 플랫하게 펼치기
   const flattenTree = (nodes: Node[], parentExpanded: boolean = true): Array<Node & { depth: number }> => {
     if (!nodes || nodes.length === 0) return [];
@@ -167,12 +169,12 @@ export default function PLTable({
               </th>
             ))}
 
-            {/* 전년(기준월) / 당년(기준월) - 항상 표시 */}
+            {/* 전년/당년 기준 비교: 1~기준월 YTD */}
             <th className="border-l-2 border-l-blue-900 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
-              전년({baseMonthIndex}월)
+              전년({baseWindowLabel})
             </th>
             <th className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
-              당년({baseMonthIndex}월) ▶
+              당년({baseWindowLabel}) ▶
             </th>
 
             {/* YTD (showYTD일 때만) */}
@@ -247,8 +249,10 @@ export default function PLTable({
             const prevMonths = getPrevMonths();
             const currMonths = getCurrMonths();
 
-            // 기준월 계산
+            // 기준 비교 계산 (금액행: 1~기준월 YTD, 비율행: 기준월 단월 유지)
             const baseMonthResult = calcCols(baseMonthIndex, prevMonths, currMonths, isRate);
+            const basePrevValue = isRate ? baseMonthResult.prevMonth : baseMonthResult.prevYTD;
+            const baseCurrValue = isRate ? baseMonthResult.currMonth : baseMonthResult.currYTD;
 
             // YTD 계산
             let ytdResult = null;
@@ -304,19 +308,19 @@ export default function PLTable({
                   );
                 })}
 
-                {/* 전년(기준월) */}
+                {/* 전년(기준) */}
                 <td className="border-l-2 border-l-blue-400 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
                   <div className="font-semibold">
-                    {isRate ? formatPercent(baseMonthResult.prevMonth) : formatNumber(baseMonthResult.prevMonth)}
+                    {isRate ? formatPercent(basePrevValue) : formatNumber(basePrevValue)}
                   </div>
                 </td>
 
-                {/* 당년(기준월) */}
+                {/* 당년(기준) */}
                 <td className="border border-gray-200 px-2 py-2 text-right">
                   <div className="font-semibold">
-                    {isRate ? formatPercent(baseMonthResult.currMonth) : formatNumber(baseMonthResult.currMonth)}
+                    {isRate ? formatPercent(baseCurrValue) : formatNumber(baseCurrValue)}
                   </div>
-                  {formatChange(baseMonthResult.currMonth, baseMonthResult.prevMonth, isRate)}
+                  {formatChange(baseCurrValue, basePrevValue, isRate)}
                 </td>
 
                 {/* YTD (showYTD일 때만) */}

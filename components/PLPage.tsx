@@ -11,7 +11,7 @@ type Brand = 'Total' | 'MLB' | 'Discovery' | 'KIDS' | 'DUVETICA' | 'SUPRA';
 export default function PLPage() {
   // 상태 관리
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
-  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(1); // 기본 1월
+  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(2); // 기본 2월 (1~2월 YTD)
   const [selectedBrand, setSelectedBrand] = useState<Brand>('Total');
   
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);

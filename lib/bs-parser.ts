@@ -23,13 +23,34 @@ function parseAmount(value: any): number {
 /**
  * B/S CSV 파일을 읽어서 Financial Position 데이터 반환
  */
-export async function readBSCSV(year: number = 2026): Promise<{
+function resolveBSFilePath(year: number, mode: 'rolling' | 'plan'): string {
+  const base = `${process.cwd()}/BS`;
+  const yearPrefix = String(year).slice(-2);
+  const candidates =
+    mode === 'plan'
+      ? [
+          `${base}/${yearPrefix}02BS_plan.csv`,
+          `${base}/${yearPrefix}02BS_Plan.csv`,
+        ]
+      : [
+          `${base}/${yearPrefix}02BS_rolling.csv`,
+          `${base}/${yearPrefix}02BS_rolliing.csv`,
+          `${base}/${yearPrefix}02BS.csv`,
+        ];
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  throw new Error(`B/S CSV 파일을 찾을 수 없습니다 (${mode}): ${candidates.join(', ')}`);
+}
+
+export async function readBSCSV(year: number = 2026, mode: 'rolling' | 'plan' = 'rolling'): Promise<{
   financialPosition: TableRow[];
   workingCapital: TableRow[];
 }> {
-  // 파일명 형식: 2601BS.csv (26년 01월)
-  const yearPrefix = String(year).slice(-2); // 2026 -> 26
-  const bsFilePath = `${process.cwd()}/BS/${yearPrefix}01BS.csv`;
+  // 파일명 형식: 2602BS_plan / 2602BS_rolling
+  const bsFilePath = resolveBSFilePath(year, mode);
   const wcFilePath = `${process.cwd()}/BS/${year}01_bs_WC.csv`;
   
   if (!fs.existsSync(bsFilePath)) {
