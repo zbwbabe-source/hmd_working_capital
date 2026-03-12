@@ -758,10 +758,11 @@ export default function FinancialTable({
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
                       ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : isYoYHeader ? 'min-w-[72px] px-2' : 'min-w-[100px] px-4'}
-                      ${!isMutedHeader && is26년2월Header ? 'bg-blue-600' : ''}
-                      ${!isMutedHeader && !is26년2월Header && isNonBaseMonthCol ? 'bg-gray-600' : ''}
-                      ${!isMutedHeader && !is26년2월Header && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
-                      ${!isMutedHeader && !is26년2월Header && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
+                      ${!isMutedHeader && is26년2월Header ? 'bg-blue-500' : ''}
+                      ${!isMutedHeader && !is26년2월Header && isYoYHeader ? 'bg-gray-500' : ''}
+                      ${!isMutedHeader && !is26년2월Header && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
+                      ${!isMutedHeader && !is26년2월Header && !isYoYHeader && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
+                      ${!isMutedHeader && !is26년2월Header && !isYoYHeader && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
                       ${isMutedHeader ? 'bg-gray-800' : ''}
                       ${isBrandCol ? 'bg-gray-700' : ''}
                       ${(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) ? 'cursor-pointer hover:bg-gray-700' : ''}
