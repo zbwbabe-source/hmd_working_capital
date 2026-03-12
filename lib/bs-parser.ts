@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import Papa from 'papaparse';
 import iconv from 'iconv-lite';
 import { TableRow } from './types';
@@ -23,20 +24,20 @@ function parseAmount(value: any): number {
 /**
  * B/S CSV 파일을 읽어서 Financial Position 데이터 반환
  */
+function getBSBaseDirs(): string[] {
+  const roots = [process.cwd(), path.join(process.cwd(), 'cashflow')];
+  return roots
+    .map((root) => path.join(root, 'BS'))
+    .filter((dir, index, all) => all.indexOf(dir) === index);
+}
+
 function resolveBSFilePath(year: number, mode: 'rolling' | 'plan'): string {
-  const base = `${process.cwd()}/BS`;
   const yearPrefix = String(year).slice(-2);
-  const candidates =
+  const fileNames =
     mode === 'plan'
-      ? [
-          `${base}/${yearPrefix}02BS_plan.csv`,
-          `${base}/${yearPrefix}02BS_Plan.csv`,
-        ]
-      : [
-          `${base}/${yearPrefix}02BS_rolling.csv`,
-          `${base}/${yearPrefix}02BS_rolliing.csv`,
-          `${base}/${yearPrefix}02BS.csv`,
-        ];
+      ? [`${yearPrefix}02BS_plan.csv`, `${yearPrefix}02BS_Plan.csv`]
+      : [`${yearPrefix}02BS_rolling.csv`, `${yearPrefix}02BS_rolliing.csv`, `${yearPrefix}02BS.csv`];
+  const candidates = getBSBaseDirs().flatMap((base) => fileNames.map((fileName) => path.join(base, fileName)));
 
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
@@ -51,7 +52,10 @@ export async function readBSCSV(year: number = 2026, mode: 'rolling' | 'plan' = 
 }> {
   // 파일명 형식: 2602BS_plan / 2602BS_rolling
   const bsFilePath = resolveBSFilePath(year, mode);
-  const wcFilePath = `${process.cwd()}/BS/${year}01_bs_WC.csv`;
+  const wcFilePath =
+    getBSBaseDirs()
+      .map((base) => path.join(base, `${year}01_bs_WC.csv`))
+      .find((candidate) => fs.existsSync(candidate)) ?? path.join(getBSBaseDirs()[0], `${year}01_bs_WC.csv`);
   
   if (!fs.existsSync(bsFilePath)) {
     throw new Error(`B/S CSV 파일을 찾을 수 없습니다: ${bsFilePath}`);
