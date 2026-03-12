@@ -481,6 +481,7 @@ export default function FinancialTable({
         if (!shouldShowPlanMetrics && currentYear === 2026) {
           return [
             ...accountCol,
+            `24년(${valueLabel})`,
             prevYearHeader,
             `${currentYearShort}년(2월)`,
             `${currentYearShort}년 ${rollingLabel}`,
@@ -499,6 +500,7 @@ export default function FinancialTable({
         const monthCols = columns.slice(1, 13); // 1월~12월
         return [
           ...accountCol,
+          ...(currentYear === 2026 ? [`24년(${valueLabel})`] : []),
           ...(show2023 ? [year2023Header] : []),
           prevYearHeader,
           ...monthCols,
@@ -883,16 +885,41 @@ export default function FinancialTable({
                         {formatValue(row.year2023Value ?? null, row.format, isMomRow, !row.isCalculated)}
                       </td>
                     )}
-                    <td
-                      className={`
-                        border border-gray-300 px-4 py-2 text-right
-                        ${getHighlightClass(row.isHighlight)}
-                        ${row.isBold ? 'font-semibold' : ''}
-                        ${isNegative(row.year2024Value ?? null) ? 'text-red-600' : ''}
-                      `}
-                    >
-                      {formatValue(row.year2024Value ?? null, row.format, isMomRow, !row.isCalculated)}
-                    </td>
+                    {currentYear === 2026 ? (
+                      <>
+                        <td
+                          className={`
+                            border border-gray-300 px-4 py-2 text-right
+                            ${getHighlightClass(row.isHighlight)}
+                            ${row.isBold ? 'font-semibold' : ''}
+                            ${isNegative(effectiveValues[0] ?? null) ? 'text-red-600' : ''}
+                          `}
+                        >
+                          {formatValue(effectiveValues[0] ?? null, row.format, isMomRow, !row.isCalculated)}
+                        </td>
+                        <td
+                          className={`
+                            border border-gray-300 px-4 py-2 text-right
+                            ${getHighlightClass(row.isHighlight)}
+                            ${row.isBold ? 'font-semibold' : ''}
+                            ${isNegative(effectiveValues[1] ?? null) ? 'text-red-600' : ''}
+                          `}
+                        >
+                          {formatValue(effectiveValues[1] ?? null, row.format, isMomRow, !row.isCalculated)}
+                        </td>
+                      </>
+                    ) : (
+                      <td
+                        className={`
+                          border border-gray-300 px-4 py-2 text-right
+                          ${getHighlightClass(row.isHighlight)}
+                          ${row.isBold ? 'font-semibold' : ''}
+                          ${isNegative(row.year2024Value ?? null) ? 'text-red-600' : ''}
+                        `}
+                      >
+                        {formatValue(row.year2024Value ?? null, row.format, isMomRow, !row.isCalculated)}
+                      </td>
+                    )}
                     {!monthsCollapsed && shouldShowPlanMetrics && (
                       <>
                         <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
@@ -928,7 +955,11 @@ export default function FinancialTable({
                 {/* 월별 값 (토글에 따라 표시/숨김) */}
                 {!monthsCollapsed && effectiveValues.map((value, colIndex) => {
                   // CF: 합계 컬럼(index 12)과 YoY(index 13)는 여기서 제외 (나중에 따로 렌더링)
-                  if (isCashFlow && colIndex >= 12) {
+                  if (isCashFlow && currentYear === 2026 && !shouldShowPlanMetrics) {
+                    if (colIndex < 2 || colIndex >= 14) {
+                      return null;
+                    }
+                  } else if (isCashFlow && colIndex >= 12) {
                     return null;
                   }
                   // 2026년 재무상태표: 1~6월만 표시 (index 0~5)
