@@ -23,7 +23,7 @@ export default function PLPage() {
   const [baseMonthIndex, setBaseMonthIndex] = useState<number>(2);
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
   const [showMonthly, setShowMonthly] = useState<boolean>(false);
-  const [showYTD, setShowYTD] = useState<boolean>(false);
+  const [showYTD, setShowYTD] = useState<boolean>(true);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [trees2025, setTrees2025] = useState<TreeMap>(EMPTY_TREE_MAP);
   const [trees2026, setTrees2026] = useState<TreeMap>(EMPTY_TREE_MAP);
