@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Node } from '@/PL/src/pl/tree';
-import type { MonthKey } from '@/PL/src/pl/types';
-import { calcCols, calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
+import type { MonthKey, Source } from '@/PL/src/pl/types';
+import { calcCols, type Months } from '@/PL/src/pl/calc';
+
+type DetailSource = Exclude<Source, 'Total'>;
 
 type PLTableProps = {
   prevTree: Node[];
   currTree: Node[];
+  detailPrevTrees: Record<DetailSource, Node[]>;
+  detailCurrTrees: Record<DetailSource, Node[]>;
   baseMonthIndex: number;
   showMonthly: boolean;
   showYTD: boolean;
@@ -16,19 +20,23 @@ type PLTableProps = {
   expandedNodes: Set<string>;
 };
 
-// 숫자 포맷팅 (천단위 콤마)
+const DETAIL_COLUMNS: Array<{ source: DetailSource; label: string }> = [
+  { source: 'HK_MLB', label: '홍콩 MLB' },
+  { source: 'HK_Discovery', label: '홍콩 Discovery' },
+  { source: 'TW_MLB', label: '대만 MLB' },
+  { source: 'TW_Discovery', label: '대만 Discovery' },
+];
+
 function formatNumber(num: number | null): string {
   if (num === null || num === undefined) return '-';
   return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
-// 퍼센트 포맷팅
 function formatPercent(num: number | null): string {
   if (num === null || num === undefined) return '-';
   return `${num.toFixed(1)}%`;
 }
 
-// 증감 표시 (2줄 중 아래줄)
 function formatChange(curr: number | null, prev: number | null, isRate: boolean = false): JSX.Element {
   if (curr === null || prev === null) {
     return <span className="text-xs text-gray-400">-</span>;
@@ -37,51 +45,98 @@ function formatChange(curr: number | null, prev: number | null, isRate: boolean 
   const diff = curr - prev;
 
   if (isRate) {
-    // 퍼센트 행은 %p 차이만 표시
-    const color = diff >= 0 ? 'text-green-600' : 'text-red-600';
+    if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">흑자전환</div>;
+    if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">적자전환</div>;
     const diffText = diff >= 0 ? `+${diff.toFixed(1)}%p` : `${diff.toFixed(1)}%p`;
-    return (
-      <div className={`text-xs ${color}`}>
-        {diffText}
-      </div>
-    );
+    return <div className={`text-xs ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>{diffText}</div>;
   }
 
-  // 금액 행: 적자↔흑자 전환 체크
-  // 적자에서 흑자로 전환 (prev < 0 && curr > 0)
-  if (prev < 0 && curr > 0) {
-    return (
-      <div className="text-xs text-blue-600 font-semibold">
-        흑자전환
-      </div>
-    );
-  }
+  if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">흑자전환</div>;
+  if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">적자전환</div>;
 
-  // 흑자에서 적자로 전환 (prev > 0 && curr < 0)
-  if (prev > 0 && curr < 0) {
-    return (
-      <div className="text-xs text-red-600 font-semibold">
-        적자전환
-      </div>
-    );
-  }
-
-  // 일반적인 증감 (둘 다 같은 부호)
-  const rate = prev === 0 ? null : (curr / prev) * 100;
-  const color = diff >= 0 ? 'text-green-600' : 'text-red-600';
+  const ratio = prev === 0 ? null : (curr / prev) * 100;
   const diffText = diff >= 0 ? `+${formatNumber(diff)}` : `△${formatNumber(Math.abs(diff))}`;
-  const rateText = rate === null ? '-' : `${rate.toFixed(0)}%`;
+  const rateText = ratio === null ? '-' : `${ratio.toFixed(0)}%`;
 
   return (
-    <div className={`text-xs ${color}`}>
-      {diffText} , {rateText}
+    <div className={`text-xs ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+      {diffText}, {rateText}
     </div>
   );
+}
+
+function flattenTree(
+  nodes: Node[],
+  isExpandedAll: boolean,
+  expandedNodes: Set<string>,
+  parentExpanded: boolean = true
+): Array<Node & { depth: number }> {
+  if (!nodes || nodes.length === 0) return [];
+
+  const result: Array<Node & { depth: number }> = [];
+
+  nodes.forEach((node) => {
+    const depth = node.level;
+    result.push({ ...node, depth });
+
+    const isExpanded = isExpandedAll || expandedNodes.has(node.key);
+    if (node.children && isExpanded && parentExpanded) {
+      result.push(...flattenTree(node.children, isExpandedAll, expandedNodes, true));
+    }
+  });
+
+  return result;
+}
+
+function buildNodeMap(nodes: Node[]): Map<string, Node> {
+  const map = new Map<string, Node>();
+
+  const walk = (items: Node[]) => {
+    items.forEach((node) => {
+      map.set(node.key, node);
+      if (node.children) walk(node.children);
+    });
+  };
+
+  walk(nodes);
+  return map;
+}
+
+function getNodeMonths(node: Node | null | undefined): Months {
+  const empty: Months = {
+    m1: 0,
+    m2: 0,
+    m3: 0,
+    m4: 0,
+    m5: 0,
+    m6: 0,
+    m7: 0,
+    m8: 0,
+    m9: 0,
+    m10: 0,
+    m11: 0,
+    m12: 0,
+  };
+
+  if (!node) return empty;
+
+  if (node.hasRateRow) {
+    if (node.rows && node.rows.length > 0) return node.rows[0].months;
+    if (node.children && node.children.length > 0) return getNodeMonths(node.children[0]);
+  }
+
+  return (node.rollup || empty) as Months;
+}
+
+function renderValue(value: number | null, isRate: boolean) {
+  return isRate ? formatPercent(value) : formatNumber(value);
 }
 
 export default function PLTable({
   prevTree,
   currTree,
+  detailPrevTrees,
+  detailCurrTrees,
   baseMonthIndex,
   showMonthly,
   showYTD,
@@ -89,41 +144,22 @@ export default function PLTable({
   onToggleNode,
   expandedNodes,
 }: PLTableProps) {
-  const baseWindowLabel = baseMonthIndex <= 1 ? '1월 YTD' : `1~${baseMonthIndex}월 YTD`;
+  const [showMonthDetails, setShowMonthDetails] = useState<boolean>(false);
+  const [showYtdDetails, setShowYtdDetails] = useState<boolean>(false);
+  const [showAnnualDetails, setShowAnnualDetails] = useState<boolean>(false);
 
-  // 트리를 플랫하게 펼치기
-  const flattenTree = (nodes: Node[], parentExpanded: boolean = true): Array<Node & { depth: number }> => {
-    if (!nodes || nodes.length === 0) return [];
-    
-    const result: Array<Node & { depth: number }> = [];
+  const baseWindowLabel = baseMonthIndex <= 1 ? '1월' : `${baseMonthIndex}월`;
+  const prevFlat = useMemo(() => flattenTree(prevTree, isExpandedAll, expandedNodes), [prevTree, isExpandedAll, expandedNodes]);
+  const currFlat = useMemo(() => flattenTree(currTree, isExpandedAll, expandedNodes), [currTree, isExpandedAll, expandedNodes]);
 
-    nodes.forEach(node => {
-      const depth = node.level;
-      result.push({ ...node, depth });
-
-      // 확장 상태 확인
-      const isExpanded = isExpandedAll || expandedNodes.has(node.key);
-
-      if (node.children && isExpanded && parentExpanded) {
-        result.push(...flattenTree(node.children, true));
-      }
-    });
-
-    return result;
-  };
-
-  const prevFlat = useMemo(() => flattenTree(prevTree), [prevTree, isExpandedAll, expandedNodes]);
-  const currFlat = useMemo(() => flattenTree(currTree), [currTree, isExpandedAll, expandedNodes]);
-
-  // 행 데이터 병합 (prevFlat과 currFlat의 key로 매칭)
   const mergedRows = useMemo(() => {
     const keyMap = new Map<string, { prev: Node | null; curr: Node | null; depth: number }>();
 
-    prevFlat.forEach(node => {
+    prevFlat.forEach((node) => {
       keyMap.set(node.key, { prev: node, curr: null, depth: node.depth });
     });
 
-    currFlat.forEach(node => {
+    currFlat.forEach((node) => {
       const existing = keyMap.get(node.key);
       if (existing) {
         existing.curr = node;
@@ -132,24 +168,31 @@ export default function PLTable({
       }
     });
 
-    return Array.from(keyMap.entries()).map(([key, value]) => ({
-      key,
-      ...value,
-    }));
+    return Array.from(keyMap.entries()).map(([key, value]) => ({ key, ...value }));
   }, [prevFlat, currFlat]);
 
-  // 배경색 결정 (강조 행)
-  const getRowBgColor = (label: string): string => {
-    const highlightLabels = ['매출총이익', '영업이익', '영업이익률', 'Tag대비 원가율'];
-    if (highlightLabels.includes(label)) {
-      return 'bg-amber-50';
-    }
-    return 'bg-blue-50/30';
-  };
+  const detailPrevMaps = useMemo(
+    () => ({
+      HK_MLB: buildNodeMap(detailPrevTrees.HK_MLB),
+      HK_Discovery: buildNodeMap(detailPrevTrees.HK_Discovery),
+      TW_MLB: buildNodeMap(detailPrevTrees.TW_MLB),
+      TW_Discovery: buildNodeMap(detailPrevTrees.TW_Discovery),
+    }),
+    [detailPrevTrees]
+  );
 
-  // 월별 컬럼 헤더 (1월 실적, 2~12월 계획)
+  const detailCurrMaps = useMemo(
+    () => ({
+      HK_MLB: buildNodeMap(detailCurrTrees.HK_MLB),
+      HK_Discovery: buildNodeMap(detailCurrTrees.HK_Discovery),
+      TW_MLB: buildNodeMap(detailCurrTrees.TW_MLB),
+      TW_Discovery: buildNodeMap(detailCurrTrees.TW_Discovery),
+    }),
+    [detailCurrTrees]
+  );
+
   const monthHeaders = Array.from({ length: 12 }, (_, i) =>
-    i === 0 ? `${i + 1}월(실적)` : `${i + 1}월(계획)`
+    i < baseMonthIndex ? `${i + 1}월(실적)` : `${i + 1}월(계획)`
   );
 
   return (
@@ -157,203 +200,204 @@ export default function PLTable({
       <table className="w-full border-collapse text-sm">
         <thead className="sticky top-0 z-10">
           <tr className="bg-blue-700 text-white">
-            {/* 계정과목 */}
-            <th className="border border-white/30 px-4 py-3 text-left font-semibold sticky left-0 bg-blue-700 z-20">
+            <th className="border border-white/30 px-4 py-3 text-left font-semibold sticky left-0 bg-blue-700 z-20 min-w-[220px]">
               계정과목
             </th>
 
-            {/* 월별 데이터 (showMonthly일 때만) */}
-            {showMonthly && monthHeaders.map((month, idx) => (
-              <th key={`month-${idx}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[100px]">
-                {month}
-              </th>
-            ))}
+            {showMonthly &&
+              monthHeaders.map((month, idx) => (
+                <th key={`month-${idx}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[110px]">
+                  {month}
+                </th>
+              ))}
 
-            {/* 전년/당년 기준 비교: 1~기준월 YTD */}
-            <th className="border-l-2 border-l-blue-900 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
+            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
               전년({baseWindowLabel})
             </th>
-            <th className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
-              당년({baseWindowLabel}) ▶
+            <th
+              className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
+              onClick={() => setShowMonthDetails((prev) => !prev)}
+            >
+              <span className="inline-flex items-center gap-1">
+                당년({baseWindowLabel})
+                <span>{showMonthDetails ? '▼' : '▶'}</span>
+              </span>
             </th>
+            {showMonthDetails &&
+              DETAIL_COLUMNS.map((detail) => (
+                <th key={`month-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
+                  {detail.label}
+                </th>
+              ))}
 
-            {/* YTD (showYTD일 때만) */}
             {showYTD && (
               <>
-                <th className="border-l-2 border-l-blue-900 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
+                <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
                   전년YTD
                 </th>
-                <th className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
-                  당년YTD ▶
+                <th
+                  className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
+                  onClick={() => setShowYtdDetails((prev) => !prev)}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    당년YTD
+                    <span>{showYtdDetails ? '▼' : '▶'}</span>
+                  </span>
                 </th>
+                {showYtdDetails &&
+                  DETAIL_COLUMNS.map((detail) => (
+                    <th key={`ytd-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
+                      {detail.label}
+                    </th>
+                  ))}
               </>
             )}
 
-            {/* 연간 */}
-            <th className="border-l-2 border-l-blue-900 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
-              2025년연간
+            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
+              25년 연간
             </th>
-            <th className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
-              2026년연간 ▶
+            <th
+              className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
+              onClick={() => setShowAnnualDetails((prev) => !prev)}
+            >
+              <span className="inline-flex items-center gap-1">
+                26년 연간
+                <span>{showAnnualDetails ? '▼' : '▶'}</span>
+              </span>
             </th>
+            {showAnnualDetails &&
+              DETAIL_COLUMNS.map((detail) => (
+                <th key={`annual-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
+                  {detail.label}
+                </th>
+              ))}
           </tr>
         </thead>
+
         <tbody>
           {mergedRows.map(({ key, prev, curr, depth }) => {
             const node = curr || prev;
             if (!node) return null;
 
-            const hasChildren = node.children && node.children.length > 0;
+            const hasChildren = !!(node.children && node.children.length > 0);
             const isExpanded = isExpandedAll || expandedNodes.has(key);
             const isRate = node.hasRateRow;
-
-            // 들여쓰기
             const paddingLeft = depth === 1 ? 'pl-4' : depth === 2 ? 'pl-8' : 'pl-12';
+            const rowBg = depth === 1 ? 'bg-slate-100' : depth === 2 ? 'bg-blue-50/50' : 'bg-white';
+            const prevMonths = getNodeMonths(prev);
+            const currMonths = getNodeMonths(curr);
+            const baseResult = calcCols(baseMonthIndex, prevMonths, currMonths, isRate);
+            const yearResult = calcCols(12, prevMonths, currMonths, isRate);
 
-            // 월별 데이터 계산
-            // rate row는 rows[0].months를, 일반 row는 rollup을 사용
-            const getPrevMonths = (): Months => {
-              if (isRate) {
-                // rate row: leaf node의 rows 또는 첫 번째 child의 rows 사용
-                if (prev?.rows && prev.rows.length > 0) {
-                  return prev.rows[0].months;
-                }
-                // 대분류인 경우 첫 번째 child의 첫 번째 row 사용
-                if (prev?.children && prev.children.length > 0) {
-                  const firstChild = prev.children[0];
-                  if (firstChild.rows && firstChild.rows.length > 0) {
-                    return firstChild.rows[0].months;
-                  }
-                }
-              }
-              return (prev?.rollup || {}) as Months;
-            };
-            
-            const getCurrMonths = (): Months => {
-              if (isRate) {
-                // rate row: leaf node의 rows 또는 첫 번째 child의 rows 사용
-                if (curr?.rows && curr.rows.length > 0) {
-                  return curr.rows[0].months;
-                }
-                // 대분류인 경우 첫 번째 child의 첫 번째 row 사용
-                if (curr?.children && curr.children.length > 0) {
-                  const firstChild = curr.children[0];
-                  if (firstChild.rows && firstChild.rows.length > 0) {
-                    return firstChild.rows[0].months;
-                  }
-                }
-              }
-              return (curr?.rollup || {}) as Months;
-            };
-            
-            const prevMonths = getPrevMonths();
-            const currMonths = getCurrMonths();
+            const detailCells = (scope: 'month' | 'ytd' | 'annual') =>
+              DETAIL_COLUMNS.map((detail) => {
+                const prevDetail = detailPrevMaps[detail.source].get(key);
+                const currDetail = detailCurrMaps[detail.source].get(key);
+                const prevDetailMonths = getNodeMonths(prevDetail);
+                const currDetailMonths = getNodeMonths(currDetail);
+                const detailResult = calcCols(baseMonthIndex, prevDetailMonths, currDetailMonths, isRate);
 
-            // 기준 비교 계산 (금액행: 1~기준월 YTD, 비율행: 기준월 단월 유지)
-            const baseMonthResult = calcCols(baseMonthIndex, prevMonths, currMonths, isRate);
-            const basePrevValue = isRate ? baseMonthResult.prevMonth : baseMonthResult.prevYTD;
-            const baseCurrValue = isRate ? baseMonthResult.currMonth : baseMonthResult.currYTD;
+                let prevValue: number | null = null;
+                let currValue: number | null = null;
 
-            // YTD 계산
-            let ytdResult = null;
-            if (showYTD) {
-              ytdResult = calcCols(baseMonthIndex, prevMonths, currMonths, isRate);
-            }
+                if (scope === 'month') {
+                  prevValue = detailResult.prevMonth;
+                  currValue = detailResult.currMonth;
+                } else if (scope === 'ytd') {
+                  prevValue = detailResult.prevYTD;
+                  currValue = detailResult.currYTD;
+                } else {
+                  prevValue = detailResult.prevYearTotal;
+                  currValue = detailResult.currYearTotal;
+                }
 
-            // 연간 계산
-            let yearResult = calcCols(12, prevMonths, currMonths, isRate);
-            
-            // rate row일 때는 연간 값을 12개월 합으로 계산
-            if (isRate) {
-              const prevYearTotal = Object.values(prevMonths).reduce((sum, val) => sum + (val || 0), 0) / 12;
-              const currYearTotal = Object.values(currMonths).reduce((sum, val) => sum + (val || 0), 0) / 12;
-              yearResult = {
-                ...yearResult,
-                prevYearTotal,
-                currYearTotal
-              };
-            }
+                return (
+                  <td key={`${scope}-${detail.source}-${key}`} className="border border-gray-200 px-2 py-2 text-right bg-white">
+                    <div className={`font-semibold ${currValue !== null && currValue < 0 ? 'text-red-600' : ''}`}>
+                      {renderValue(currValue, isRate)}
+                    </div>
+                    {formatChange(currValue, prevValue, isRate)}
+                  </td>
+                );
+              });
 
             return (
-              <tr key={key} className={`${getRowBgColor(node.label)} hover:bg-gray-100 transition-colors`}>
-                {/* 계정과목 */}
-                <td className={`border border-gray-200 px-2 py-2 ${paddingLeft} sticky left-0 ${getRowBgColor(node.label)} z-10`}>
+              <tr key={key} className={`${rowBg} hover:bg-gray-100 transition-colors`}>
+                <td className={`border border-gray-200 px-2 py-2 ${paddingLeft} sticky left-0 ${rowBg} z-10`}>
                   <div className="flex items-center gap-2">
-                    {hasChildren && (
+                    {hasChildren ? (
                       <button
                         onClick={() => onToggleNode(key)}
                         className="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-gray-900"
                       >
                         {isExpanded ? '▼' : '▶'}
                       </button>
+                    ) : (
+                      <span className="w-5" />
                     )}
-                    {!hasChildren && <span className="w-5"></span>}
-                    <span className={depth === 1 ? 'font-bold' : ''}>
-                      {node.label}
-                    </span>
+                    <span className={depth <= 2 ? 'font-semibold' : ''}>{node.label}</span>
                   </div>
                 </td>
 
-                {/* 월별 데이터 (showMonthly일 때만) */}
-                {showMonthly && monthHeaders.map((_, monthIdx) => {
-                  const monthKey = `m${monthIdx + 1}` as MonthKey;
-                  const prevVal = prevMonths[monthKey] || 0;
-                  const currVal = currMonths[monthKey] || 0;
+                {showMonthly &&
+                  monthHeaders.map((_, monthIdx) => {
+                    const monthKey = `m${monthIdx + 1}` as MonthKey;
+                    const prevVal = prevMonths[monthKey] || 0;
+                    const currVal = currMonths[monthKey] || 0;
 
-                  return (
-                    <td key={`month-${monthIdx}`} className="border border-gray-200 px-2 py-2 text-right">
-                      <div className="font-semibold">{isRate ? formatPercent(currVal) : formatNumber(currVal)}</div>
-                      {formatChange(currVal, prevVal, isRate)}
-                    </td>
-                  );
-                })}
+                    return (
+                      <td key={`month-${monthIdx}-${key}`} className="border border-gray-200 px-2 py-2 text-right">
+                        <div className={`font-semibold ${currVal < 0 ? 'text-red-600' : ''}`}>
+                          {renderValue(currVal, isRate)}
+                        </div>
+                        {formatChange(currVal, prevVal, isRate)}
+                      </td>
+                    );
+                  })}
 
-                {/* 전년(기준) */}
-                <td className="border-l-2 border-l-blue-400 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
-                  <div className="font-semibold">
-                    {isRate ? formatPercent(basePrevValue) : formatNumber(basePrevValue)}
+                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
+                  <div className={`font-semibold ${(baseResult.prevMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                    {renderValue(baseResult.prevMonth, isRate)}
                   </div>
                 </td>
 
-                {/* 당년(기준) */}
                 <td className="border border-gray-200 px-2 py-2 text-right">
-                  <div className="font-semibold">
-                    {isRate ? formatPercent(baseCurrValue) : formatNumber(baseCurrValue)}
+                  <div className={`font-semibold ${(baseResult.currMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                    {renderValue(baseResult.currMonth, isRate)}
                   </div>
-                  {formatChange(baseCurrValue, basePrevValue, isRate)}
+                  {formatChange(baseResult.currMonth, baseResult.prevMonth, isRate)}
                 </td>
+                {showMonthDetails && detailCells('month')}
 
-                {/* YTD (showYTD일 때만) */}
-                {showYTD && ytdResult && (
+                {showYTD && (
                   <>
-                    <td className="border-l-2 border-l-blue-400 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
-                      <div className="font-semibold">
-                        {isRate ? '-' : formatNumber(ytdResult.prevYTD)}
+                    <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
+                      <div className={`font-semibold ${(baseResult.prevYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                        {isRate ? '-' : renderValue(baseResult.prevYTD, false)}
                       </div>
                     </td>
                     <td className="border border-gray-200 px-2 py-2 text-right">
-                      <div className="font-semibold">
-                        {isRate ? '-' : formatNumber(ytdResult.currYTD)}
+                      <div className={`font-semibold ${(baseResult.currYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                        {isRate ? '-' : renderValue(baseResult.currYTD, false)}
                       </div>
-                      {!isRate && formatChange(ytdResult.currYTD, ytdResult.prevYTD, false)}
+                      {!isRate && formatChange(baseResult.currYTD, baseResult.prevYTD, false)}
                     </td>
+                    {showYtdDetails && detailCells('ytd')}
                   </>
                 )}
 
-                {/* 2025년연간 */}
-                <td className="border-l-2 border-l-blue-400 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
-                  <div className="font-semibold">
-                    {isRate ? formatPercent(yearResult.prevYearTotal) : formatNumber(yearResult.prevYearTotal)}
+                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
+                  <div className={`font-semibold ${(yearResult.prevYearTotal ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                    {renderValue(yearResult.prevYearTotal, isRate)}
                   </div>
                 </td>
-
-                {/* 2026년연간 */}
                 <td className="border border-gray-200 px-2 py-2 text-right">
-                  <div className="font-semibold">
-                    {isRate ? formatPercent(yearResult.currYearTotal) : formatNumber(yearResult.currYearTotal)}
+                  <div className={`font-semibold ${(yearResult.currYearTotal ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                    {renderValue(yearResult.currYearTotal, isRate)}
                   </div>
                   {formatChange(yearResult.currYearTotal, yearResult.prevYearTotal, isRate)}
                 </td>
+                {showAnnualDetails && detailCells('annual')}
               </tr>
             );
           })}

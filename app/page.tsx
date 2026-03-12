@@ -20,7 +20,7 @@ export default function Home() {
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('BS');
   const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
   const [wcYear, setWcYear] = useState<number>(2026);
-  const [salesYoYRate, setSalesYoYRate] = useState<number>(116);
+  const [salesYoYRate, setSalesYoYRate] = useState<number>(119);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
   const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(520);
   const [isResizingAnalysis, setIsResizingAnalysis] = useState<boolean>(false);
@@ -430,7 +430,7 @@ export default function Home() {
   const adjustedCfData = useMemo(() => {
     if (!cfData || wcYear !== 2026) return cfData;
 
-    const delta = (salesYoYRate - 116) / 100;
+    const delta = (salesYoYRate - 119) / 100;
     if (delta === 0) return cfData;
 
     const ACC_OPERATING = '\uC601\uC5C5\uD65C\uB3D9';
@@ -662,7 +662,7 @@ export default function Home() {
   const adjustedWcStatementData = useMemo(() => {
     if (!wcStatementData || wcYear !== 2026) return wcStatementData;
 
-    const delta = (salesYoYRate - 116) / 100;
+    const delta = (salesYoYRate - 119) / 100;
     if (delta === 0) return wcStatementData;
 
     const AR_SENSITIVITY = 1 - 0.2; // 매출 증감률의 80%만 매출채권에 반영
@@ -983,10 +983,54 @@ export default function Home() {
       });
     };
 
+    const fillChildMetrics = (
+      rows: TableRow[] | null,
+      planRows: TableRow[] | null,
+      config: { previousValueIndex: number; targetValueIndex: number }
+    ): TableRow[] | null => {
+      if (!rows) return null;
+      const { previousValueIndex, targetValueIndex } = config;
+
+      return rows.map((row, index) => {
+        const planRow = planRows?.[index];
+        const isYoYRow = /대비/.test(row.account);
+        const prev =
+          row.year2024Value ??
+          (typeof row.values[previousValueIndex] === 'number' ? row.values[previousValueIndex] : null);
+        const rollingValue =
+          row.rollingValue ??
+          (typeof row.values[targetValueIndex] === 'number' ? row.values[targetValueIndex] : null);
+        const planValue =
+          row.planValue ??
+          (planRow && typeof planRow.values[targetValueIndex] === 'number' ? planRow.values[targetValueIndex] : null);
+
+        const planYoY = isYoYRow ? null : (typeof planValue === 'number' && typeof prev === 'number' && prev !== 0 ? planValue / prev : null);
+        const rollingYoY = isYoYRow ? null : (typeof rollingValue === 'number' && typeof prev === 'number' && prev !== 0 ? rollingValue / prev : null);
+        const planDelta = typeof rollingValue === 'number' && typeof planValue === 'number' ? rollingValue - planValue : null;
+        const planDeltaRate = typeof rollingValue === 'number' && typeof planValue === 'number' && planValue !== 0 ? rollingValue / planValue : null;
+
+        return {
+          ...row,
+          year2024Value: typeof prev === 'number' ? prev : row.year2024Value ?? null,
+          rollingValue: typeof rollingValue === 'number' ? rollingValue : row.rollingValue ?? null,
+          planValue: typeof planValue === 'number' ? planValue : row.planValue ?? null,
+          planYoY: row.planYoY ?? planYoY,
+          rollingYoY: row.rollingYoY ?? rollingYoY,
+          planDelta: row.planDelta ?? planDelta,
+          planDeltaRate: row.planDeltaRate ?? planDeltaRate,
+          children: row.children ? fillChildMetrics(row.children, planRow?.children ?? null, config) ?? row.children : row.children,
+        } as TableRow;
+      });
+    };
+
     return {
       cf: attach(cfDataForView, cfPlanData),
       wc: attach(wcStatementDataForView, wcStatementPlanData),
-      bs: attach(bsFinancialData, bsPlanData, { previousValueIndex: 1, targetValueIndex: 13 }),
+      bs: fillChildMetrics(
+        attach(bsFinancialData, bsPlanData, { previousValueIndex: 1, targetValueIndex: 13 }),
+        bsPlanData,
+        { previousValueIndex: 1, targetValueIndex: 13 }
+      ),
     };
   }, [cfDataForView, cfPlanData, wcStatementDataForView, wcStatementPlanData, bsFinancialData, bsPlanData, wcYear]);
 
@@ -1300,6 +1344,7 @@ export default function Home() {
                       columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']}
                       showTotal
                       isCashFlow={true}
+                      showPlanMetricsColumns={false}
                       monthsCollapsed={bsMonthsCollapsed}
                       onMonthsToggle={() => setBsMonthsCollapsed(!bsMonthsCollapsed)}
                       currentYear={wcYear}

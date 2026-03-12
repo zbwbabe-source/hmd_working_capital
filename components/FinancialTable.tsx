@@ -25,6 +25,7 @@ interface FinancialTableProps {
   onRemarkChange?: (account: string, remark: string) => void; // 비고 변경 핸들러
   autoRemarks?: { [key: string]: string }; // 자동 생성된 비고 (운전자본용)
   showBrandBreakdown?: boolean; // 브랜드별 손익 보기 모드 (법인 선택 시 항상 true)
+  showPlanMetricsColumns?: boolean; // 전월계획/YoY/전월계획대비 컬럼 표시 여부
   hideYtd?: boolean; // YTD 숨기기
   onHideYtdToggle?: () => void; // YTD 숨기기 토글 핸들러
   allRowsCollapsed?: boolean; // 모든 행 접기 상태 (외부 제어)
@@ -50,6 +51,7 @@ export default function FinancialTable({
   onRemarkChange,
   autoRemarks,
   showBrandBreakdown = false,
+  showPlanMetricsColumns = true,
   hideYtd = false,
   onHideYtdToggle,
   allRowsCollapsed: externalAllRowsCollapsed,
@@ -425,6 +427,7 @@ export default function FinancialTable({
     () => isCashFlow && data.some((row) => row.planValue !== undefined),
     [isCashFlow, data]
   );
+  const shouldShowPlanMetrics = hasPlanMetrics && showPlanMetricsColumns;
 
   // 실제 표시할 컬럼 (월 토글 고려, 빈 컬럼 포함)
   const displayColumns = useMemo(() => {
@@ -438,18 +441,16 @@ export default function FinancialTable({
           ? yearColumnFromProps
           : (currentYear ? `${currentYear}년(합계)` : '2025년(합계)');
       const use기말 = yearColumnFromProps != null && yearColumnFromProps.includes('기말');
-      const prevYearHeader = use기말
-        ? (currentYear === 2026 ? '2025년(기말)' : '2024년(기말)')
-        : (currentYear === 2026 ? '2025년(합계)' : '2024년(합계)');
-      const year2023Header = use기말 ? '2023년(기말)' : '2023년(합계)';
       const show2023 = currentYear === 2025;
       const currentYearShort = String(currentYear ?? 2025).slice(-2);
       const prevYearShort = String((currentYear ?? 2025) - 1).slice(-2);
+      const prevYearHeader = `${prevYearShort}년(${use기말 ? '기말' : '합계'})`;
+      const year2023Header = `23년(${use기말 ? '기말' : '합계'})`;
       const useBaseLabel = /\uAE30\uB9D0/.test(yearColumnFromProps ?? '');
       const valueLabel = useBaseLabel ? '\uAE30\uB9D0' : '\uD569\uACC4';
-      const rollingLabel = currentYear === 2026 ? '\uC608\uC0C1' : valueLabel;
+      const rollingLabel = currentYear === 2026 ? '\uB864\uB9C1' : valueLabel;
 
-      if (hasPlanMetrics) {
+      if (shouldShowPlanMetrics) {
         if (monthsCollapsed) {
           return [
             ...accountCol,
@@ -477,6 +478,15 @@ export default function FinancialTable({
         ];
       }
       if (monthsCollapsed) {
+        if (!shouldShowPlanMetrics && currentYear === 2026) {
+          return [
+            ...accountCol,
+            prevYearHeader,
+            `${currentYearShort}년(2월)`,
+            `${currentYearShort}년 ${rollingLabel}`,
+            'YoY',
+          ];
+        }
         return [
           ...accountCol,
           ...(show2023 ? [year2023Header] : []),
@@ -627,7 +637,7 @@ export default function FinancialTable({
       // 기본: 모든 컬럼
       return columns;
     }
-  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, hasPlanMetrics, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear]);
+  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, shouldShowPlanMetrics, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear]);
 
   return (
     <div>
@@ -802,7 +812,10 @@ export default function FinancialTable({
               const isNetCashStrict =
                 isCashFlow &&
                 (/netcash/i.test(normalizedAccount) || /\uC21C\uD604\uAE08\uD750\uB984/.test(normalizedAccount));
-              const rollingDisplayValue = row.rollingValue ?? effectiveValues[12];
+              const reportMonthValueIndex = 3; // 26년 2월(2602)
+              const aggregateValueIndex = effectiveValues.length >= 15 ? 13 : 12;
+              const yoyValueIndex = effectiveValues.length >= 15 ? 14 : 13;
+              const rollingDisplayValue = row.rollingValue ?? effectiveValues[aggregateValueIndex];
               const netCashPlanYoYLabel = isNetCashStrict ? formatNetCashYoY(row.planValue ?? null, row.year2024Value ?? null) : '';
               const netCashRollingYoYLabel = isNetCashStrict ? formatNetCashYoY(rollingDisplayValue ?? null, row.year2024Value ?? null) : '';
               
@@ -880,7 +893,7 @@ export default function FinancialTable({
                     >
                       {formatValue(row.year2024Value ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
-                    {!monthsCollapsed && hasPlanMetrics && (
+                    {!monthsCollapsed && shouldShowPlanMetrics && (
                       <>
                         <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
@@ -893,7 +906,15 @@ export default function FinancialTable({
                       </>
                     )}
                     {/* 빈 컬럼 (2024년 뒤) */}
-                    {monthsCollapsed && !hasPlanMetrics && <td className="bg-white border-0" style={{ minWidth: '16px', maxWidth: '16px', padding: 0 }}></td>}
+                    {monthsCollapsed && !shouldShowPlanMetrics && (
+                      currentYear === 2026 ? (
+                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(effectiveValues[reportMonthValueIndex]) ? 'text-red-600' : ''}`}>
+                          {formatValue(effectiveValues[reportMonthValueIndex], row.format, isMomRow, !row.isCalculated)}
+                        </td>
+                      ) : (
+                        <td className="bg-white border-0" style={{ minWidth: '16px', maxWidth: '16px', padding: 0 }}></td>
+                      )
+                    )}
                   </>
                 )}
 
@@ -933,7 +954,7 @@ export default function FinancialTable({
                 })}
 
                 {/* CF: 합계 컬럼 (2025년) */}
-                {isCashFlow && hasPlanMetrics && (
+                {isCashFlow && shouldShowPlanMetrics && (
                   <>
                     {monthsCollapsed && (
                       <>
@@ -965,17 +986,17 @@ export default function FinancialTable({
                     </td>
                   </>
                 )}
-                {isCashFlow && !hasPlanMetrics && (
+                {isCashFlow && !shouldShowPlanMetrics && (
                   <>
                     <td
                       className={`
                         border border-gray-300 px-4 py-2 text-right
                         ${getHighlightClass(row.isHighlight)}
                         ${row.isBold ? 'font-semibold' : ''}
-                        ${isNegative(effectiveValues[12]) ? 'text-red-600' : ''}
+                        ${isNegative(effectiveValues[aggregateValueIndex]) ? 'text-red-600' : ''}
                       `}
                     >
-                      {formatValue(effectiveValues[12], row.format, isMomRow, !row.isCalculated)}
+                      {formatValue(effectiveValues[aggregateValueIndex], row.format, isMomRow, !row.isCalculated)}
                     </td>
                     {/* CF: YoY 컬럼 (25년 - 24년) */}
                     <td
@@ -984,12 +1005,12 @@ export default function FinancialTable({
                         ${isNetCashStrict ? 'text-xs' : ''}
                         ${getHighlightClass(row.isHighlight)}
                         ${row.isBold ? 'font-semibold' : ''}
-                        ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(effectiveValues[13]) ? 'text-red-600' : '')}
+                        ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(effectiveValues[yoyValueIndex]) ? 'text-red-600' : '')}
                       `}
                     >
                       {isNetCashStrict
                         ? netCashRollingYoYLabel
-                        : formatValue(effectiveValues[13], row.format, true, false)}
+                        : formatValue(effectiveValues[yoyValueIndex], row.format, true, false)}
                     </td>
                   </>
                 )}
