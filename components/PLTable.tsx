@@ -45,18 +45,17 @@ function formatChange(curr: number | null, prev: number | null, isRate: boolean 
   const diff = curr - prev;
 
   if (isRate) {
-    if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">흑자전환</div>;
-    if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">적자전환</div>;
     const diffText = diff >= 0 ? `+${diff.toFixed(1)}%p` : `${diff.toFixed(1)}%p`;
+    if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">{diffText}, 흑자전환</div>;
+    if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">{diffText}, 적자전환</div>;
     return <div className={`text-xs ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>{diffText}</div>;
   }
-
-  if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">흑자전환</div>;
-  if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">적자전환</div>;
 
   const ratio = prev === 0 ? null : (curr / prev) * 100;
   const diffText = diff >= 0 ? `+${formatNumber(diff)}` : `△${formatNumber(Math.abs(diff))}`;
   const rateText = ratio === null ? '-' : `${ratio.toFixed(0)}%`;
+  if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">{diffText}, 흑자전환</div>;
+  if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">{diffText}, 적자전환</div>;
 
   return (
     <div className={`text-xs ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -236,16 +235,18 @@ export default function PLTable({
                 </th>
               ))}
 
-            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
+            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
               전년({baseWindowLabel})
             </th>
             <th
               className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
               onClick={() => setShowMonthDetails((prev) => !prev)}
             >
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-2">
                 당년({baseWindowLabel})
-                <span>{showMonthDetails ? '▼' : '▶'}</span>
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
+                  {showMonthDetails ? '▼' : '▶'}
+                </span>
               </span>
             </th>
             {showMonthDetails &&
@@ -257,16 +258,18 @@ export default function PLTable({
 
             {showYTD && (
               <>
-                <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
+                <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
                   전년YTD
                 </th>
                 <th
                   className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
                   onClick={() => setShowYtdDetails((prev) => !prev)}
                 >
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-2">
                     당년YTD
-                    <span>{showYtdDetails ? '▼' : '▶'}</span>
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
+                      {showYtdDetails ? '▼' : '▶'}
+                    </span>
                   </span>
                 </th>
                 {showYtdDetails &&
@@ -278,16 +281,18 @@ export default function PLTable({
               </>
             )}
 
-            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]">
+            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
               25년 연간
             </th>
             <th
               className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
               onClick={() => setShowAnnualDetails((prev) => !prev)}
             >
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-2">
                 26년 연간
-                <span>{showAnnualDetails ? '▼' : '▶'}</span>
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
+                  {showAnnualDetails ? '▼' : '▶'}
+                </span>
               </span>
             </th>
             {showAnnualDetails &&
@@ -420,7 +425,7 @@ export default function PLTable({
                     );
                   })}
 
-                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
+                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
                   <div className={`font-semibold ${(baseResult.prevMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
                     {renderValue(baseResult.prevMonth, isRate)}
                   </div>
@@ -436,7 +441,7 @@ export default function PLTable({
 
                 {showYTD && (
                   <>
-                    <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
+                    <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
                       <div className={`font-semibold ${(baseResult.prevYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
                         {renderValue(baseResult.prevYTD, isRate)}
                       </div>
@@ -451,7 +456,7 @@ export default function PLTable({
                   </>
                 )}
 
-                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
+                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
                   <div className={`font-semibold ${(yearResult.prevYearTotal ?? 0) < 0 ? 'text-red-600' : ''}`}>
                     {renderValue(yearResult.prevYearTotal, isRate)}
                   </div>
