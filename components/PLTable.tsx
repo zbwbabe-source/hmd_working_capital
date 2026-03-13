@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Node } from '@/PL/src/pl/tree';
 import type { MonthKey, Source } from '@/PL/src/pl/types';
-import { calcCols, type Months } from '@/PL/src/pl/calc';
+import { calcCols, calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
 
 type DetailSource = Exclude<Source, 'Total'>;
 
@@ -22,9 +22,9 @@ type PLTableProps = {
 
 const DETAIL_COLUMNS: Array<{ source: DetailSource; label: string }> = [
   { source: 'HK_MLB', label: '홍콩 MLB' },
-  { source: 'HK_Discovery', label: '홍콩 Discovery' },
+  { source: 'HK_Discovery', label: '홍콩 DX' },
   { source: 'TW_MLB', label: '대만 MLB' },
-  { source: 'TW_Discovery', label: '대만 Discovery' },
+  { source: 'TW_Discovery', label: '대만 DX' },
 ];
 
 function formatNumber(num: number | null): string {
@@ -128,6 +128,28 @@ function getNodeMonths(node: Node | null | undefined): Months {
   return (node.rollup || empty) as Months;
 }
 
+function getRateBaseNodes(
+  node: Node,
+  nodeMap: Map<string, Node>
+): { numerNode: Node | null; denomNode: Node | null } {
+  if (node.level === 1) {
+    return {
+      numerNode: nodeMap.get('L1|매출원가') ?? null,
+      denomNode: nodeMap.get('L1|TAG매출') ?? null,
+    };
+  }
+
+  if (node.level === 2) {
+    const [, , lvl2] = node.key.split('|');
+    return {
+      numerNode: nodeMap.get(`L2|매출원가|${lvl2}`) ?? null,
+      denomNode: nodeMap.get(`L2|TAG매출|${lvl2}`) ?? null,
+    };
+  }
+
+  return { numerNode: null, denomNode: null };
+}
+
 function renderValue(value: number | null, isRate: boolean) {
   return isRate ? formatPercent(value) : formatNumber(value);
 }
@@ -180,6 +202,9 @@ export default function PLTable({
     }),
     [detailPrevTrees]
   );
+
+  const totalPrevMap = useMemo(() => buildNodeMap(prevTree), [prevTree]);
+  const totalCurrMap = useMemo(() => buildNodeMap(currTree), [currTree]);
 
   const detailCurrMaps = useMemo(
     () => ({
@@ -286,8 +311,32 @@ export default function PLTable({
             const rowBg = depth === 1 ? 'bg-slate-100' : depth === 2 ? 'bg-blue-50/50' : 'bg-white';
             const prevMonths = getNodeMonths(prev);
             const currMonths = getNodeMonths(curr);
-            const baseResult = calcCols(baseMonthIndex, prevMonths, currMonths, isRate);
-            const yearResult = calcCols(12, prevMonths, currMonths, isRate);
+            const totalPrevRateBase = prev ? getRateBaseNodes(prev, totalPrevMap) : { numerNode: null, denomNode: null };
+            const totalCurrRateBase = curr ? getRateBaseNodes(curr, totalCurrMap) : { numerNode: null, denomNode: null };
+            const hasRateBase =
+              isRate &&
+              totalPrevRateBase.numerNode &&
+              totalPrevRateBase.denomNode &&
+              totalCurrRateBase.numerNode &&
+              totalCurrRateBase.denomNode;
+            const baseResult = hasRateBase
+              ? calcRateColsFromNumerDenom(
+                  baseMonthIndex,
+                  getNodeMonths(totalPrevRateBase.numerNode),
+                  getNodeMonths(totalPrevRateBase.denomNode),
+                  getNodeMonths(totalCurrRateBase.numerNode),
+                  getNodeMonths(totalCurrRateBase.denomNode)
+                )
+              : calcCols(baseMonthIndex, prevMonths, currMonths, isRate);
+            const yearResult = hasRateBase
+              ? calcRateColsFromNumerDenom(
+                  12,
+                  getNodeMonths(totalPrevRateBase.numerNode),
+                  getNodeMonths(totalPrevRateBase.denomNode),
+                  getNodeMonths(totalCurrRateBase.numerNode),
+                  getNodeMonths(totalCurrRateBase.denomNode)
+                )
+              : calcCols(12, prevMonths, currMonths, isRate);
 
             const detailCells = (scope: 'month' | 'ytd' | 'annual') =>
               DETAIL_COLUMNS.map((detail) => {
@@ -295,7 +344,23 @@ export default function PLTable({
                 const currDetail = detailCurrMaps[detail.source].get(key);
                 const prevDetailMonths = getNodeMonths(prevDetail);
                 const currDetailMonths = getNodeMonths(currDetail);
-                const detailResult = calcCols(baseMonthIndex, prevDetailMonths, currDetailMonths, isRate);
+                const detailPrevRateBase = prevDetail ? getRateBaseNodes(prevDetail, detailPrevMaps[detail.source]) : { numerNode: null, denomNode: null };
+                const detailCurrRateBase = currDetail ? getRateBaseNodes(currDetail, detailCurrMaps[detail.source]) : { numerNode: null, denomNode: null };
+                const detailHasRateBase =
+                  isRate &&
+                  detailPrevRateBase.numerNode &&
+                  detailPrevRateBase.denomNode &&
+                  detailCurrRateBase.numerNode &&
+                  detailCurrRateBase.denomNode;
+                const detailResult = detailHasRateBase
+                  ? calcRateColsFromNumerDenom(
+                      baseMonthIndex,
+                      getNodeMonths(detailPrevRateBase.numerNode),
+                      getNodeMonths(detailPrevRateBase.denomNode),
+                      getNodeMonths(detailCurrRateBase.numerNode),
+                      getNodeMonths(detailCurrRateBase.denomNode)
+                    )
+                  : calcCols(baseMonthIndex, prevDetailMonths, currDetailMonths, isRate);
 
                 let prevValue: number | null = null;
                 let currValue: number | null = null;
@@ -373,14 +438,14 @@ export default function PLTable({
                   <>
                     <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right">
                       <div className={`font-semibold ${(baseResult.prevYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
-                        {isRate ? '-' : renderValue(baseResult.prevYTD, false)}
+                        {renderValue(baseResult.prevYTD, isRate)}
                       </div>
                     </td>
                     <td className="border border-gray-200 px-2 py-2 text-right">
                       <div className={`font-semibold ${(baseResult.currYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
-                        {isRate ? '-' : renderValue(baseResult.currYTD, false)}
+                        {renderValue(baseResult.currYTD, isRate)}
                       </div>
-                      {!isRate && formatChange(baseResult.currYTD, baseResult.prevYTD, false)}
+                      {formatChange(baseResult.currYTD, baseResult.prevYTD, isRate)}
                     </td>
                     {showYtdDetails && detailCells('ytd')}
                   </>

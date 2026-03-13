@@ -1129,11 +1129,11 @@ export default function Home() {
       />
 
       {/* 내용 - 상단 탭 높이만큼 패딩 추가 */}
-      <div className="p-0 pt-16">
+      <div className="p-0 pt-[104px]">
         {/* 홍콩법인 F/S - 현금흐름표 */}
         {activeTab === 0 && (
           <div>
-            <div className="bg-gray-100 border-b border-gray-300">
+            <div className="fixed top-[52px] left-0 right-0 z-40 bg-gray-100/95 border-b border-gray-300 backdrop-blur-sm shadow-sm">
               <div className="flex items-center gap-4 px-6 py-3">
                 <div className="inline-flex gap-2">
                   {reportMode === 'PERFORMANCE' ? (

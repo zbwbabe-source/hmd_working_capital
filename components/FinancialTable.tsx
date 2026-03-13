@@ -740,8 +740,10 @@ export default function FinancialTable({
                   return undefined;
                 };
                 
-                // B/S 26년2월(실적) 강조
-                const is26년2월Header = isBalanceSheet && col.startsWith('26년2월');
+                // B/S 26년 2월/롤링 헤더 강조
+                const is26년2월Header = isCashFlow && currentYear === 2026 && col.startsWith('26년(2월)');
+                const is26년롤링Header = isCashFlow && currentYear === 2026 && col.startsWith('26년 롤링');
+                const isBsCurrentHighlightHeader = is26년2월Header || is26년롤링Header;
                 
                 const headerLabel =
                   /^\d{2}년 전월계획$/.test(col) ? col.replace('년 ', '년\n') : col;
@@ -758,11 +760,11 @@ export default function FinancialTable({
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
                       ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : isYoYHeader ? 'min-w-[72px] px-2' : 'min-w-[100px] px-4'}
-                      ${!isMutedHeader && is26년2월Header ? 'bg-blue-500' : ''}
-                      ${!isMutedHeader && !is26년2월Header && isYoYHeader ? 'bg-gray-500' : ''}
-                      ${!isMutedHeader && !is26년2월Header && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
-                      ${!isMutedHeader && !is26년2월Header && !isYoYHeader && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
-                      ${!isMutedHeader && !is26년2월Header && !isYoYHeader && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
+                      ${!isMutedHeader && isBsCurrentHighlightHeader ? 'bg-blue-500' : ''}
+                      ${!isMutedHeader && !isBsCurrentHighlightHeader && isYoYHeader ? 'bg-gray-500' : ''}
+                      ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
+                      ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && !isNonBaseMonthCol && isComparisonCol ? 'bg-navy-light' : ''}
+                      ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
                       ${isMutedHeader ? 'bg-gray-800' : ''}
                       ${isBrandCol ? 'bg-gray-700' : ''}
                       ${(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) ? 'cursor-pointer hover:bg-gray-700' : ''}
