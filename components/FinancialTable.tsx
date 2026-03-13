@@ -889,17 +889,7 @@ export default function FinancialTable({
                       </td>
                     )}
                     {currentYear === 2026 ? (
-                      <>
-                        <td
-                          className={`
-                            border border-gray-300 px-4 py-2 text-right
-                            ${getHighlightClass(row.isHighlight)}
-                            ${row.isBold ? 'font-semibold' : ''}
-                            ${isNegative(effectiveValues[0] ?? null) ? 'text-red-600' : ''}
-                          `}
-                        >
-                          {formatValue(effectiveValues[0] ?? null, row.format, isMomRow, !row.isCalculated)}
-                        </td>
+                      shouldShowPlanMetrics ? (
                         <td
                           className={`
                             border border-gray-300 px-4 py-2 text-right
@@ -910,7 +900,30 @@ export default function FinancialTable({
                         >
                           {formatValue(effectiveValues[1] ?? null, row.format, isMomRow, !row.isCalculated)}
                         </td>
-                      </>
+                      ) : (
+                        <>
+                          <td
+                            className={`
+                              border border-gray-300 px-4 py-2 text-right
+                              ${getHighlightClass(row.isHighlight)}
+                              ${row.isBold ? 'font-semibold' : ''}
+                              ${isNegative(effectiveValues[0] ?? null) ? 'text-red-600' : ''}
+                            `}
+                          >
+                            {formatValue(effectiveValues[0] ?? null, row.format, isMomRow, !row.isCalculated)}
+                          </td>
+                          <td
+                            className={`
+                              border border-gray-300 px-4 py-2 text-right
+                              ${getHighlightClass(row.isHighlight)}
+                              ${row.isBold ? 'font-semibold' : ''}
+                              ${isNegative(effectiveValues[1] ?? null) ? 'text-red-600' : ''}
+                            `}
+                          >
+                            {formatValue(effectiveValues[1] ?? null, row.format, isMomRow, !row.isCalculated)}
+                          </td>
+                        </>
+                      )
                     ) : (
                       <td
                         className={`
