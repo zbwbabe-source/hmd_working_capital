@@ -820,6 +820,8 @@ export default function FinancialTable({
               const reportMonthValueIndex = 3; // 26년 2월(2602)
               const aggregateValueIndex = effectiveValues.length >= 15 ? 13 : 12;
               const yoyValueIndex = effectiveValues.length >= 15 ? 14 : 13;
+              const previousTwoYearsValue = row.year2023Value ?? effectiveValues[0] ?? null;
+              const previousYearValue = row.year2024Value ?? effectiveValues[1] ?? null;
               const rollingDisplayValue = row.rollingValue ?? effectiveValues[aggregateValueIndex];
               const netCashPlanYoYLabel = isNetCashStrict ? formatNetCashYoY(row.planValue ?? null, row.year2024Value ?? null) : '';
               const netCashRollingYoYLabel = isNetCashStrict ? formatNetCashYoY(rollingDisplayValue ?? null, row.year2024Value ?? null) : '';
@@ -895,10 +897,10 @@ export default function FinancialTable({
                             border border-gray-300 px-4 py-2 text-right
                             ${getHighlightClass(row.isHighlight)}
                             ${row.isBold ? 'font-semibold' : ''}
-                            ${isNegative(effectiveValues[1] ?? null) ? 'text-red-600' : ''}
+                            ${isNegative(previousYearValue) ? 'text-red-600' : ''}
                           `}
                         >
-                          {formatValue(effectiveValues[1] ?? null, row.format, isMomRow, !row.isCalculated)}
+                          {formatValue(previousYearValue, row.format, isMomRow, !row.isCalculated)}
                         </td>
                       ) : (
                         <>
@@ -907,20 +909,20 @@ export default function FinancialTable({
                               border border-gray-300 px-4 py-2 text-right
                               ${getHighlightClass(row.isHighlight)}
                               ${row.isBold ? 'font-semibold' : ''}
-                              ${isNegative(effectiveValues[0] ?? null) ? 'text-red-600' : ''}
+                              ${isNegative(previousTwoYearsValue) ? 'text-red-600' : ''}
                             `}
                           >
-                            {formatValue(effectiveValues[0] ?? null, row.format, isMomRow, !row.isCalculated)}
+                            {formatValue(previousTwoYearsValue, row.format, isMomRow, !row.isCalculated)}
                           </td>
                           <td
                             className={`
                               border border-gray-300 px-4 py-2 text-right
                               ${getHighlightClass(row.isHighlight)}
                               ${row.isBold ? 'font-semibold' : ''}
-                              ${isNegative(effectiveValues[1] ?? null) ? 'text-red-600' : ''}
+                              ${isNegative(previousYearValue) ? 'text-red-600' : ''}
                             `}
                           >
-                            {formatValue(effectiveValues[1] ?? null, row.format, isMomRow, !row.isCalculated)}
+                            {formatValue(previousYearValue, row.format, isMomRow, !row.isCalculated)}
                           </td>
                         </>
                       )
@@ -930,10 +932,10 @@ export default function FinancialTable({
                           border border-gray-300 px-4 py-2 text-right
                           ${getHighlightClass(row.isHighlight)}
                           ${row.isBold ? 'font-semibold' : ''}
-                          ${isNegative(row.year2024Value ?? null) ? 'text-red-600' : ''}
+                          ${isNegative(previousYearValue) ? 'text-red-600' : ''}
                         `}
                       >
-                        {formatValue(row.year2024Value ?? null, row.format, isMomRow, !row.isCalculated)}
+                        {formatValue(previousYearValue, row.format, isMomRow, !row.isCalculated)}
                       </td>
                     )}
                     {!monthsCollapsed && shouldShowPlanMetrics && (
@@ -1069,6 +1071,25 @@ export default function FinancialTable({
                     {displayColumns.slice(1).map((col, colIndex) => {
                       // 컬럼명에 따라 적절한 values 인덱스 매핑
                       let valueIndex = -1;
+                      const normalizedCol = col.replace(/\s+/g, '');
+
+                      if (/^24년?\((기말|말)\)$/.test(normalizedCol) || normalizedCol === '24년기말' || normalizedCol === '24년말') {
+                        valueIndex = 0;
+                      } else if (/^25년?\((기말|말)\)$/.test(normalizedCol) || normalizedCol === '25년기말' || normalizedCol === '25년말') {
+                        valueIndex = 1;
+                      } else {
+                        const reportMonthMatch = normalizedCol.match(/^26년?\((\d+)월\)$/);
+                        const monthOnlyMatch = normalizedCol.match(/^(\d+)월$/);
+                        if (reportMonthMatch) {
+                          valueIndex = parseInt(reportMonthMatch[1], 10) + 1;
+                        } else if (/^26년?(롤링|\((기말|말)\)|기말|말)$/.test(normalizedCol)) {
+                          valueIndex = 13;
+                        } else if (normalizedCol === 'YoY' || /^YoY\(/.test(normalizedCol)) {
+                          valueIndex = 14;
+                        } else if (monthOnlyMatch) {
+                          valueIndex = parseInt(monthOnlyMatch[1], 10) + 1;
+                        }
+                      }
                       
                       if (col === '24년말') {
                         valueIndex = 0;
