@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
     
     // 현재 연도 CSV 파일 읽기
-    const filePath = path.join(process.cwd(), 'cashflow', `${year}.csv`);
+    const filePath = path.join(process.cwd(), 'cashflow', '운전자본', `${year}_wc.csv`);
     const data = await readWorkingCapitalCSV(filePath, year);
     
     // 전년도 합계 계산
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const prevYear = year - 1;
     
     try {
-      const prevFilePath = path.join(process.cwd(), 'cashflow', `${prevYear}.csv`);
+      const prevFilePath = path.join(process.cwd(), 'cashflow', '운전자본', `${prevYear}_wc.csv`);
       const prevData = await readWorkingCapitalCSV(prevFilePath, prevYear);
       
       // 전년도 각 대분류/중분류/소분류의 12개월 합계 계산
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     let year2023Totals: Map<string, number> | undefined = undefined;
     if (year === 2025) {
       try {
-        const path2023 = path.join(process.cwd(), 'cashflow', '2023.csv');
+        const path2023 = path.join(process.cwd(), 'cashflow', '운전자본', '2023_wc.csv');
         const data2023 = await readWorkingCapitalCSV(path2023, 2023);
         year2023Totals = new Map<string, number>();
         const grouped2023 = new Map<string, typeof data2023>();
