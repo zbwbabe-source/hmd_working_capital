@@ -8,12 +8,9 @@ const nextConfig = {
       '/api/fs/pl': ['./PL/**/*', './credit/**/*', './여신회수계획/**/*'],
       '/api/fs/working-capital': ['./cashflow/**/*'],
       '/api/fs/working-capital-statement': ['./운전자본/**/*'],
+      '/api/fs/inventory': ['./Ctgy_mapping.csv', './country_code.csv'],
     },
   },
 };
 
 module.exports = nextConfig;
-
-
-
-

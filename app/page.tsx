@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Tabs from '@/components/Tabs';
@@ -6,6 +6,7 @@ import YearTabs from '@/components/YearTabs';
 import FinancialTable from '@/components/FinancialTable';
 import EditableAnalysis from '@/components/EditableAnalysis';
 import PLPage from '@/components/PLPage';
+import InventoryPage from '@/components/InventoryPage';
 import { TableRow, TabType } from '@/lib/types';
 import {
   analyzeCashFlowData,
@@ -17,7 +18,7 @@ import { formatNumber, formatMillionYuan } from '@/lib/utils';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF'>('BS');
+  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('BS');
   const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(119);
@@ -48,7 +49,7 @@ export default function Home() {
   
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const effectiveView: 'BS' | 'PL' | 'CF' = reportMode === 'FUND_MONTHLY' ? 'CF' : bsView;
+  const effectiveView: 'BS' | 'PL' | 'CF' | 'INVENTORY' = reportMode === 'FUND_MONTHLY' ? 'CF' : bsView;
 
   const tabs = ['홍콩법인 F/S'];
   const tabTypes: TabType[] = ['CF'];
@@ -1168,6 +1169,16 @@ export default function Home() {
                       >
                         C/F
                       </button>
+                      <button
+                        onClick={() => setBsView('INVENTORY')}
+                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                          effectiveView === 'INVENTORY'
+                            ? 'bg-navy text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                        }`}
+                      >
+                        재고
+                      </button>
                     </>
                   ) : (
                     <button className="px-4 py-2 text-sm font-medium rounded bg-navy text-white">
@@ -1175,18 +1186,20 @@ export default function Home() {
                     </button>
                   )}
                 </div>
-                <button
-                  onClick={() => {
-                    if (effectiveView === 'BS') {
-                      setBsMonthsCollapsed(!bsMonthsCollapsed);
-                    } else {
-                      setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed);
-                    }
-                  }}
-                  className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
-                >
-                  {(effectiveView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed) ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
-                </button>
+                {effectiveView !== 'INVENTORY' && (
+                  <button
+                    onClick={() => {
+                      if (effectiveView === 'BS') {
+                        setBsMonthsCollapsed(!bsMonthsCollapsed);
+                      } else {
+                        setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed);
+                      }
+                    }}
+                    className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
+                  >
+                    {(effectiveView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed) ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
+                  </button>
+                )}
                 {false && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 bg-white">
                     <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-gray-700 whitespace-nowrap">
@@ -1391,6 +1404,10 @@ export default function Home() {
             {/* P/L 화면 */}
             {effectiveView === 'PL' && !loading && (
               <PLPage />
+            )}
+
+            {effectiveView === 'INVENTORY' && !loading && (
+              <InventoryPage />
             )}
             
             {/* C/F 화면 */}
