@@ -99,39 +99,76 @@ export default function PLPage() {
   const displayPrevTree = selectedYear === 2026 ? trees2025.Total : [];
   const displayCurrTree = selectedYear === 2026 ? trees2026.Total : [];
 
+  const handleExportJson = () => {
+    const payload = {
+      year: 2026,
+      exportedAt: new Date().toISOString(),
+      sources: {
+        Total: trees2026.Total,
+        HK_MLB: trees2026.HK_MLB,
+        HK_Discovery: trees2026.HK_Discovery,
+        TW_MLB: trees2026.TW_MLB,
+        TW_Discovery: trees2026.TW_Discovery,
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'pl_2026_monthly_by_brand.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-300 px-6 py-4">
-        <div className="flex items-center gap-6">
-          <div className="flex gap-2">
-            {years.map((year) => (
-              <button
-                key={year}
-                onClick={() => setSelectedYear(year)}
-                className={`px-4 py-2 rounded font-medium transition-colors ${
-                  selectedYear === year
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                }`}
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <div className="flex gap-2">
+              {years.map((year) => (
+                <button
+                  key={year}
+                  onClick={() => setSelectedYear(year)}
+                  className={`px-4 py-2 rounded font-medium transition-colors ${
+                    selectedYear === year
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  {year}년
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">기준월</label>
+              <select
+                value={baseMonthIndex}
+                onChange={(e) => setBaseMonthIndex(Number(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded bg-white text-sm"
               >
-                {year}년
-              </button>
-            ))}
+                {months.map((month) => (
+                  <option key={month} value={month}>
+                    {month}월
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">기준월</label>
-            <select
-              value={baseMonthIndex}
-              onChange={(e) => setBaseMonthIndex(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded bg-white text-sm"
+          <div className="flex gap-2">
+            <button
+              onClick={handleExportJson}
+              className="px-4 py-2 rounded font-medium border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
             >
-              {months.map((month) => (
-                <option key={month} value={month}>
-                  {month}월
-                </option>
-              ))}
-            </select>
+              json파일로 내보내기
+            </button>
           </div>
         </div>
       </div>
