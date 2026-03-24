@@ -18,7 +18,7 @@ import { formatNumber, formatMillionYuan } from '@/lib/utils';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('BS');
+  const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('INVENTORY');
   const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(119);
