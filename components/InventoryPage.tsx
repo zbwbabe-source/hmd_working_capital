@@ -742,6 +742,9 @@ export default function InventoryPage() {
               Inventory Matrix
             </div>
             <h2 className="mt-3 text-2xl font-bold text-slate-900">브랜드별 재고 매트릭스</h2>
+            <div className="mt-3 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-4 py-1.5 text-sm font-extrabold tracking-wide text-amber-900">
+              택가 기준
+            </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               현재 화면은 `2602_inventory.xlsx` 기준 HKMC MLB 데이터만 우선 반영했습니다.
             </p>
