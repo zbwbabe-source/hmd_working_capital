@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '홍콩법인 F/S',
-  description: '홍콩법인 F/S 대시보드',
+  title: 'Hong Kong Entity F/S Dashboard',
+  description: 'Hong Kong Entity F/S dashboard',
 };
 
 export default function RootLayout({
@@ -12,14 +12,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="en">
       <body className="antialiased">
         {children}
       </body>
     </html>
   );
 }
-
 
 
 

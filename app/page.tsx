@@ -18,6 +18,7 @@ import { formatNumber, formatMillionYuan } from '@/lib/utils';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
+  const [locale, setLocale] = useState<'ko' | 'en'>('ko');
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('INVENTORY');
   const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
   const [wcYear, setWcYear] = useState<number>(2026);
@@ -50,9 +51,15 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const effectiveView: 'BS' | 'PL' | 'CF' | 'INVENTORY' = reportMode === 'FUND_MONTHLY' ? 'CF' : bsView;
+  const isEnglish = locale === 'en';
 
-  const tabs = ['홍콩법인 F/S'];
+  const tabs = [isEnglish ? 'HK F/S' : '홍콩법인 F/S'];
   const tabTypes: TabType[] = ['CF'];
+  const unitLabel = isEnglish ? 'Unit: 1,000 HKD' : '단위: 1,000 HKD';
+  const smallUnitLabel = isEnglish ? '(Unit: 1k HKD)' : '(단위: 1k HKD)';
+  const toggleRowsLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Expand ▼' : '펼치기 ▼') : (isEnglish ? 'Collapse ▲' : '접기 ▲'));
+  const toggleMonthlyLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Show Mo. ▶' : '월별 데이터 펼치기 ▶') : (isEnglish ? 'Hide Mo. ◀' : '월별 데이터 접기 ◀'));
+  const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const startAnalysisResize = (event: React.MouseEvent<HTMLDivElement>) => {
     analysisResizeRef.current = { startX: event.clientX, startWidth: analysisPanelWidth };
@@ -413,19 +420,19 @@ export default function Home() {
 
   // 월 컬럼 (1월 실적, 2~12월 계획)
   const monthColumns = [
-    '계정과목',
-    '1월(실적)',
-    '2월(실적)',
-    '3월(계획)',
-    '4월(계획)',
-    '5월(계획)',
-    '6월(계획)',
-    '7월(계획)',
-    '8월(계획)',
-    '9월(계획)',
-    '10월(계획)',
-    '11월(계획)',
-    '12월(계획)',
+    isEnglish ? 'Account' : '계정과목',
+    isEnglish ? 'Jan (Act)' : '1월(실적)',
+    isEnglish ? 'Feb (Act)' : '2월(실적)',
+    isEnglish ? 'Mar (Plan)' : '3월(계획)',
+    isEnglish ? 'Apr (Plan)' : '4월(계획)',
+    isEnglish ? 'May (Plan)' : '5월(계획)',
+    isEnglish ? 'Jun (Plan)' : '6월(계획)',
+    isEnglish ? 'Jul (Plan)' : '7월(계획)',
+    isEnglish ? 'Aug (Plan)' : '8월(계획)',
+    isEnglish ? 'Sep (Plan)' : '9월(계획)',
+    isEnglish ? 'Oct (Plan)' : '10월(계획)',
+    isEnglish ? 'Nov (Plan)' : '11월(계획)',
+    isEnglish ? 'Dec (Plan)' : '12월(계획)',
   ];
 
   const adjustedCfData = useMemo(() => {
@@ -1083,11 +1090,31 @@ export default function Home() {
         tabs={tabs}
         activeTab={activeTab}
         onChange={setActiveTab}
+        tabSideContent={
+          <div className="inline-flex w-[92px] rounded-md border border-blue-600 overflow-hidden">
+            <button
+              onClick={() => setLocale('ko')}
+              className={`w-[46px] py-1.5 text-sm font-semibold transition-colors ${
+                locale === 'ko' ? 'bg-white text-navy' : 'bg-blue-800 text-white hover:bg-blue-700'
+              }`}
+            >
+              KR
+            </button>
+            <button
+              onClick={() => setLocale('en')}
+              className={`w-[46px] py-1.5 text-sm font-semibold transition-colors ${
+                locale === 'en' ? 'bg-white text-navy' : 'bg-blue-800 text-white hover:bg-blue-700'
+              }`}
+            >
+              EN
+            </button>
+          </div>
+        }
         afterTabsContent={
           effectiveView === 'CF' ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-700 bg-blue-800">
               <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-white whitespace-nowrap">
-                매출 YoY
+                {isEnglish ? 'Sales YoY' : '매출 YoY'}
               </label>
               <input
                 id="sales-yoy-slider"
@@ -1113,7 +1140,7 @@ export default function Home() {
                   : 'bg-blue-800 text-white hover:bg-blue-700'
               }`}
             >
-              자금월보
+              {isEnglish ? 'Fund Mly' : '자금월보'}
             </button>
             <button
               onClick={() => setReportMode('PERFORMANCE')}
@@ -1123,7 +1150,7 @@ export default function Home() {
                   : 'bg-blue-800 text-white hover:bg-blue-700'
               }`}
             >
-              실적보고
+              {isEnglish ? 'Perf.' : '실적보고'}
             </button>
           </div>
         }
@@ -1177,7 +1204,7 @@ export default function Home() {
                             : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
                         }`}
                       >
-                        재고
+                        {isEnglish ? 'Inventory' : '재고'}
                       </button>
                     </>
                   ) : (
@@ -1197,13 +1224,13 @@ export default function Home() {
                     }}
                     className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
                   >
-                    {(effectiveView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed) ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
+                    {toggleMonthlyLabel(effectiveView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed)}
                   </button>
                 )}
                 {false && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 bg-white">
                     <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                      매출 YoY
+                      {isEnglish ? 'Sales YoY' : '매출 YoY'}
                     </label>
                     <input
                       id="sales-yoy-slider"
@@ -1218,10 +1245,10 @@ export default function Home() {
                     <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{salesYoYRate}%</span>
                   </div>
                 )}
-                <span className="ml-auto text-sm font-medium text-gray-600">단위: 1,000 HKD</span>
+                <span className="ml-auto text-sm font-medium text-gray-600">{unitLabel}</span>
               </div>
             </div>
-            {loading && <div className="p-6 text-center">로딩 중...</div>}
+            {loading && <div className="p-6 text-center">{isEnglish ? 'Loading...' : '로딩 중...'}</div>}
             {error && <div className="p-6 text-center text-red-500">{error}</div>}
             
             {/* B/S 화면 */}
@@ -1278,51 +1305,53 @@ export default function Home() {
                         <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                           <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
                             <span className="text-blue-600">📊</span>
-                            재무비율 분석 (2026년 기말 기준)
+                            {isEnglish ? 'Fin Ratio (2026 YE)' : '재무비율 분석 (2026년 기말 기준)'}
                           </h3>
                           <div className="grid grid-cols-3 gap-4">
                             {/* 부채비율 */}
                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                              <div className="text-xs text-gray-600 mb-1">부채비율</div>
+                              <div className="text-xs text-gray-600 mb-1">{isEnglish ? 'Debt' : '부채비율'}</div>
                               <div className="text-2xl font-bold text-purple-600 mb-1">
                                 {부채비율26.toFixed(0)}%
                               </div>
                               <div className="text-xs text-gray-500 mb-1">
-                                (2025년말 {부채비율25.toFixed(0)}%)
+                                {isEnglish ? `(2025 YE ${부채비율25.toFixed(0)}%)` : `(2025년말 ${부채비율25.toFixed(0)}%)`}
                               </div>
                               <div className="text-xs text-gray-600 mb-2">
-                                2025년 대비 {(부채비율26 - 부채비율25).toFixed(0)}%p {부채비율26 < 부채비율25 ? '개선' : '증가'}
+                                {isEnglish
+                                  ? `${(부채비율26 - 부채비율25).toFixed(0)}%p vs 2025 ${부채비율26 < 부채비율25 ? 'improved' : 'higher'}`
+                                  : `2025년 대비 ${(부채비율26 - 부채비율25).toFixed(0)}%p ${부채비율26 < 부채비율25 ? '개선' : '증가'}`}
                               </div>
                               <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
-                                TP채무 제외시: {부채비율제외TP26.toFixed(0)}%
+                                {isEnglish ? `Excluding TP debt: ${부채비율제외TP26.toFixed(0)}%` : `TP채무 제외시: ${부채비율제외TP26.toFixed(0)}%`}
                               </div>
                             </div>
                             
                             {/* 유동비율 */}
                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                              <div className="text-xs text-gray-600 mb-1">유동비율</div>
+                              <div className="text-xs text-gray-600 mb-1">{isEnglish ? 'Current' : '유동비율'}</div>
                               <div className="text-2xl font-bold text-orange-600 mb-1">
                                 {유동비율26.toFixed(0)}%
                               </div>
                               <div className="text-xs text-gray-500">
-                                (양호)
+                                {isEnglish ? '(Healthy)' : '(양호)'}
                               </div>
                               <div className="text-xs text-gray-600 mt-2">
-                                단기 재무상황 양호 및 지속 충분
+                                {isEnglish ? 'Short-term liquidity remains healthy.' : '단기 재무상황 양호 및 지속 충분'}
                               </div>
                             </div>
                             
                             {/* 자기자본비율 */}
                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                              <div className="text-xs text-gray-600 mb-1">자기자본비율</div>
+                              <div className="text-xs text-gray-600 mb-1">{isEnglish ? 'Equity' : '자기자본비율'}</div>
                               <div className="text-2xl font-bold text-green-600 mb-1">
                                 {자기자본비율26.toFixed(1)}%
                               </div>
                               <div className="text-xs text-gray-500">
-                                (연간 기준)
+                                {isEnglish ? '(Annual)' : '(연간 기준)'}
                               </div>
                               <div className="text-xs text-gray-600 mt-2">
-                                연기순이익 {(총자본26 / 1000).toFixed(0)}M 안정적 수익성 유지
+                                {isEnglish ? `Stable profitability maintained at ${(총자본26 / 1000).toFixed(0)}M.` : `연기순이익 ${(총자본26 / 1000).toFixed(0)}M 안정적 수익성 유지`}
                               </div>
                             </div>
                           </div>
@@ -1330,12 +1359,12 @@ export default function Home() {
                           {/* 핵심 요약 */}
                           <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
                             <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                              <span>💡</span> 핵심:
+                              <span>💡</span> {isEnglish ? 'Key:' : '핵심:'}
                             </div>
                             <ul className="text-xs text-gray-700 space-y-1">
-                              <li>• 부채비율 {부채비율26.toFixed(0)}%: 2025년말 {부채비율25.toFixed(0)}% 대비 {Math.abs(부채비율26 - 부채비율25).toFixed(0)}%p {부채비율26 < 부채비율25 ? '개선' : '증가'}, 재무 안정성 {부채비율26 < 부채비율25 ? '크게 향상' : '관리 필요'}</li>
-                              <li>• 유동비율 {유동비율26.toFixed(0)}%: 단기 재무상황 {유동비율26 > 100 ? '양호' : '개선 필요'}</li>
-                              <li>• 자기자본비율 {자기자본비율26.toFixed(1)}%: 안정적 수익성 기반 유지</li>
+                              <li>{isEnglish ? `• Debt ratio ${부채비율26.toFixed(0)}%: ${Math.abs(부채비율26 - 부채비율25).toFixed(0)}%p ${부채비율26 < 부채비율25 ? 'improvement' : 'increase'} vs 2025 year-end.` : `• 부채비율 ${부채비율26.toFixed(0)}%: 2025년말 ${부채비율25.toFixed(0)}% 대비 ${Math.abs(부채비율26 - 부채비율25).toFixed(0)}%p ${부채비율26 < 부채비율25 ? '개선' : '증가'}, 재무 안정성 ${부채비율26 < 부채비율25 ? '크게 향상' : '관리 필요'}`}</li>
+                              <li>{isEnglish ? `• Current ratio ${유동비율26.toFixed(0)}%: short-term liquidity is ${유동비율26 > 100 ? 'healthy' : 'needs improvement'}.` : `• 유동비율 ${유동비율26.toFixed(0)}%: 단기 재무상황 ${유동비율26 > 100 ? '양호' : '개선 필요'}`}</li>
+                              <li>{isEnglish ? `• Equity ratio ${자기자본비율26.toFixed(1)}%: stable profitability base maintained.` : `• 자기자본비율 ${자기자본비율26.toFixed(1)}%: 안정적 수익성 기반 유지`}</li>
                             </ul>
                           </div>
                         </div>
@@ -1343,18 +1372,19 @@ export default function Home() {
                     })()}
                     
                     <div className="flex items-center gap-2 mb-4">
-                      <h2 className="text-lg font-bold text-gray-800">Financial Position</h2>
-                      <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
+                      <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'Financial Position' : 'Financial Position'}</h2>
+                      <span className="text-sm text-gray-500">{smallUnitLabel}</span>
                       <button
                         onClick={() => setBsFinancialCollapsed(!bsFinancialCollapsed)}
                         className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
                       >
-                        {bsFinancialCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                        {toggleRowsLabel(bsFinancialCollapsed)}
                       </button>
                     </div>
                     <FinancialTable 
                       data={withPlanMetrics.bs ?? bsFinancialData}
-                      columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']}
+                      columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Year-end)` : `${String(wcYear).slice(-2)}년(기말)`, 'YoY', isEnglish ? 'Remarks' : '비고']}
+                      locale={locale}
                       showTotal
                       isCashFlow={true}
                       showPlanMetricsColumns={false}
@@ -1372,18 +1402,19 @@ export default function Home() {
                 {wcStatementDataForView && (
                   <div className="mt-8 pt-6 border-t-2 border-gray-400">
                     <div className="flex items-center gap-2 mb-4">
-                      <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
-                      <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
+                      <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'WC Stmt.' : '운전자본표'}</h2>
+                      <span className="text-sm text-gray-500">{smallUnitLabel}</span>
                       <button
                         onClick={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                         className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
                       >
-                        {wcStatementAllRowsCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                        {toggleRowsLabel(wcStatementAllRowsCollapsed)}
                       </button>
                     </div>
                     <FinancialTable 
                       data={withPlanMetrics.wc ?? wcStatementDataForView} 
-                      columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']} 
+                      columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Year-end)` : `${String(wcYear).slice(-2)}년(기말)`, 'YoY', isEnglish ? 'Remarks' : '비고']} 
+                      locale={locale}
                       showTotal
                       isCashFlow={true}
                       isWorkingCapital={true}
@@ -1403,11 +1434,11 @@ export default function Home() {
             
             {/* P/L 화면 */}
             {effectiveView === 'PL' && !loading && (
-              <PLPage />
+              <PLPage locale={locale} />
             )}
 
             {effectiveView === 'INVENTORY' && !loading && (
-              <InventoryPage />
+              <InventoryPage locale={locale} />
             )}
             
             {/* C/F 화면 */}
@@ -1419,18 +1450,19 @@ export default function Home() {
                       {cfDataForView && (
                         <>
                           <div className="flex items-center gap-2 mb-4">
-                            <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
-                            <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
+                            <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'CF Stmt.' : '현금흐름표'}</h2>
+                            <span className="text-sm text-gray-500">{smallUnitLabel}</span>
                             <button
                               onClick={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
                               className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
                             >
-                              {wcAllRowsCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                              {toggleRowsLabel(wcAllRowsCollapsed)}
                             </button>
                           </div>
                           <FinancialTable 
                             data={withPlanMetrics.cf ?? cfDataForView} 
-                            columns={[...monthColumns, `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
+                            columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Total)` : `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
+                            locale={locale}
                             showTotal
                             isCashFlow={true}
                             monthsCollapsed={workingCapitalMonthsCollapsed}
@@ -1448,18 +1480,19 @@ export default function Home() {
                       {wcStatementDataForView && (
                         <div className="mt-8 pt-6 border-t-2 border-gray-400">
                           <div className="flex items-center gap-2 mb-4">
-                            <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
-                            <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
+                            <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'WC Stmt.' : '운전자본표'}</h2>
+                            <span className="text-sm text-gray-500">{smallUnitLabel}</span>
                             <button
                               onClick={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                               className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
                             >
-                              {wcStatementAllRowsCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                              {toggleRowsLabel(wcStatementAllRowsCollapsed)}
                             </button>
                           </div>
                           <FinancialTable 
                             data={withPlanMetrics.wc ?? wcStatementDataForView} 
-                            columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']} 
+                            columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Year-end)` : `${String(wcYear).slice(-2)}년(기말)`, 'YoY', isEnglish ? 'Remarks' : '비고']} 
+                            locale={locale}
                             showTotal
                             isCashFlow={true}
                             isWorkingCapital={true}
@@ -1486,6 +1519,7 @@ export default function Home() {
                     >
                       <EditableAnalysis
                         year={wcYear}
+                        locale={locale}
                         disabled={false}
                         initialContent={analysisResults ? {
                           keyInsights: analysisResults.insights.keyInsights,
@@ -1502,18 +1536,19 @@ export default function Home() {
                     {cfDataForView && (
                       <>
                         <div className="flex items-center gap-2 mb-4">
-                          <h2 className="text-lg font-bold text-gray-800">현금흐름표</h2>
-                          <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
+                          <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'CF Stmt.' : '현금흐름표'}</h2>
+                          <span className="text-sm text-gray-500">{smallUnitLabel}</span>
                           <button
                             onClick={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
                             className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
                           >
-                            {wcAllRowsCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                            {toggleRowsLabel(wcAllRowsCollapsed)}
                           </button>
                         </div>
                         <FinancialTable 
                           data={withPlanMetrics.cf ?? cfDataForView} 
-                          columns={[...monthColumns, `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
+                          columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Total)` : `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
+                          locale={locale}
                           showTotal
                           isCashFlow={true}
                           monthsCollapsed={workingCapitalMonthsCollapsed}
@@ -1531,18 +1566,19 @@ export default function Home() {
                     {wcStatementDataForView && (
                       <div className="mt-8 pt-6 border-t-2 border-gray-400">
                         <div className="flex items-center gap-2 mb-4">
-                          <h2 className="text-lg font-bold text-gray-800">운전자본표</h2>
-                          <span className="text-sm text-gray-500">(단위: 1k HKD)</span>
+                          <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'WC Stmt.' : '운전자본표'}</h2>
+                          <span className="text-sm text-gray-500">{smallUnitLabel}</span>
                           <button
                             onClick={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                             className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
                           >
-                            {wcStatementAllRowsCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                            {toggleRowsLabel(wcStatementAllRowsCollapsed)}
                           </button>
                         </div>
                         <FinancialTable 
                           data={withPlanMetrics.wc ?? wcStatementDataForView} 
-                          columns={[...monthColumns, `${String(wcYear).slice(-2)}년(기말)`, 'YoY', '비고']} 
+                          columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Year-end)` : `${String(wcYear).slice(-2)}년(기말)`, 'YoY', isEnglish ? 'Remarks' : '비고']} 
+                          locale={locale}
                           showTotal
                           isCashFlow={true}
                           isWorkingCapital={true}

@@ -4,10 +4,12 @@ import React, { useMemo, useState } from 'react';
 import type { Node } from '@/PL/src/pl/tree';
 import type { MonthKey, Source } from '@/PL/src/pl/types';
 import { calcCols, calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
+import { translateFinanceLabel } from '@/lib/translate-finance-label';
 
 type DetailSource = Exclude<Source, 'Total'>;
 
 type PLTableProps = {
+  locale?: 'ko' | 'en';
   prevTree: Node[];
   currTree: Node[];
   detailPrevTrees: Record<DetailSource, Node[]>;
@@ -27,6 +29,53 @@ const DETAIL_COLUMNS: Array<{ source: DetailSource; label: string }> = [
   { source: 'TW_Discovery', label: '대만 DX' },
 ];
 
+const PL_LABELS_EN: Record<string, string> = {
+  매출: 'Sales',
+  실판매출: 'Sell-out',
+  TAG매출: 'TAG',
+  'Tag대비 원가율': 'COGS / TAG',
+  매출원가: 'COGS',
+  매출총이익: 'GP',
+  매출총이익률: 'GM',
+  판관비: 'SG&A',
+  '오프라인 직접비': 'Off. Direct Exp.',
+  '온라인 직접비': 'On. Direct Exp.',
+  영업비: 'Office Exp.',
+  '직접비+영업비': 'Direct Exp. + OpEx',
+  영업이익: 'OP',
+  영업이익률: 'OPM',
+  당기순이익: 'NI',
+  순이익률: 'NPM',
+  홍콩: 'HK',
+  마카오: 'Macau',
+  대만: 'TW',
+  리테일: 'Retail',
+  아울렛: 'Outlet',
+  온라인: 'Online',
+  매장급여: 'Store Payroll',
+  매장관리비: 'Store Admin',
+  매장광고비: 'Store Mktg',
+  '물류비(Tag대비)': 'Logistics (TAG)',
+  지급수수료: 'Commissions',
+  매장임차료: 'Store Rent',
+  매장감가상각비: 'Store D&A',
+  매장기타: 'Store Misc.',
+  여비교통비: 'T&E',
+  '지급수수료 일반': 'Gen. Fee',
+  급여: 'Payroll',
+  광고비: 'Mktg',
+  임차료: 'Rent',
+  감가상각비: 'D&A',
+  보험료: 'Insurance',
+  기타: 'Misc.',
+  합계: 'Total',
+};
+
+const translatePlLabel = (label: string, locale: 'ko' | 'en') => {
+  if (locale === 'ko') return label;
+  return PL_LABELS_EN[label] ?? translateFinanceLabel(label, 'short');
+};
+
 function formatNumber(num: number | null): string {
   if (num === null || num === undefined) return '-';
   return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -37,7 +86,8 @@ function formatPercent(num: number | null): string {
   return `${num.toFixed(1)}%`;
 }
 
-function formatChange(curr: number | null, prev: number | null, isRate: boolean = false): JSX.Element {
+function formatChange(curr: number | null, prev: number | null, isRate: boolean = false, locale: 'ko' | 'en' = 'ko'): JSX.Element {
+  const isEnglish = locale === 'en';
   if (curr === null || prev === null) {
     return <span className="text-xs text-gray-400">-</span>;
   }
@@ -46,16 +96,16 @@ function formatChange(curr: number | null, prev: number | null, isRate: boolean 
 
   if (isRate) {
     const diffText = diff >= 0 ? `+${diff.toFixed(1)}%p` : `${diff.toFixed(1)}%p`;
-    if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">{diffText}, 흑자전환</div>;
-    if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">{diffText}, 적자전환</div>;
+    if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">{diffText}, {isEnglish ? 'To profit' : '흑자전환'}</div>;
+    if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">{diffText}, {isEnglish ? 'To loss' : '적자전환'}</div>;
     return <div className={`text-xs ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>{diffText}</div>;
   }
 
   const ratio = prev === 0 ? null : (curr / prev) * 100;
   const diffText = diff >= 0 ? `+${formatNumber(diff)}` : `△${formatNumber(Math.abs(diff))}`;
   const rateText = ratio === null ? '-' : `${ratio.toFixed(0)}%`;
-  if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">{diffText}, 흑자전환</div>;
-  if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">{diffText}, 적자전환</div>;
+  if (prev < 0 && curr > 0) return <div className="text-xs text-green-600 font-semibold">{diffText}, {isEnglish ? 'To profit' : '흑자전환'}</div>;
+  if (prev > 0 && curr < 0) return <div className="text-xs text-red-600 font-semibold">{diffText}, {isEnglish ? 'To loss' : '적자전환'}</div>;
 
   return (
     <div className={`text-xs ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -154,6 +204,7 @@ function renderValue(value: number | null, isRate: boolean) {
 }
 
 export default function PLTable({
+  locale = 'ko',
   prevTree,
   currTree,
   detailPrevTrees,
@@ -165,11 +216,22 @@ export default function PLTable({
   onToggleNode,
   expandedNodes,
 }: PLTableProps) {
+  const isEnglish = locale === 'en';
+  const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const [showMonthDetails, setShowMonthDetails] = useState<boolean>(false);
   const [showYtdDetails, setShowYtdDetails] = useState<boolean>(false);
   const [showAnnualDetails, setShowAnnualDetails] = useState<boolean>(false);
 
-  const baseWindowLabel = baseMonthIndex <= 1 ? '1월' : `${baseMonthIndex}월`;
+  const baseWindowLabel = isEnglish ? monthNamesEn[Math.max(baseMonthIndex - 1, 0)] : (baseMonthIndex <= 1 ? '1월' : `${baseMonthIndex}월`);
+  const detailColumns = isEnglish
+    ? DETAIL_COLUMNS.map((detail) => ({
+        ...detail,
+        label: detail.label
+          .replace('홍콩', 'HK')
+          .replace('대만', 'TW')
+          .replace('Discovery', 'DX'),
+      }))
+    : DETAIL_COLUMNS;
   const prevFlat = useMemo(() => flattenTree(prevTree, isExpandedAll, expandedNodes), [prevTree, isExpandedAll, expandedNodes]);
   const currFlat = useMemo(() => flattenTree(currTree, isExpandedAll, expandedNodes), [currTree, isExpandedAll, expandedNodes]);
 
@@ -216,7 +278,7 @@ export default function PLTable({
   );
 
   const monthHeaders = Array.from({ length: 12 }, (_, i) =>
-    i < baseMonthIndex ? `${i + 1}월(실적)` : `${i + 1}월(계획)`
+    i < baseMonthIndex ? (isEnglish ? `${monthNamesEn[i]} (Act)` : `${i + 1}월(실적)`) : (isEnglish ? `${monthNamesEn[i]} (Plan)` : `${i + 1}월(계획)`)
   );
 
   return (
@@ -225,7 +287,7 @@ export default function PLTable({
         <thead className="sticky top-0 z-10">
           <tr className="bg-blue-700 text-white">
             <th className="border border-white/30 px-4 py-3 text-left font-semibold sticky left-0 bg-blue-700 z-20 min-w-[220px]">
-              계정과목
+              {isEnglish ? 'Account' : '계정과목'}
             </th>
 
             {showMonthly &&
@@ -236,21 +298,21 @@ export default function PLTable({
               ))}
 
             <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
-              전년({baseWindowLabel})
+              {isEnglish ? `Prev (${baseWindowLabel})` : `전년(${baseWindowLabel})`}
             </th>
             <th
               className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
               onClick={() => setShowMonthDetails((prev) => !prev)}
             >
               <span className="inline-flex items-center gap-2">
-                당년({baseWindowLabel})
+                {isEnglish ? `Curr (${baseWindowLabel})` : `당년(${baseWindowLabel})`}
                 <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
                   {showMonthDetails ? '▼' : '▶'}
                 </span>
               </span>
             </th>
             {showMonthDetails &&
-              DETAIL_COLUMNS.map((detail) => (
+              detailColumns.map((detail) => (
                 <th key={`month-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
                   {detail.label}
                 </th>
@@ -259,21 +321,21 @@ export default function PLTable({
             {showYTD && (
               <>
                 <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
-                  전년YTD
+                  {isEnglish ? 'Prev YTD' : '전년YTD'}
                 </th>
                 <th
                   className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
                   onClick={() => setShowYtdDetails((prev) => !prev)}
                 >
                   <span className="inline-flex items-center gap-2">
-                    당년YTD
+                    {isEnglish ? 'Curr YTD' : '당년YTD'}
                     <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
                       {showYtdDetails ? '▼' : '▶'}
                     </span>
                   </span>
                 </th>
                 {showYtdDetails &&
-                  DETAIL_COLUMNS.map((detail) => (
+                  detailColumns.map((detail) => (
                     <th key={`ytd-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
                       {detail.label}
                     </th>
@@ -282,21 +344,21 @@ export default function PLTable({
             )}
 
             <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
-              25년 연간
+              {isEnglish ? '25 Annual' : '25년 연간'}
             </th>
             <th
               className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
               onClick={() => setShowAnnualDetails((prev) => !prev)}
             >
               <span className="inline-flex items-center gap-2">
-                26년 연간
+                {isEnglish ? '26 Annual' : '26년 연간'}
                 <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
                   {showAnnualDetails ? '▼' : '▶'}
                 </span>
               </span>
             </th>
             {showAnnualDetails &&
-              DETAIL_COLUMNS.map((detail) => (
+              detailColumns.map((detail) => (
                 <th key={`annual-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
                   {detail.label}
                 </th>
@@ -344,7 +406,7 @@ export default function PLTable({
               : calcCols(12, prevMonths, currMonths, isRate);
 
             const detailCells = (scope: 'month' | 'ytd' | 'annual') =>
-              DETAIL_COLUMNS.map((detail) => {
+              detailColumns.map((detail) => {
                 const prevDetail = detailPrevMaps[detail.source].get(key);
                 const currDetail = detailCurrMaps[detail.source].get(key);
                 const prevDetailMonths = getNodeMonths(prevDetail);
@@ -386,7 +448,7 @@ export default function PLTable({
                     <div className={`font-semibold ${currValue !== null && currValue < 0 ? 'text-red-600' : ''}`}>
                       {renderValue(currValue, isRate)}
                     </div>
-                    {formatChange(currValue, prevValue, isRate)}
+                      {formatChange(currValue, prevValue, isRate, locale)}
                   </td>
                 );
               });
@@ -405,7 +467,7 @@ export default function PLTable({
                     ) : (
                       <span className="w-5" />
                     )}
-                    <span className={depth <= 2 ? 'font-semibold' : ''}>{node.label}</span>
+                    <span className={depth <= 2 ? 'font-semibold' : ''}>{translatePlLabel(node.label, locale)}</span>
                   </div>
                 </td>
 
@@ -420,7 +482,7 @@ export default function PLTable({
                         <div className={`font-semibold ${currVal < 0 ? 'text-red-600' : ''}`}>
                           {renderValue(currVal, isRate)}
                         </div>
-                        {formatChange(currVal, prevVal, isRate)}
+                    {formatChange(currVal, prevVal, isRate, locale)}
                       </td>
                     );
                   })}
@@ -435,7 +497,7 @@ export default function PLTable({
                   <div className={`font-semibold ${(baseResult.currMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
                     {renderValue(baseResult.currMonth, isRate)}
                   </div>
-                  {formatChange(baseResult.currMonth, baseResult.prevMonth, isRate)}
+                  {formatChange(baseResult.currMonth, baseResult.prevMonth, isRate, locale)}
                 </td>
                 {showMonthDetails && detailCells('month')}
 
@@ -450,7 +512,7 @@ export default function PLTable({
                       <div className={`font-semibold ${(baseResult.currYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
                         {renderValue(baseResult.currYTD, isRate)}
                       </div>
-                      {formatChange(baseResult.currYTD, baseResult.prevYTD, isRate)}
+                      {formatChange(baseResult.currYTD, baseResult.prevYTD, isRate, locale)}
                     </td>
                     {showYtdDetails && detailCells('ytd')}
                   </>
@@ -465,7 +527,7 @@ export default function PLTable({
                   <div className={`font-semibold ${(yearResult.currYearTotal ?? 0) < 0 ? 'text-red-600' : ''}`}>
                     {renderValue(yearResult.currYearTotal, isRate)}
                   </div>
-                  {formatChange(yearResult.currYearTotal, yearResult.prevYearTotal, isRate)}
+                  {formatChange(yearResult.currYearTotal, yearResult.prevYearTotal, isRate, locale)}
                 </td>
                 {showAnnualDetails && detailCells('annual')}
               </tr>

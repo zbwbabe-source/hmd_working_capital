@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { TableRow } from '@/lib/types';
 import { formatNumber, formatPercent } from '@/lib/utils';
+import { translateFinanceLabel } from '@/lib/translate-finance-label';
 
 // ── CF 지역 그룹 토글: 홍콩마카오/대만만 토글 허용 ──
 const REGION_GROUPS = ['홍콩마카오', '대만'];
@@ -10,6 +11,7 @@ const REGION_GROUPS = ['홍콩마카오', '대만'];
 interface FinancialTableProps {
   data: TableRow[];
   columns: string[]; // ["계정과목", "1월", ..., "12월"] 또는 [..., "2025년(합계)"]
+  locale?: 'ko' | 'en';
   showTotal?: boolean; // CF에서 합계 컬럼 표시 여부
   showComparisons?: boolean; // PL 2025년 또는 BS 2025/2026에서 비교 컬럼 표시 여부
   baseMonth?: number; // 기준월 (1~12)
@@ -36,6 +38,7 @@ interface FinancialTableProps {
 export default function FinancialTable({ 
   data, 
   columns, 
+  locale = 'ko',
   showTotal = false,
   showComparisons = false,
   baseMonth = 11,
@@ -58,6 +61,7 @@ export default function FinancialTable({
   onAllRowsToggle,
   defaultExpandedAccounts,
 }: FinancialTableProps) {
+  const isEnglish = locale === 'en';
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
   const [internalAllRowsCollapsed, setInternalAllRowsCollapsed] = useState<boolean>(true);
@@ -95,6 +99,52 @@ export default function FinancialTable({
   const [brandAnnualCollapsed, setBrandAnnualCollapsed] = useState<boolean>(true); // 연간
   
   const brands = ['MLB', 'KIDS', 'DISCOVERY', 'DUVETICA', 'SUPRA'];
+  const uiText = {
+    expand: isEnglish ? 'Expand ▼' : '펼치기 ▼',
+    collapse: isEnglish ? 'Collapse ▲' : '접기 ▲',
+    expandMonthly: isEnglish ? 'Show Monthly Data ▶' : '월별 데이터 펼치기 ▶',
+    collapseMonthly: isEnglish ? 'Hide Monthly Data ◀' : '월별 데이터 접기 ◀',
+    comparisonAlwaysShown: isEnglish ? '(Comparison columns are always shown)' : '(비교 컬럼은 항상 표시됩니다)',
+    showAllWithoutYtd: isEnglish ? 'Show All (YTD hidden)' : '전체 보기 (YTD 숨긴 상태)',
+    hideYtd: isEnglish ? 'Hide YTD (currently full view)' : 'YTD 숨기기 (현재 전체보기)',
+    remarks: isEnglish ? 'Remarks' : '비고',
+    remarksPlaceholder: isEnglish ? 'Enter remarks...' : '비고 입력...',
+    profitTurnaround: isEnglish ? 'To profit' : '흑자전환',
+    lossTurnaround: isEnglish ? 'To loss' : '적자전환',
+    account: isEnglish ? 'Account' : '계정과목',
+  };
+
+  const translateAccountLabel = (label: string) => {
+    if (!isEnglish) return label;
+    return translateFinanceLabel(label, 'full');
+  };
+
+  const translateColumnLabel = (label: string) => {
+    if (!isEnglish) return label;
+    if (label === '계정과목') return 'Account';
+    if (label === '비고') return uiText.remarks;
+    if (label === 'YoY') return 'YoY';
+    if (label === 'YoY(기준월)') return 'YoY (Base Month)';
+    if (label === 'YoY(연간)') return 'YoY (Annual)';
+    if (label === 'YoY(증감)') return 'YoY (Change)';
+
+    const monthMatch = label.match(/^(\d+)월\((실적|계획)\)$/);
+    if (monthMatch) {
+      return `${monthMatch[1]}M (${monthMatch[2] === '실적' ? 'Actual' : 'Plan'})`;
+    }
+
+    return label
+      .replace(/전년/g, 'Prev.')
+      .replace(/당년/g, 'Current')
+      .replace(/기말/g, 'Year-end')
+      .replace(/합계/g, 'Total')
+      .replace(/롤링/g, 'Rolling')
+      .replace(/전월계획대비%/g, 'vs Prev Plan %')
+      .replace(/전월계획대비/g, 'vs Prev Plan')
+      .replace(/전월계획/g, 'Prev Plan')
+      .replace(/연간/g, 'Annual')
+      .replace(/월/g, 'M');
+  };
   
   // 외부에서 monthsCollapsed를 제어하는 경우와 내부에서 제어하는 경우 모두 지원
   const monthsCollapsed = externalMonthsCollapsed !== undefined ? externalMonthsCollapsed : internalMonthsCollapsed;
@@ -362,15 +412,15 @@ export default function FinancialTable({
     previous: number | null | undefined
   ): string => {
     if (current === null || current === undefined || previous === null || previous === undefined) return '-';
-    if (previous < 0 && current > 0) return '\uD751\uC790\uC804\uD658';
-    if (previous > 0 && current < 0) return '\uC801\uC790\uC804\uD658';
+    if (previous < 0 && current > 0) return uiText.profitTurnaround;
+    if (previous > 0 && current < 0) return uiText.lossTurnaround;
     if (previous <= 0) return '-';
     return formatPercent(current / previous, false, false, 0);
   };
 
   const getNetCashYoYClass = (label: string): string => {
-    if (label === '\uD751\uC790\uC804\uD658') return 'text-green-600';
-    if (label === '\uC801\uC790\uC804\uD658') return 'text-red-600';
+    if (label === uiText.profitTurnaround) return 'text-green-600';
+    if (label === uiText.lossTurnaround) return 'text-red-600';
     return '';
   };
 
@@ -395,33 +445,33 @@ export default function FinancialTable({
       if (currentYear === 2026) {
         // 2026년: 25년기말 vs 26년6월만
         return [
-          `${prevYear}년기말`,
-          `${currYear}년6월`,
-          'YoY(연간)',
+          isEnglish ? `${prevYear} Year-end` : `${prevYear}년기말`,
+          isEnglish ? `${currYear} Jun` : `${currYear}년6월`,
+          isEnglish ? 'YoY (Annual)' : 'YoY(연간)',
         ];
       } else {
         // 2025년: 월별 + 기말 비교
         return [
-          `전년(${baseMonth}월)`,
-          `당년(${baseMonth}월)`,
-          'YoY(기준월)',
-          `${prevYear}년기말`,
-          `${currYear}년기말`,
-          'YoY(연간)',
+          isEnglish ? `Prev. (${baseMonth}M)` : `전년(${baseMonth}월)`,
+          isEnglish ? `Current (${baseMonth}M)` : `당년(${baseMonth}월)`,
+          isEnglish ? 'YoY (Base Month)' : 'YoY(기준월)',
+          isEnglish ? `${prevYear} Year-end` : `${prevYear}년기말`,
+          isEnglish ? `${currYear} Year-end` : `${currYear}년기말`,
+          isEnglish ? 'YoY (Annual)' : 'YoY(연간)',
         ];
       }
     } else {
       // 손익계산서: 월별, YTD, 연간 (YoY 컬럼 제거 - 당년 컬럼에 통합)
       return [
-        `전년(${baseMonth}월)`,
-        `당년(${baseMonth}월)`,
-        '전년YTD',
-        '당년YTD',
-        '24년연간',
-        '25년연간',
+        isEnglish ? `Prev. (${baseMonth}M)` : `전년(${baseMonth}월)`,
+        isEnglish ? `Current (${baseMonth}M)` : `당년(${baseMonth}월)`,
+        isEnglish ? 'Prev. YTD' : '전년YTD',
+        isEnglish ? 'Current YTD' : '당년YTD',
+        isEnglish ? '24 Annual' : '24년연간',
+        isEnglish ? '25 Annual' : '25년연간',
       ];
     }
-  }, [showComparisons, isBalanceSheet, baseMonth, currentYear]);
+  }, [showComparisons, isBalanceSheet, baseMonth, currentYear, isEnglish]);
 
   const hasPlanMetrics = useMemo(
     () => isCashFlow && data.some((row) => row.planValue !== undefined),
@@ -439,13 +489,13 @@ export default function FinancialTable({
       const totalColumnHeader =
         yearColumnFromProps && yearColumnFromProps.includes('년(')
           ? yearColumnFromProps
-          : (currentYear ? `${currentYear}년(합계)` : '2025년(합계)');
+          : (currentYear ? `${currentYear}${isEnglish ? ' (Total)' : '년(합계)'}` : `2025${isEnglish ? ' (Total)' : '년(합계)'}`);
       const use기말 = yearColumnFromProps != null && yearColumnFromProps.includes('기말');
       const show2023 = currentYear === 2025;
       const currentYearShort = String(currentYear ?? 2025).slice(-2);
       const prevYearShort = String((currentYear ?? 2025) - 1).slice(-2);
-      const prevYearHeader = `${prevYearShort}년(${use기말 ? '기말' : '합계'})`;
-      const year2023Header = `23년(${use기말 ? '기말' : '합계'})`;
+      const prevYearHeader = `${prevYearShort}${isEnglish ? ` (${use기말 ? 'Year-end' : 'Total'})` : `년(${use기말 ? '기말' : '합계'})`}`;
+      const year2023Header = `23${isEnglish ? ` (${use기말 ? 'Year-end' : 'Total'})` : `년(${use기말 ? '기말' : '합계'})`}`;
       const useBaseLabel = /\uAE30\uB9D0/.test(yearColumnFromProps ?? '');
       const valueLabel = useBaseLabel ? '\uAE30\uB9D0' : '\uD569\uACC4';
       const rollingLabel = currentYear === 2026 ? '\uB864\uB9C1' : valueLabel;
@@ -454,37 +504,37 @@ export default function FinancialTable({
         if (monthsCollapsed) {
           return [
             ...accountCol,
-            `${prevYearShort}\uB144 ${valueLabel}`,
-            `${currentYearShort}\uB144 \uC804\uC6D4\uACC4\uD68D`,
+            `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
+            `${currentYearShort}${isEnglish ? ' Prev Plan' : '년 전월계획'}`,
             'YoY',
-            `${currentYearShort}\uB144 ${rollingLabel}`,
+            `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
             'YoY',
-            '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44',
-            '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44%',
+            isEnglish ? 'vs Prev Plan' : '전월계획대비',
+            isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
           ];
         }
 
         const monthCols = columns.slice(1, 13); // 1??12??
         return [
           ...accountCol,
-          `${prevYearShort}\uB144 ${valueLabel}`,
-          `${currentYearShort}\uB144 \uC804\uC6D4\uACC4\uD68D`,
+          `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
+          `${currentYearShort}${isEnglish ? ' Prev Plan' : '년 전월계획'}`,
           'YoY',
           ...monthCols,
-          `${currentYearShort}\uB144 ${rollingLabel}`,
+          `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
           'YoY',
-          '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44',
-          '\uC804\uC6D4\uACC4\uD68D\uB300\uBE44%',
+          isEnglish ? 'vs Prev Plan' : '전월계획대비',
+          isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
         ];
       }
       if (monthsCollapsed) {
         if (!shouldShowPlanMetrics && currentYear === 2026) {
           return [
             ...accountCol,
-            `24년(${valueLabel})`,
+            isEnglish ? `24 (${translateColumnLabel(valueLabel)})` : `24년(${valueLabel})`,
             prevYearHeader,
-            `${currentYearShort}년(2월)`,
-            `${currentYearShort}년 ${rollingLabel}`,
+            isEnglish ? `${currentYearShort} (Feb)` : `${currentYearShort}년(2월)`,
+            `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
             'YoY',
           ];
         }
@@ -500,7 +550,7 @@ export default function FinancialTable({
         const monthCols = columns.slice(1, 13); // 1월~12월
         return [
           ...accountCol,
-          ...(currentYear === 2026 ? [`24년(${valueLabel})`] : []),
+          ...(currentYear === 2026 ? [isEnglish ? `24 (${translateColumnLabel(valueLabel)})` : `24년(${valueLabel})`] : []),
           ...(show2023 ? [year2023Header] : []),
           prevYearHeader,
           ...monthCols,
@@ -639,7 +689,7 @@ export default function FinancialTable({
       // 기본: 모든 컬럼
       return columns;
     }
-  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, shouldShowPlanMetrics, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear]);
+  }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, shouldShowPlanMetrics, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear, isEnglish]);
 
   return (
     <div>
@@ -651,7 +701,7 @@ export default function FinancialTable({
             onClick={toggleAllRows}
             className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
           >
-            {allRowsCollapsed ? '펼치기 ▼' : '접기 ▲'}
+            {allRowsCollapsed ? uiText.expand : uiText.collapse}
           </button>
         )}
         
@@ -662,10 +712,10 @@ export default function FinancialTable({
               onClick={toggleMonths}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
             >
-              {monthsCollapsed ? '월별 데이터 펼치기 ▶' : '월별 데이터 접기 ◀'}
+              {monthsCollapsed ? uiText.expandMonthly : uiText.collapseMonthly}
             </button>
             <span className="text-sm text-gray-600">
-              (비교 컬럼은 항상 표시됩니다)
+              {uiText.comparisonAlwaysShown}
             </span>
           </>
         )}
@@ -676,7 +726,7 @@ export default function FinancialTable({
             onClick={onHideYtdToggle}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
           >
-            {hideYtd ? '전체 보기 (YTD 숨긴 상태)' : 'YTD 숨기기 (현재 전체보기)'}
+            {hideYtd ? uiText.showAllWithoutYtd : uiText.hideYtd}
           </button>
         )}
       </div>
@@ -745,8 +795,9 @@ export default function FinancialTable({
                 const is26년롤링Header = isCashFlow && currentYear === 2026 && col.startsWith('26년 롤링');
                 const isBsCurrentHighlightHeader = is26년2월Header || is26년롤링Header;
                 
+                const translatedCol = translateColumnLabel(col);
                 const headerLabel =
-                  /^\d{2}년 전월계획$/.test(col) ? col.replace('년 ', '년\n') : col;
+                  /^\d{2}년 전월계획$/.test(col) ? translatedCol.replace(' ', '\n') : translatedCol;
                 const isPrevPlanHeader = isCashFlow && col.includes('전월계획');
                 const isPrevPlanYoYHeader =
                   isCashFlow &&
@@ -793,7 +844,7 @@ export default function FinancialTable({
               {/* 비고 열 헤더 */}
               {showRemarks && (
                 <th className="border border-gray-300 py-3 px-4 text-center font-semibold text-white bg-navy min-w-[200px]">
-                  비고
+                  {uiText.remarks}
                 </th>
               )}
             </tr>
@@ -860,7 +911,7 @@ export default function FinancialTable({
                 >
                   <div className="flex items-center gap-2">
                     <span className={`${compactLayout ? 'overflow-hidden text-ellipsis' : ''} ${isMomRow ? 'italic' : ''}`}>
-                      {row.account}
+                      {translateAccountLabel(row.account)}
                     </span>
                     {hasChildren(row) && !isCostRegion && (
                       <span className="text-gray-500 flex-shrink-0">
@@ -1260,7 +1311,7 @@ export default function FinancialTable({
                                   {isProfitTurnaround ? (
                                     <>
                                       <span className="mx-1">,</span>
-                                      <span className="text-green-600 font-semibold">흑자전환</span>
+                                      <span className="text-green-600 font-semibold">{uiText.profitTurnaround}</span>
                                     </>
                                   ) : monthYoYPercent !== null && row.account !== '영업이익률' && row.account !== '(Tag 대비 원가율)' && (
                                     <>
@@ -1326,7 +1377,7 @@ export default function FinancialTable({
                                   {isProfitTurnaround ? (
                                     <>
                                       <span className="mx-1">,</span>
-                                      <span className="text-green-600 font-semibold">흑자전환</span>
+                                      <span className="text-green-600 font-semibold">{uiText.profitTurnaround}</span>
                                     </>
                                   ) : ytdYoYPercent !== null && row.account !== '영업이익률' && row.account !== '(Tag 대비 원가율)' && (
                                     <>
@@ -1384,7 +1435,7 @@ export default function FinancialTable({
                                   {isProfitTurnaround ? (
                                     <>
                                       <span className="mx-1">,</span>
-                                      <span className="text-green-600 font-semibold">흑자전환</span>
+                                      <span className="text-green-600 font-semibold">{uiText.profitTurnaround}</span>
                                     </>
                                   ) : annualYoYPercent !== null && row.account !== '영업이익률' && row.account !== '(Tag 대비 원가율)' && (
                                     <>
@@ -1473,7 +1524,7 @@ export default function FinancialTable({
                       type="text"
                       value={remarks?.get(row.account) || autoRemarks?.[row.account] || ''}
                       onChange={(e) => onRemarkChange?.(row.account, e.target.value)}
-                      placeholder="비고 입력..."
+                      placeholder={uiText.remarksPlaceholder}
                       className="w-full px-2 py-1 text-xs bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 focus:rounded transition-colors"
                     />
                   </td>

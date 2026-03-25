@@ -5,11 +5,12 @@ interface TabsProps {
   tabs: string[];
   activeTab: number;
   onChange: (index: number) => void;
+  tabSideContent?: ReactNode;
   afterTabsContent?: ReactNode;
   rightContent?: ReactNode;
 }
 
-export default function Tabs({ tabs, activeTab, onChange, afterTabsContent, rightContent }: TabsProps) {
+export default function Tabs({ tabs, activeTab, onChange, tabSideContent, afterTabsContent, rightContent }: TabsProps) {
   return (
     <div className="fixed top-0 left-0 right-0 z-50 bg-navy shadow-md">
       <div className="flex items-center border-b border-gray-700">
@@ -19,7 +20,7 @@ export default function Tabs({ tabs, activeTab, onChange, afterTabsContent, righ
               key={index}
               onClick={() => onChange(index)}
               className={`
-                px-6 py-4 text-sm font-medium transition-colors relative
+                w-[220px] px-6 py-4 text-sm font-medium transition-colors relative text-center
                 ${activeTab === index
                   ? 'text-white'
                   : 'text-gray-300 hover:text-white'}
@@ -32,6 +33,7 @@ export default function Tabs({ tabs, activeTab, onChange, afterTabsContent, righ
             </button>
           ))}
         </div>
+        {tabSideContent && <div className="pl-3 flex-shrink-0">{tabSideContent}</div>}
         {afterTabsContent && <div className="pl-3">{afterTabsContent}</div>}
         {rightContent && <div className="ml-auto pr-6">{rightContent}</div>}
       </div>

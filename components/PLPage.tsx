@@ -18,7 +18,13 @@ const EMPTY_TREE_MAP: TreeMap = {
   TW_Discovery: [],
 };
 
-export default function PLPage() {
+interface PLPageProps {
+  locale?: 'ko' | 'en';
+}
+
+export default function PLPage({ locale = 'ko' }: PLPageProps) {
+  const isEnglish = locale === 'en';
+  const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
   const [baseMonthIndex, setBaseMonthIndex] = useState<number>(2);
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
@@ -65,7 +71,7 @@ export default function PLPage() {
       } catch (err) {
         if (cancelled) return;
         console.error('PL load failed:', err);
-        setError('손익 데이터를 불러오지 못했습니다.');
+        setError(isEnglish ? 'Failed to load P/L data.' : '손익 데이터를 불러오지 못했습니다.');
         setTrees2025({ ...EMPTY_TREE_MAP });
         setTrees2026({ ...EMPTY_TREE_MAP });
       } finally {
@@ -141,13 +147,13 @@ export default function PLPage() {
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
                   }`}
                 >
-                  {year}년
+                  {isEnglish ? year : `${year}년`}
                 </button>
               ))}
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">기준월</label>
+              <label className="text-sm font-medium text-gray-700">{isEnglish ? 'Base Month' : '기준월'}</label>
               <select
                 value={baseMonthIndex}
                 onChange={(e) => setBaseMonthIndex(Number(e.target.value))}
@@ -155,7 +161,7 @@ export default function PLPage() {
               >
                 {months.map((month) => (
                   <option key={month} value={month}>
-                    {month}월
+                    {isEnglish ? monthNamesEn[month - 1] : `${month}월`}
                   </option>
                 ))}
               </select>
@@ -167,7 +173,7 @@ export default function PLPage() {
               onClick={handleExportJson}
               className="px-4 py-2 rounded font-medium border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
             >
-              json파일로 내보내기
+              {isEnglish ? 'JSON' : 'json파일로 내보내기'}
             </button>
           </div>
         </div>
@@ -179,33 +185,34 @@ export default function PLPage() {
             onClick={handleToggleAll}
             className="px-4 py-2 bg-gray-700 text-white rounded text-sm font-medium hover:bg-gray-800 transition-colors"
           >
-            {isExpandedAll ? '접기 ▲' : '펼치기 ▼'}
+            {isExpandedAll ? (isEnglish ? 'Collapse ▲' : '접기 ▲') : (isEnglish ? 'Expand ▼' : '펼치기 ▼')}
           </button>
 
           <button
             onClick={() => setShowMonthly((prev) => !prev)}
             className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-100 transition-colors"
           >
-            월별 데이터 {showMonthly ? '접기 ◀' : '펼치기 ▶'}
+            {isEnglish ? `Mo. ${showMonthly ? 'Hide ◀' : 'Show ▶'}` : `월별 데이터 ${showMonthly ? '접기 ◀' : '펼치기 ▶'}`}
           </button>
 
           <button
             onClick={() => setShowYTD((prev) => !prev)}
             className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-100 transition-colors"
           >
-            {showYTD ? 'YTD 숨기기 (현재 전체보기)' : 'YTD 보기 (현재 전체보기)'}
+            {showYTD ? (isEnglish ? 'Hide YTD' : 'YTD 숨기기 (현재 전체보기)') : (isEnglish ? 'Show YTD' : 'YTD 보기 (현재 전체보기)')}
           </button>
 
-          <span className="text-xs text-gray-500 ml-2">(비교 컬럼은 항상 표시됩니다)</span>
+          <span className="text-xs text-gray-500 ml-2">{isEnglish ? '(Comp cols fixed)' : '(비교 컬럼은 항상 표시됩니다)'}</span>
         </div>
       </div>
 
       <div className="p-6">
-        {loading && <div className="text-center py-12 text-gray-600">로딩 중...</div>}
+        {loading && <div className="text-center py-12 text-gray-600">{isEnglish ? 'Loading...' : '로딩 중...'}</div>}
         {error && <div className="text-center py-12 text-red-600">{error}</div>}
 
         {!loading && !error && (
           <PLTable
+            locale={locale}
             prevTree={displayPrevTree}
             currTree={displayCurrTree}
             detailPrevTrees={{

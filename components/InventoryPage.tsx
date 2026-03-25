@@ -25,6 +25,29 @@ const REGION_TITLES: Record<InventoryMatrixSection['regionGroup'], string> = {
 
 const METRIC_HEADER_CLASS = 'bg-amber-50';
 const METRIC_CELL_CLASS = 'bg-amber-50/60';
+const CATEGORY_LABELS_EN: Record<string, string> = {
+  전체: 'All',
+  '합산 재고 (K)': 'Tot Inv (K)',
+  '홍마 재고 (K)': 'HKMC Inv (K)',
+  '대만 재고 (K)': 'TW Inv (K)',
+  의류합계: 'Apparel Tot',
+  당년F: 'CY F',
+  당년S: 'CY S',
+  '1년차': 'Year 1',
+  '2년차': 'Year 2',
+  차기시즌: 'Next Ssn',
+  과시즌: 'Past Ssn',
+  ACC합계: 'ACC Tot',
+  신발: 'Shoes',
+  모자: 'Hats',
+  가방: 'Bags',
+  기타: 'Others',
+  전년비: 'YoY',
+  구분: 'Category',
+};
+
+const translateInventoryLabel = (label: string, locale: 'ko' | 'en') =>
+  locale === 'en' ? CATEGORY_LABELS_EN[label] ?? label : label;
 
 type DisplayRow = InventoryMatrixRow & {
   inbound25DisplayAmtK: number;
@@ -81,9 +104,9 @@ function formatYoY(value: number | null): string {
   return `${(value * 100).toFixed(0)}%`;
 }
 
-function formatWeeks(value: number | null): string {
+function formatWeeks(value: number | null, locale: 'ko' | 'en' = 'ko'): string {
   if (value === null || !Number.isFinite(value)) return '-';
-  return `${value.toFixed(1)}주`;
+  return `${value.toFixed(1)}${locale === 'en' ? 'w' : '주'}`;
 }
 
 function getDisplayInbound(value: number): number {
@@ -151,19 +174,19 @@ function getMetricDeltaStyle(row: DisplayRow): React.CSSProperties | undefined {
   return undefined;
 }
 
-function renderEndingMetric(row: DisplayRow): string {
+function renderEndingMetric(row: DisplayRow, locale: 'ko' | 'en' = 'ko'): string {
   if (isApparelCategory(row.categoryLabel)) {
     return formatRatio(row.metric26Value);
   }
 
   if (isAccessoryCategory(row.categoryLabel)) {
-    return formatWeeks(row.metric26Value);
+    return formatWeeks(row.metric26Value, locale);
   }
 
   return '-';
 }
 
-function renderMetricDelta(row: DisplayRow): string {
+function renderMetricDelta(row: DisplayRow, locale: 'ko' | 'en' = 'ko'): string {
   if (row.metricDelta === null || !Number.isFinite(row.metricDelta)) return '-';
 
   if (isApparelCategory(row.categoryLabel)) {
@@ -173,7 +196,7 @@ function renderMetricDelta(row: DisplayRow): string {
 
   if (isAccessoryCategory(row.categoryLabel)) {
     const prefix = row.metricDelta > 0 ? '+' : row.metricDelta < 0 ? '△' : '';
-    return `${prefix}${Math.abs(row.metricDelta).toFixed(1)}주`;
+    return `${prefix}${Math.abs(row.metricDelta).toFixed(1)}${locale === 'en' ? 'w' : '주'}`;
   }
 
   return '-';
@@ -270,11 +293,14 @@ function InventoryMatrixTable({
   title,
   rows,
   showHistory,
+  locale,
 }: {
   title: string;
   rows: InventoryMatrixRow[];
   showHistory: boolean;
+  locale: 'ko' | 'en';
 }) {
+  const isEnglish = locale === 'en';
   const totalRowBase = rows.reduce<InventoryMatrixRow>(
     (acc, row) => {
       if (row.isSubtotal) return acc;
@@ -335,10 +361,10 @@ function InventoryMatrixTable({
       <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-            <p className="mt-1 text-xs text-slate-500">기준: 2024-12-31 / 2025년 / 2026년 계획</p>
+            <h3 className="text-lg font-bold text-slate-900">{translateInventoryLabel(title, locale)}</h3>
+            <p className="mt-1 text-xs text-slate-500">{isEnglish ? 'Base: 2024-12-31 / 2025 / 2026P' : '기준: 2024-12-31 / 2025년 / 2026년 계획'}</p>
           </div>
-          <div className="text-xs font-medium text-slate-500">단위: 1,000 HKD</div>
+          <div className="text-xs font-medium text-slate-500">{isEnglish ? 'Unit: 1,000 HKD' : '단위: 1,000 HKD'}</div>
         </div>
       </div>
 
@@ -363,29 +389,29 @@ function InventoryMatrixTable({
           <thead>
             <tr className="bg-slate-100 text-slate-700">
               <th className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold">
-                구분
+                {isEnglish ? 'Category' : '구분'}
               </th>
               {showHistory && (
-                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">24년말</th>
+                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '24 YE' : '24년말'}</th>
               )}
               {showHistory && (
-                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 입고</th>
+                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 In' : '25년 입고'}</th>
               )}
               {showHistory && (
-                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 판매</th>
+                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 Sales' : '25년 판매'}</th>
               )}
               {showHistory && (
-                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년말</th>
+                <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 YE' : '25년말'}</th>
               )}
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기초재고</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 입고(e)</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 판매(e)</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기말재고(e)</th>
-              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>판매율/재고주수</th>
-              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>전년비 증감</th>
-              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>재고 YoY</th>
-              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>입고 YoY</th>
-              <th className={`border-b border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>판매 YoY</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Beg Inv' : '26년 기초재고'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 In (e)' : '26년 입고(e)'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Sales (e)' : '26년 판매(e)'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 End Inv (e)' : '26년 기말재고(e)'}</th>
+              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'ST / Wks' : '판매율/재고주수'}</th>
+              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'YoY Chg' : '전년비 증감'}</th>
+              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'Inv YoY' : '재고 YoY'}</th>
+              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'In YoY' : '입고 YoY'}</th>
+              <th className={`border-b border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'Sales YoY' : '판매 YoY'}</th>
             </tr>
           </thead>
           <tbody>
@@ -396,7 +422,7 @@ function InventoryMatrixTable({
               return (
                 <tr key={`${title}-${row.categoryLabel}`} className={bgClass}>
                   <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-4 py-2.5 ${bgClass} ${textClass}`}>
-                    {row.categoryLabel}
+                    {translateInventoryLabel(row.categoryLabel, locale)}
                   </td>
                   {showHistory && (
                     <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass}`}>
@@ -431,13 +457,13 @@ function InventoryMatrixTable({
                     {formatMetric(row.ending26DisplayAmtK)}
                   </td>
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
-                    {renderEndingMetric(row)}
+                    {renderEndingMetric(row, locale)}
                   </td>
                   <td
                     className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}
                     style={getMetricDeltaStyle(row)}
                   >
-                    {renderMetricDelta(row)}
+                    {renderMetricDelta(row, locale)}
                   </td>
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
                     {formatYoY(row.endingYoY)}
@@ -453,7 +479,7 @@ function InventoryMatrixTable({
             })}
             <tr className="bg-slate-50">
               <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-50 px-4 py-2.5 font-semibold text-slate-900">
-                전년비
+                {isEnglish ? 'YoY' : '전년비'}
               </td>
               {showHistory && <td className="border-b border-r border-slate-200 px-4 py-2.5 text-right text-slate-500">-</td>}
               {showHistory && <td className="border-b border-r border-slate-200 px-4 py-2.5 text-right text-slate-500">-</td>}
@@ -487,10 +513,13 @@ function InventoryMatrixTable({
 function RawInventoryMatrixTable({
   title,
   rows,
+  locale,
 }: {
   title: string;
   rows: InventoryMatrixRow[];
+  locale: 'ko' | 'en';
 }) {
+  const isEnglish = locale === 'en';
   const totalRowBase = rows.reduce<InventoryMatrixRow>(
     (acc, row) => {
       if (row.isSubtotal) return acc;
@@ -545,10 +574,10 @@ function RawInventoryMatrixTable({
       <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-            <p className="mt-1 text-xs text-slate-500">업로드 파일 기준 전체 숫자 검증용 매트릭스</p>
+            <h3 className="text-lg font-bold text-slate-900">{translateInventoryLabel(title, locale)}</h3>
+            <p className="mt-1 text-xs text-slate-500">{isEnglish ? 'Raw no. check matrix' : '업로드 파일 기준 전체 숫자 검증용 매트릭스'}</p>
           </div>
-          <div className="text-xs font-medium text-slate-500">단위: 1,000 HKD</div>
+          <div className="text-xs font-medium text-slate-500">{isEnglish ? 'Unit: 1,000 HKD' : '단위: 1,000 HKD'}</div>
         </div>
       </div>
 
@@ -557,22 +586,22 @@ function RawInventoryMatrixTable({
           <thead>
             <tr className="bg-slate-100 text-slate-700">
               <th className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold">
-                구분
+                {isEnglish ? 'Category' : '구분'}
               </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 기초</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 입고</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 판매가능</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 판매</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 기말</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기초재고</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 1-2월 입고</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 1-2월 판매</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 2월말</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 3-12월 입고</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 3-12월 판매</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 총입고</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 총판매</th>
-              <th className="border-b border-slate-200 px-4 py-3 text-right font-semibold">26년 기말재고(e)</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 Beg' : '25년 기초'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 In' : '25년 입고'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 Avail' : '25년 판매가능'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 Sales' : '25년 판매'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '25 YE' : '25년 기말'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Beg Inv' : '26년 기초재고'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Jan-Feb In' : '26년 1-2월 입고'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Jan-Feb Sales' : '26년 1-2월 판매'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Feb YE' : '26년 2월말'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Mar-Dec In' : '26년 3-12월 입고'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Mar-Dec Sales' : '26년 3-12월 판매'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Tot In' : '26년 총입고'}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 Tot Sales' : '26년 총판매'}</th>
+              <th className="border-b border-slate-200 px-4 py-3 text-right font-semibold">{isEnglish ? '26 End Inv (e)' : '26년 기말재고(e)'}</th>
             </tr>
           </thead>
           <tbody>
@@ -583,7 +612,7 @@ function RawInventoryMatrixTable({
               return (
                 <tr key={`${title}-raw-${row.categoryLabel}`} className={bgClass}>
                   <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-4 py-2.5 ${bgClass} ${textClass}`}>
-                    {row.categoryLabel}
+                    {translateInventoryLabel(row.categoryLabel, locale)}
                   </td>
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass}`}>{formatRawMetric(row.begin25)}</td>
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass}`}>{formatRawMetric(row.inbound25)}</td>
@@ -609,7 +638,12 @@ function RawInventoryMatrixTable({
   );
 }
 
-export default function InventoryPage() {
+interface InventoryPageProps {
+  locale?: 'ko' | 'en';
+}
+
+export default function InventoryPage({ locale = 'ko' }: InventoryPageProps) {
+  const isEnglish = locale === 'en';
   const [brand, setBrand] = useState<InventoryBrandGroup>('MLB');
   const [data, setData] = useState<InventoryMatrixResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -672,23 +706,43 @@ export default function InventoryPage() {
         toRawMatrixRow(totalRowBase),
       ];
 
-      const sheetRows = rawRows.map((row) => ({
-        구분: row.categoryLabel,
-        '25년 기초': row.begin25,
-        '25년 입고': row.inbound25,
-        '25년 판매가능': row.available25,
-        '25년 판매': row.sales25,
-        '25년 기말': row.ending25,
-        '26년 기초재고': row.begin26,
-        '26년 1-2월 입고': row.inbound26Feb,
-        '26년 1-2월 판매': row.sales26Feb,
-        '26년 2월말': row.ending26Feb,
-        '26년 3-12월 입고': row.inbound26Rest,
-        '26년 3-12월 판매': row.sales26Rest,
-        '26년 총입고': row.inbound26Total,
-        '26년 총판매': row.sales26Total,
-        '26년 기말재고': row.ending26,
-      }));
+      const sheetRows = rawRows.map((row) => (
+        locale === 'en'
+          ? {
+              Category: translateInventoryLabel(row.categoryLabel, locale),
+              '25 Beginning': row.begin25,
+              '25 Inbound': row.inbound25,
+              '25 Available': row.available25,
+              '25 Sales': row.sales25,
+              '25 Year-end': row.ending25,
+              '26 Beginning Inventory': row.begin26,
+              '26 Jan-Feb Inbound': row.inbound26Feb,
+              '26 Jan-Feb Sales': row.sales26Feb,
+              '26 Feb Year-end': row.ending26Feb,
+              '26 Mar-Dec Inbound': row.inbound26Rest,
+              '26 Mar-Dec Sales': row.sales26Rest,
+              '26 Total Inbound': row.inbound26Total,
+              '26 Total Sales': row.sales26Total,
+              '26 Ending Inventory': row.ending26,
+            }
+          : {
+              구분: row.categoryLabel,
+              '25년 기초': row.begin25,
+              '25년 입고': row.inbound25,
+              '25년 판매가능': row.available25,
+              '25년 판매': row.sales25,
+              '25년 기말': row.ending25,
+              '26년 기초재고': row.begin26,
+              '26년 1-2월 입고': row.inbound26Feb,
+              '26년 1-2월 판매': row.sales26Feb,
+              '26년 2월말': row.ending26Feb,
+              '26년 3-12월 입고': row.inbound26Rest,
+              '26년 3-12월 판매': row.sales26Rest,
+              '26년 총입고': row.inbound26Total,
+              '26년 총판매': row.sales26Total,
+              '26년 기말재고': row.ending26,
+            }
+      ));
 
       const worksheet = XLSX.utils.json_to_sheet(sheetRows);
       XLSX.utils.book_append_sheet(workbook, worksheet, section.regionGroup);
@@ -709,7 +763,7 @@ export default function InventoryPage() {
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result?.error || '재고 데이터를 불러오지 못했습니다.');
+          throw new Error(result?.error || (isEnglish ? 'Failed to load inventory data.' : '재고 데이터를 불러오지 못했습니다.'));
         }
 
         if (!cancelled) {
@@ -718,7 +772,7 @@ export default function InventoryPage() {
       } catch (err) {
         if (!cancelled) {
           console.error('Inventory load failed:', err);
-          setError(err instanceof Error ? err.message : '재고 데이터를 불러오지 못했습니다.');
+          setError(err instanceof Error ? err.message : (isEnglish ? 'Failed to load inventory data.' : '재고 데이터를 불러오지 못했습니다.'));
           setData(null);
         }
       } finally {
@@ -741,12 +795,12 @@ export default function InventoryPage() {
             <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
               Inventory Matrix
             </div>
-            <h2 className="mt-3 text-2xl font-bold text-slate-900">브랜드별 재고 매트릭스</h2>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">{isEnglish ? 'Inv Matrix by Brand' : '브랜드별 재고 매트릭스'}</h2>
             <div className="mt-3 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-4 py-1.5 text-sm font-extrabold tracking-wide text-amber-900">
-              택가 기준
+              {isEnglish ? 'Tag Basis' : '택가 기준'}
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              현재 화면은 `2602_inventory.xlsx` 기준 HKMC MLB 데이터만 우선 반영했습니다.
+              {isEnglish ? 'This screen currently reflects HKMC MLB data first, based on `2602_inventory.xlsx`.' : '현재 화면은 `2602_inventory.xlsx` 기준 HKMC MLB 데이터만 우선 반영했습니다.'}
             </p>
           </div>
 
@@ -755,7 +809,7 @@ export default function InventoryPage() {
               onClick={() => setShowHistory((prev) => !prev)}
               className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
             >
-              {showHistory ? '25년 표시 숨기기' : '25년 표시 보기'}
+              {showHistory ? (isEnglish ? 'Hide 2025' : '25년 표시 숨기기') : (isEnglish ? 'Show 2025' : '25년 표시 보기')}
             </button>
             {BRAND_OPTIONS.map((option) => {
               const active = brand === option;
@@ -780,7 +834,7 @@ export default function InventoryPage() {
       <div className="mt-6 space-y-6">
         {loading && (
           <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500 shadow-sm">
-            재고 매트릭스를 불러오는 중입니다.
+            {isEnglish ? 'Loading inventory matrix...' : '재고 매트릭스를 불러오는 중입니다.'}
           </div>
         )}
 
@@ -798,6 +852,7 @@ export default function InventoryPage() {
               title={REGION_TITLES[section.regionGroup]}
               rows={section.rows}
               showHistory={showHistory}
+              locale={locale}
             />
           ))}
         {!loading && !error && data?.sections?.length ? (
@@ -806,13 +861,13 @@ export default function InventoryPage() {
               onClick={() => setShowRawMatrix((prev) => !prev)}
               className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
             >
-              {showRawMatrix ? '검증 매트릭스 접기' : '검증 매트릭스 보기'}
+              {showRawMatrix ? (isEnglish ? 'Hide check matrix' : '검증 매트릭스 접기') : (isEnglish ? 'Show check matrix' : '검증 매트릭스 보기')}
             </button>
             <button
               onClick={exportRawMatrix}
               className="rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-400 hover:bg-emerald-100"
             >
-              엑셀 저장
+              {isEnglish ? 'Excel' : '엑셀 저장'}
             </button>
           </div>
         ) : null}
@@ -822,8 +877,9 @@ export default function InventoryPage() {
           data?.sections.map((section) => (
             <RawInventoryMatrixTable
               key={`${section.regionGroup}-raw`}
-              title={`${REGION_TITLES[section.regionGroup]} 원본 숫자 매트릭스`}
+              title={isEnglish ? `${translateInventoryLabel(REGION_TITLES[section.regionGroup], locale)} Raw Number Matrix` : `${REGION_TITLES[section.regionGroup]} 원본 숫자 매트릭스`}
               rows={section.rows}
+              locale={locale}
             />
           ))}
       </div>

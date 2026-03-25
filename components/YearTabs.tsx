@@ -4,9 +4,11 @@ interface YearTabsProps {
   years: number[];
   activeYear: number;
   onChange: (year: number) => void;
+  locale?: 'ko' | 'en';
 }
 
-export default function YearTabs({ years, activeYear, onChange }: YearTabsProps) {
+export default function YearTabs({ years, activeYear, onChange, locale = 'ko' }: YearTabsProps) {
+  const isEnglish = locale === 'en';
   return (
     <div className="inline-flex gap-2">
       {years.map((year) => (
@@ -20,7 +22,7 @@ export default function YearTabs({ years, activeYear, onChange }: YearTabsProps)
               : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'}
           `}
         >
-          {year}년
+          {isEnglish ? year : `${year}년`}
         </button>
       ))}
     </div>
