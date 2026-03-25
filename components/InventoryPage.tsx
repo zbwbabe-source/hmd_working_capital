@@ -67,7 +67,7 @@ function formatMetric(value: number): string {
 function formatRawMetric(value: number): string {
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
@@ -338,7 +338,7 @@ function InventoryMatrixTable({
             <h3 className="text-lg font-bold text-slate-900">{title}</h3>
             <p className="mt-1 text-xs text-slate-500">기준: 2024-12-31 / 2025년 / 2026년 계획</p>
           </div>
-          <div className="text-xs font-medium text-slate-500">단위: 1K HKD</div>
+          <div className="text-xs font-medium text-slate-500">단위: 1,000 HKD</div>
         </div>
       </div>
 
@@ -354,11 +354,11 @@ function InventoryMatrixTable({
             <col style={{ width: '120px' }} />
             <col style={{ width: '120px' }} />
             <col style={{ width: '120px' }} />
-            <col style={{ width: '150px' }} />
-            <col style={{ width: '140px' }} />
             <col style={{ width: '120px' }} />
-            <col style={{ width: '120px' }} />
-            <col style={{ width: '120px' }} />
+            <col style={{ width: '110px' }} />
+            <col style={{ width: '96px' }} />
+            <col style={{ width: '96px' }} />
+            <col style={{ width: '96px' }} />
           </colgroup>
           <thead>
             <tr className="bg-slate-100 text-slate-700">
@@ -377,10 +377,10 @@ function InventoryMatrixTable({
               {showHistory && (
                 <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년말</th>
               )}
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기초</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 입고</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 판매</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년말</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기초재고</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 입고(e)</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 판매(e)</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기말재고(e)</th>
               <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>판매율/재고주수</th>
               <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>전년비 증감</th>
               <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>재고 YoY</th>
@@ -548,7 +548,7 @@ function RawInventoryMatrixTable({
             <h3 className="text-lg font-bold text-slate-900">{title}</h3>
             <p className="mt-1 text-xs text-slate-500">업로드 파일 기준 전체 숫자 검증용 매트릭스</p>
           </div>
-          <div className="text-xs font-medium text-slate-500">단위: 1K HKD</div>
+          <div className="text-xs font-medium text-slate-500">단위: 1,000 HKD</div>
         </div>
       </div>
 
@@ -564,7 +564,7 @@ function RawInventoryMatrixTable({
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 판매가능</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 판매</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">25년 기말</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기초</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 기초재고</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 1-2월 입고</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 1-2월 판매</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 2월말</th>
@@ -572,7 +572,7 @@ function RawInventoryMatrixTable({
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 3-12월 판매</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 총입고</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-right font-semibold">26년 총판매</th>
-              <th className="border-b border-slate-200 px-4 py-3 text-right font-semibold">26년 기말</th>
+              <th className="border-b border-slate-200 px-4 py-3 text-right font-semibold">26년 기말재고(e)</th>
             </tr>
           </thead>
           <tbody>
@@ -679,7 +679,7 @@ export default function InventoryPage() {
         '25년 판매가능': row.available25,
         '25년 판매': row.sales25,
         '25년 기말': row.ending25,
-        '26년 기초': row.begin26,
+        '26년 기초재고': row.begin26,
         '26년 1-2월 입고': row.inbound26Feb,
         '26년 1-2월 판매': row.sales26Feb,
         '26년 2월말': row.ending26Feb,
@@ -687,7 +687,7 @@ export default function InventoryPage() {
         '26년 3-12월 판매': row.sales26Rest,
         '26년 총입고': row.inbound26Total,
         '26년 총판매': row.sales26Total,
-        '26년 기말': row.ending26,
+        '26년 기말재고': row.ending26,
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(sheetRows);

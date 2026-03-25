@@ -1218,7 +1218,7 @@ export default function Home() {
                     <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{salesYoYRate}%</span>
                   </div>
                 )}
-                <span className="ml-auto text-sm font-medium text-gray-600">단위: 천 HKD</span>
+                <span className="ml-auto text-sm font-medium text-gray-600">단위: 1,000 HKD</span>
               </div>
             </div>
             {loading && <div className="p-6 text-center">로딩 중...</div>}

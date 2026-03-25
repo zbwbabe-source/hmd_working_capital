@@ -67,7 +67,12 @@ const ROW_ORDER = [
   '기타',
 ];
 
-let inventoryWorkbookPromise: Promise<InventoryExcelRow[]> | null = null;
+let inventoryWorkbookCache:
+  | {
+      mtimeMs: number;
+      rowsPromise: Promise<InventoryExcelRow[]>;
+    }
+  | null = null;
 
 function toNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -81,8 +86,10 @@ function toNumber(value: unknown): number {
 }
 
 async function loadInventoryWorkbook(): Promise<InventoryExcelRow[]> {
-  if (!inventoryWorkbookPromise) {
-    inventoryWorkbookPromise = fs.readFile(INVENTORY_FILE_PATH).then((buffer) => {
+  const stats = await fs.stat(INVENTORY_FILE_PATH);
+
+  if (!inventoryWorkbookCache || inventoryWorkbookCache.mtimeMs !== stats.mtimeMs) {
+    const rowsPromise = fs.readFile(INVENTORY_FILE_PATH).then((buffer) => {
       const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
@@ -115,9 +122,14 @@ async function loadInventoryWorkbook(): Promise<InventoryExcelRow[]> {
         }))
         .filter((row) => row.label && row.label !== 'Total');
     });
+
+    inventoryWorkbookCache = {
+      mtimeMs: stats.mtimeMs,
+      rowsPromise,
+    };
   }
 
-  return inventoryWorkbookPromise;
+  return inventoryWorkbookCache.rowsPromise;
 }
 
 function toMatrixRow(row: InventoryExcelRow): InventoryMatrixRow {
