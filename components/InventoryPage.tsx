@@ -25,6 +25,16 @@ const REGION_TITLES: Record<InventoryMatrixSection['regionGroup'], string> = {
 
 const METRIC_HEADER_CLASS = 'bg-amber-50';
 const METRIC_CELL_CLASS = 'bg-amber-50/60';
+const INBOUND_YOY_HEADER_CLASS = 'bg-sky-50';
+const INBOUND_YOY_CELL_CLASS = 'bg-sky-50/70';
+const SALES_YOY_HEADER_CLASS = 'bg-rose-50';
+const SALES_YOY_CELL_CLASS = 'bg-rose-50/70';
+const TARGET_WEEKS = [
+  { label: '신발', weeks: 30, enLabel: 'Shoes' },
+  { label: '모자', weeks: 20, enLabel: 'Hats' },
+  { label: '가방', weeks: 30, enLabel: 'Bags' },
+  { label: '기타', weeks: 30, enLabel: 'Others' },
+] as const;
 const CATEGORY_LABELS_EN: Record<string, string> = {
   전체: 'All',
   '합산 재고 (K)': 'Tot Inv (K)',
@@ -106,7 +116,7 @@ function formatYoY(value: number | null): string {
 
 function formatWeeks(value: number | null, locale: 'ko' | 'en' = 'ko'): string {
   if (value === null || !Number.isFinite(value)) return '-';
-  return `${value.toFixed(1)}${locale === 'en' ? 'w' : '주'}`;
+  return `${Math.round(value)}${locale === 'en' ? 'w' : '주'}`;
 }
 
 function getDisplayInbound(value: number): number {
@@ -410,8 +420,8 @@ function InventoryMatrixTable({
               <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'ST / Wks' : '판매율/재고주수'}</th>
               <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'YoY Chg' : '전년비 증감'}</th>
               <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'Inv YoY' : '재고 YoY'}</th>
-              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'In YoY' : '입고 YoY'}</th>
-              <th className={`border-b border-slate-200 px-4 py-3 text-right font-semibold ${METRIC_HEADER_CLASS}`}>{isEnglish ? 'Sales YoY' : '판매 YoY'}</th>
+              <th className={`border-b border-r border-slate-200 px-4 py-3 text-right font-semibold ${INBOUND_YOY_HEADER_CLASS}`}>{isEnglish ? 'In YoY' : '입고 YoY'}</th>
+              <th className={`border-b border-slate-200 px-4 py-3 text-right font-semibold ${SALES_YOY_HEADER_CLASS}`}>{isEnglish ? 'Sales YoY' : '판매 YoY'}</th>
             </tr>
           </thead>
           <tbody>
@@ -468,10 +478,10 @@ function InventoryMatrixTable({
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
                     {formatYoY(row.endingYoY)}
                   </td>
-                  <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
+                  <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${INBOUND_YOY_CELL_CLASS}`}>
                     {formatYoY(row.inboundYoY)}
                   </td>
-                  <td className={`border-b border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
+                  <td className={`border-b border-slate-200 px-4 py-2.5 text-right ${textClass} ${SALES_YOY_CELL_CLASS}`}>
                     {formatYoY(row.salesYoY)}
                   </td>
                 </tr>
@@ -500,11 +510,27 @@ function InventoryMatrixTable({
               <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right text-slate-500 ${METRIC_CELL_CLASS}`}>-</td>
               <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right text-slate-500 ${METRIC_CELL_CLASS}`}>-</td>
               <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right text-slate-500 ${METRIC_CELL_CLASS}`}>-</td>
-              <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right text-slate-500 ${METRIC_CELL_CLASS}`}>-</td>
-              <td className={`border-b border-slate-200 px-4 py-2.5 text-right text-slate-500 ${METRIC_CELL_CLASS}`}>-</td>
+              <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right text-slate-500 ${INBOUND_YOY_CELL_CLASS}`}>-</td>
+              <td className={`border-b border-slate-200 px-4 py-2.5 text-right text-slate-500 ${SALES_YOY_CELL_CLASS}`}>-</td>
             </tr>
           </tbody>
         </table>
+      </div>
+      <div className="border-t border-slate-200 bg-slate-50 px-5 py-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="font-semibold text-slate-800">
+            {isEnglish ? 'Target Weeks:' : '기준 재고주수:'}
+          </span>
+          {TARGET_WEEKS.map((item) => (
+            <span
+              key={item.label}
+              className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1"
+            >
+              {isEnglish ? item.enLabel : item.label} : {item.weeks}
+              {isEnglish ? 'w' : '주'}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
