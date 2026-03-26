@@ -1,6 +1,7 @@
 'use client';
 
 type TranslateStyle = 'full' | 'short';
+type TranslateLocale = 'ko' | 'en';
 
 const DIRECT_FULL: Record<string, string> = {
   계정과목: 'Account',
@@ -30,6 +31,30 @@ const DIRECT_FULL: Record<string, string> = {
   매출총이익: 'GP',
   매출총이익률: 'GM',
   'Tag대비 원가율': 'COGS / TAG',
+  '현금 및 현금성 자산': 'Cash and Cash Equivalents',
+  사용권자산: 'Right-of-use Assets',
+  유형자산: 'Property, Plant and Equipment',
+  무형자산: 'Intangible Assets',
+  미지급금: 'Accrued Payables',
+  자본금: 'Capital Stock',
+  기타자본: 'Other Equity',
+  이익잉여금: 'Retained Earnings',
+  OtherCurrent자산: 'Other Current Assets',
+  'OtherNon-current자산': 'Other Non-current Assets',
+  '기타유동 Assets': 'Other Current Assets',
+  '기타비유동 Assets': 'Other Non-current Assets',
+  OtherCurrent부채: 'Other Current Liabilities',
+  'OtherNon-current부채': 'Other Non-current Liabilities',
+  '기타유동 Liabilities': 'Other Current Liabilities',
+  '기타비유동 Liabilities': 'Other Non-current Liabilities',
+  'Non-current보증금': 'Non-current Deposit Paid',
+  'Current Lease Liab.': 'Current Lease Liab.',
+  'Non-current Lease Liab.': 'Non-current Lease Liab.',
+  유동리스부채: 'Current Lease Liab.',
+  비유동리스부채: 'Non-current Lease Liab.',
+  차입금: 'Borrowings',
+  '복구Provision Liab.': 'Restoration Provision Liab.',
+  'Restoration 충당부채': 'Restoration Provision Liab.',
 };
 
 const DIRECT_SHORT: Record<string, string> = {
@@ -49,6 +74,18 @@ const DIRECT_SHORT: Record<string, string> = {
 
 const TOKEN_FULL: Array<[string, string]> = [
   ['홍콩마카오', 'Hong Kong & Macau'],
+  ['현금 및 현금성 자산', 'Cash and Cash Equivalents'],
+  ['사용권자산', 'Right-of-use Assets'],
+  ['유형자산', 'Property, Plant and Equipment'],
+  ['무형자산', 'Intangible Assets'],
+  ['기타유동자산', 'Other Current Assets'],
+  ['기타비유동자산', 'Other Non-current Assets'],
+  ['기타유동부채', 'Other Current Liabilities'],
+  ['기타비유동부채', 'Other Non-current Liabilities'],
+  ['유동리스부채', 'Current Lease Liab.'],
+  ['비유동리스부채', 'Non-current Lease Liab.'],
+  ['비유동보증금', 'Non-current Deposit Paid'],
+  ['복구충당부채', 'Restoration Provision Liab.'],
   ['비유동성', 'Non-current'],
   ['유동성', 'Current'],
   ['비유동', 'Non-current'],
@@ -92,6 +129,7 @@ const TOKEN_FULL: Array<[string, string]> = [
   ['마카오', 'Macau'],
   ['대만', 'Taiwan'],
   ['합계', 'Total'],
+  ['보증금', 'Deposit Paid'],
 ];
 
 const TOKEN_SHORT: Array<[string, string]> = [
@@ -99,6 +137,17 @@ const TOKEN_SHORT: Array<[string, string]> = [
   ['홍콩', 'HK'],
   ['대만', 'TW'],
 ];
+
+const DIRECT_FULL_KO: Record<string, string> = Object.fromEntries(
+  Object.entries(DIRECT_FULL).map(([source, target]) => [target, source])
+);
+
+const DIRECT_SHORT_KO: Record<string, string> = Object.fromEntries(
+  Object.entries(DIRECT_SHORT).map(([source, target]) => [target, source])
+);
+
+const TOKEN_FULL_KO: Array<[string, string]> = TOKEN_FULL.map(([source, target]) => [target, source]);
+const TOKEN_SHORT_KO: Array<[string, string]> = TOKEN_SHORT.map(([source, target]) => [target, source]);
 
 const normalize = (value: string) => value.replace(/\s+/g, ' ').trim();
 const compact = (value: string) => normalize(value).replace(/\s+/g, '');
@@ -110,28 +159,77 @@ function replaceTokens(value: string, tokens: Array<[string, string]>) {
 }
 
 export function translateFinanceLabel(label: string, style: TranslateStyle = 'full'): string {
+  return translateFinanceLabelForLocale(label, style, 'en');
+}
+
+export function translateFinanceLabelForLocale(
+  label: string,
+  style: TranslateStyle = 'full',
+  locale: TranslateLocale = 'en'
+): string {
   const normalized = normalize(label);
   const compactLabel = compact(label);
-  const directMap = style === 'short' ? DIRECT_SHORT : DIRECT_FULL;
-  const tokenMap = style === 'short' ? TOKEN_SHORT : TOKEN_FULL;
+  const directMap =
+    locale === 'en'
+      ? style === 'short'
+        ? DIRECT_SHORT
+        : DIRECT_FULL
+      : style === 'short'
+        ? DIRECT_SHORT_KO
+        : DIRECT_FULL_KO;
+  const tokenMap =
+    locale === 'en'
+      ? style === 'short'
+        ? TOKEN_SHORT
+        : TOKEN_FULL
+      : style === 'short'
+        ? TOKEN_SHORT_KO
+        : TOKEN_FULL_KO;
 
   if (directMap[normalized]) return directMap[normalized];
 
   const directCompactEntry = Object.entries(directMap).find(([key]) => compact(key) === compactLabel);
   if (directCompactEntry) return directCompactEntry[1];
 
-  if (compactLabel.endsWith('합계')) {
+  if (locale === 'en' && compactLabel.endsWith('합계')) {
     const base = compactLabel.slice(0, -2);
-    const translatedBase = translateFinanceLabel(base, style);
+    const translatedBase = translateFinanceLabelForLocale(base, style, locale);
     if (translatedBase !== base) return `${translatedBase} Total`;
   }
 
-  const translated = replaceTokens(normalized, tokenMap)
+  if (locale === 'ko' && compactLabel.endsWith('Total')) {
+    const base = compactLabel.slice(0, -5);
+    const translatedBase = translateFinanceLabelForLocale(base, style, locale);
+    if (translatedBase !== base) return `${translatedBase}합계`;
+  }
+
+  let translated = replaceTokens(normalized, tokenMap)
     .replace(/\s+/g, ' ')
     .replace(/\(\s+/g, '(')
     .replace(/\s+\)/g, ')')
     .replace(/([A-Za-z])\(/g, '$1 (')
     .trim();
+
+  if (locale === 'ko') {
+    translated = translated
+      .replace(/\bOther\s+Current\b/g, 'OtherCurrent')
+      .replace(/\bOther\s+Non-current\b/g, 'OtherNon-current')
+      .replace(/\bOther\s+Noncurrent\b/g, 'OtherNon-current')
+      .replace(/\bCurrent\s+Lease\s+Liab\./g, 'Current Lease Liab.')
+      .replace(/\bNon-current\s+Lease\s+Liab\./g, 'Non-current Lease Liab.')
+      .replace(/\bCurrent\s+(자산|부채|리스부채|보증금)/g, '유동$1')
+      .replace(/\bNon-current\s+(자산|부채|리스부채|보증금)/g, '비유동$1')
+      .replace(/\bOtherCurrent/g, '기타유동')
+      .replace(/\bOtherNon-current/g, '기타비유동')
+      .replace(/\bCurrent Lease Liab\./g, '유동리스부채')
+      .replace(/\bNon-current Lease Liab\./g, '비유동리스부채')
+      .replace(/\bAccrued Payables\b/g, '미지급금')
+      .replace(/\bBorrowings\b/g, '차입금')
+      .replace(/\bProvision Liab\./g, '충당부채')
+      .replace(/\bCapital Stock\b/g, '자본금')
+      .replace(/\bOther Equity\b/g, '기타자본')
+      .replace(/\bRetained Earnings\b/g, '이익잉여금');
+  }
 
   return translated;
 }
