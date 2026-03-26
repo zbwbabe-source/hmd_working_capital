@@ -39,6 +39,8 @@ const ADJUSTABLE_INBOUND_CATEGORIES = new Set(['신발', '모자', '가방', '�
 const ADJUSTABLE_SALES_YOY_CATEGORIES = new Set(['당년F', '당년S', '1년차', '2년차', '차기시즌', '과시즌']);
 const TARGET_WEEKS_ADJUST_STEP = 1;
 const SALES_YOY_ADJUST_STEP = 1;
+const APPAREL_HIGHLIGHT_ROWS = ['의류합계', '당년F', '당년S', '1년차', '2년차', '차기시즌', '과시즌'] as const;
+const ACCESSORY_HIGHLIGHT_ROWS = ['ACC합계', '신발', '모자', '가방', '기타'] as const;
 const CATEGORY_LABELS_EN: Record<string, string> = {
   전체: 'All',
   '합산 재고 (K)': 'Tot Inv (K)',
@@ -216,6 +218,21 @@ function applySalesOverride(row: InventoryMatrixRow, overrideTotal?: number): In
     sales26RestAmtK: row.sales26RestAmtK + delta,
     ending26AmtK: row.ending26AmtK - delta,
   };
+}
+
+function getRangeHighlightStyle(
+  label: string,
+  labels: readonly string[]
+): React.CSSProperties | undefined {
+  const index = labels.indexOf(label);
+  if (index === -1) return undefined;
+
+  const outlineColor = '#94a3b8';
+  const shadows = [`inset 2px 0 0 ${outlineColor}`, `inset -2px 0 0 ${outlineColor}`];
+  if (index === 0) shadows.push(`inset 0 2px 0 ${outlineColor}`);
+  if (index === labels.length - 1) shadows.push(`inset 0 -2px 0 ${outlineColor}`);
+
+  return { boxShadow: shadows.join(', ') };
 }
 
 function getMetricDeltaStyle(row: DisplayRow): React.CSSProperties | undefined {
@@ -535,6 +552,8 @@ function InventoryMatrixTable({
               const textClass = row.isSubtotal ? 'font-bold text-slate-900' : 'text-slate-600';
               const isTargetWeeksAdjustable = ADJUSTABLE_INBOUND_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
               const isSalesYoYAdjustable = ADJUSTABLE_SALES_YOY_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
+              const apparelMetricHighlightStyle = getRangeHighlightStyle(row.categoryLabel, APPAREL_HIGHLIGHT_ROWS);
+              const accessoryInboundHighlightStyle = getRangeHighlightStyle(row.categoryLabel, ACCESSORY_HIGHLIGHT_ROWS);
 
               return (
                 <tr key={`${title}-${row.categoryLabel}`} className={bgClass}>
@@ -573,7 +592,10 @@ function InventoryMatrixTable({
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass}`}>
                     {formatMetric(row.ending26DisplayAmtK)}
                   </td>
-                  <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
+                  <td
+                    className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}
+                    style={apparelMetricHighlightStyle}
+                  >
                     {isTargetWeeksAdjustable ? (
                       <div className="flex items-center justify-end">
                         <div className="inline-flex items-center gap-1 rounded-lg border border-amber-200/70 bg-amber-50/70 px-1.5 py-0.5 shadow-none">
@@ -618,7 +640,10 @@ function InventoryMatrixTable({
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
                     {formatYoY(row.endingYoY)}
                   </td>
-                  <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${INBOUND_YOY_CELL_CLASS}`}>
+                  <td
+                    className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${INBOUND_YOY_CELL_CLASS}`}
+                    style={accessoryInboundHighlightStyle}
+                  >
                     {formatYoY(row.inboundYoY)}
                   </td>
                   <td className={`border-b border-slate-200 px-4 py-2.5 text-right ${textClass} ${SALES_YOY_CELL_CLASS}`}>
