@@ -468,7 +468,18 @@ function InventoryMatrixTable({
             <h3 className="text-lg font-bold text-slate-900">{translateInventoryLabel(title, locale)}</h3>
             <p className="mt-1 text-xs text-slate-500">{isEnglish ? 'Base: 2024-12-31 / 2025 / 2026P' : '기준: 2024-12-31 / 2025년 / 2026년 계획'}</p>
           </div>
-          <div className="text-xs font-medium text-slate-500">{isEnglish ? 'Unit: 1,000 HKD' : '단위: 1,000 HKD'}</div>
+          <div className="flex items-center gap-2">
+            {hasAdjustments && (
+              <button
+                type="button"
+                onClick={handleResetAdjustments}
+                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 hover:text-slate-800"
+              >
+                {isEnglish ? 'Reset Adjustments' : '조정값 되돌리기'}
+              </button>
+            )}
+            <div className="text-xs font-medium text-slate-500">{isEnglish ? 'Unit: 1,000 HKD' : '단위: 1,000 HKD'}</div>
+          </div>
         </div>
       </div>
 
@@ -679,30 +690,19 @@ function InventoryMatrixTable({
         </table>
       </div>
       <div className="border-t border-slate-200 bg-slate-50 px-5 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-800">
-              {isEnglish ? 'Target Weeks:' : '기준 재고주수:'}
-            </span>
-            {TARGET_WEEKS.map((item) => (
-              <span
-                key={item.label}
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1"
-              >
-                {isEnglish ? item.enLabel : item.label} : {item.weeks}
-                {isEnglish ? 'w' : '주'}
-              </span>
-            ))}
-          </div>
-          {hasAdjustments && (
-            <button
-              type="button"
-              onClick={handleResetAdjustments}
-              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 hover:text-slate-800"
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="font-semibold text-slate-800">
+            {isEnglish ? 'Target Weeks:' : '기준 재고주수:'}
+          </span>
+          {TARGET_WEEKS.map((item) => (
+            <span
+              key={item.label}
+              className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1"
             >
-              {isEnglish ? 'Reset Adjustments' : '조정값 되돌리기'}
-            </button>
-          )}
+              {isEnglish ? item.enLabel : item.label} : {item.weeks}
+              {isEnglish ? 'w' : '주'}
+            </span>
+          ))}
         </div>
       </div>
     </div>
