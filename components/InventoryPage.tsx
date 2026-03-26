@@ -35,6 +35,10 @@ const TARGET_WEEKS = [
   { label: '가방', weeks: 30, enLabel: 'Bags' },
   { label: '기타', weeks: 30, enLabel: 'Others' },
 ] as const;
+const ADJUSTABLE_INBOUND_CATEGORIES = new Set(['신발', '모자', '가방', '기타']);
+const ADJUSTABLE_SALES_YOY_CATEGORIES = new Set(['당년F', '당년S', '1년차', '2년차', '차기시즌', '과시즌']);
+const TARGET_WEEKS_ADJUST_STEP = 1;
+const SALES_YOY_ADJUST_STEP = 1;
 const CATEGORY_LABELS_EN: Record<string, string> = {
   전체: 'All',
   '합산 재고 (K)': 'Tot Inv (K)',
@@ -166,6 +170,52 @@ function getAdjustedInbound26(item: InventoryMatrixRow): number {
 function getYoY(value26: number, value25: number): number | null {
   if (!Number.isFinite(value25) || value25 === 0) return null;
   return value26 / value25;
+}
+
+function getBaseInbound26Total(row: InventoryMatrixRow): number {
+  return getAdjustedInbound26(row);
+}
+
+function applyInboundOverride(row: InventoryMatrixRow, overrideTotal?: number): InventoryMatrixRow {
+  if (!ADJUSTABLE_INBOUND_CATEGORIES.has(row.categoryLabel) || overrideTotal === undefined) {
+    return row;
+  }
+
+  const baseInbound26Total = getBaseInbound26Total(row);
+  const delta = overrideTotal - baseInbound26Total;
+
+  if (!Number.isFinite(delta) || delta === 0) {
+    return row;
+  }
+
+  return {
+    ...row,
+    inbound26RestAmtK: row.inbound26RestAmtK + delta,
+    ending26AmtK: row.ending26AmtK + delta,
+  };
+}
+
+function getBaseSales26Total(row: InventoryMatrixRow): number {
+  return row.sales26FebAmtK + row.sales26RestAmtK;
+}
+
+function applySalesOverride(row: InventoryMatrixRow, overrideTotal?: number): InventoryMatrixRow {
+  if (!ADJUSTABLE_SALES_YOY_CATEGORIES.has(row.categoryLabel) || overrideTotal === undefined) {
+    return row;
+  }
+
+  const baseSales26Total = getBaseSales26Total(row);
+  const delta = overrideTotal - baseSales26Total;
+
+  if (!Number.isFinite(delta) || delta === 0) {
+    return row;
+  }
+
+  return {
+    ...row,
+    sales26RestAmtK: row.sales26RestAmtK + delta,
+    ending26AmtK: row.ending26AmtK - delta,
+  };
 }
 
 function getMetricDeltaStyle(row: DisplayRow): React.CSSProperties | undefined {
@@ -311,7 +361,31 @@ function InventoryMatrixTable({
   locale: 'ko' | 'en';
 }) {
   const isEnglish = locale === 'en';
-  const totalRowBase = rows.reduce<InventoryMatrixRow>(
+  const [targetWeeksOverrides, setTargetWeeksOverrides] = useState<Record<string, number>>({});
+  const [salesYoYOverrides, setSalesYoYOverrides] = useState<Record<string, number>>({});
+
+  const adjustedRows = rows.map((baseRow) => {
+    let row = baseRow;
+    const overrideWeeks = targetWeeksOverrides[row.categoryLabel];
+    const sales26Total = row.sales26FebAmtK + row.sales26RestAmtK;
+    const currentEnding26 = row.ending26AmtK;
+    const baseInbound26Total = getBaseInbound26Total(row);
+    const inboundOverrideTotal =
+      overrideWeeks !== undefined && sales26Total > 0
+        ? Math.max(0, baseInbound26Total + ((overrideWeeks * sales26Total) / 52 - currentEnding26))
+        : undefined;
+    row = applyInboundOverride(row, inboundOverrideTotal);
+
+    const overrideSalesYoY = salesYoYOverrides[row.categoryLabel];
+    const sales25Total = row.salesAmtK;
+    const salesOverrideTotal =
+      overrideSalesYoY !== undefined && sales25Total > 0 ? sales25Total * overrideSalesYoY : undefined;
+    row = applySalesOverride(row, salesOverrideTotal);
+
+    return row;
+  });
+
+  const adjustedTotalRowBase = adjustedRows.reduce<InventoryMatrixRow>(
     (acc, row) => {
       if (row.isSubtotal) return acc;
 
@@ -352,12 +426,31 @@ function InventoryMatrixTable({
     }
   );
 
+  const handleTargetWeeksChange = (categoryLabel: string, nextWeeks: number) => {
+    setTargetWeeksOverrides((prev) => ({
+      ...prev,
+      [categoryLabel]: Math.max(0, nextWeeks),
+    }));
+  };
+
+  const handleSalesYoYChange = (categoryLabel: string, nextPercent: number) => {
+    setSalesYoYOverrides((prev) => ({
+      ...prev,
+      [categoryLabel]: Math.max(0, nextPercent / 100),
+    }));
+  };
+
+  const handleResetAdjustments = () => {
+    setTargetWeeksOverrides({});
+    setSalesYoYOverrides({});
+  };
+
   const displayRows: DisplayRow[] = [
-    ...rows.map((row) => {
-      const subtotalSourceRows = row.isSubtotal ? getSubtotalSourceRows(rows, row.categoryLabel) : undefined;
+    ...adjustedRows.map((row) => {
+      const subtotalSourceRows = row.isSubtotal ? getSubtotalSourceRows(adjustedRows, row.categoryLabel) : undefined;
       return toDisplayRow(row, subtotalSourceRows);
     }),
-    toDisplayRow(totalRowBase),
+    toDisplayRow(adjustedTotalRowBase),
   ];
 
   const totalDisplayRow = displayRows[displayRows.length - 1];
@@ -365,6 +458,7 @@ function InventoryMatrixTable({
   const totalInboundYoY = totalDisplayRow.inboundYoY;
   const totalSalesYoY = totalDisplayRow.salesYoY;
   const totalEndingYoY = totalDisplayRow.endingYoY;
+  const hasAdjustments = Object.keys(targetWeeksOverrides).length > 0 || Object.keys(salesYoYOverrides).length > 0;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -393,8 +487,8 @@ function InventoryMatrixTable({
             <col style={{ width: '120px' }} />
             <col style={{ width: '110px' }} />
             <col style={{ width: '96px' }} />
-            <col style={{ width: '96px' }} />
-            <col style={{ width: '96px' }} />
+            <col style={{ width: '104px' }} />
+            <col style={{ width: '132px' }} />
           </colgroup>
           <thead>
             <tr className="bg-slate-100 text-slate-700">
@@ -428,6 +522,8 @@ function InventoryMatrixTable({
             {displayRows.map((row) => {
               const bgClass = row.isSubtotal ? 'bg-slate-50' : 'bg-white';
               const textClass = row.isSubtotal ? 'font-bold text-slate-900' : 'text-slate-600';
+              const isTargetWeeksAdjustable = ADJUSTABLE_INBOUND_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
+              const isSalesYoYAdjustable = ADJUSTABLE_SALES_YOY_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
 
               return (
                 <tr key={`${title}-${row.categoryLabel}`} className={bgClass}>
@@ -467,7 +563,40 @@ function InventoryMatrixTable({
                     {formatMetric(row.ending26DisplayAmtK)}
                   </td>
                   <td className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}>
-                    {renderEndingMetric(row, locale)}
+                    {isTargetWeeksAdjustable ? (
+                      <div className="flex items-center justify-end">
+                        <div className="inline-flex items-center gap-1 rounded-lg border border-amber-200/70 bg-amber-50/70 px-1.5 py-0.5 shadow-none">
+                          <button
+                            type="button"
+                            onClick={() => handleTargetWeeksChange(row.categoryLabel, Math.round(row.metric26Value ?? 0) - TARGET_WEEKS_ADJUST_STEP)}
+                            className="flex h-5 w-5 items-center justify-center rounded-md text-sm font-medium leading-none text-amber-700/70 transition-colors hover:bg-amber-100 hover:text-amber-900"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            step={TARGET_WEEKS_ADJUST_STEP}
+                            min={0}
+                          value={Math.round(row.metric26Value ?? 0)}
+                          onChange={(event) => {
+                            const nextValue = Number(event.target.value);
+                            handleTargetWeeksChange(row.categoryLabel, Number.isFinite(nextValue) ? nextValue : 0);
+                          }}
+                          className="h-5 w-12 bg-transparent px-1 text-right text-sm font-semibold text-slate-800 outline-none"
+                        />
+                        <span className="pr-0.5 text-[10px] font-semibold tracking-wide text-amber-800/55">{isEnglish ? 'w' : '주'}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleTargetWeeksChange(row.categoryLabel, Math.round(row.metric26Value ?? 0) + TARGET_WEEKS_ADJUST_STEP)}
+                            className="flex h-5 w-5 items-center justify-center rounded-md text-sm font-medium leading-none text-amber-700/70 transition-colors hover:bg-amber-100 hover:text-amber-900"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      renderEndingMetric(row, locale)
+                    )}
                   </td>
                   <td
                     className={`border-b border-r border-slate-200 px-4 py-2.5 text-right ${textClass} ${METRIC_CELL_CLASS}`}
@@ -482,7 +611,40 @@ function InventoryMatrixTable({
                     {formatYoY(row.inboundYoY)}
                   </td>
                   <td className={`border-b border-slate-200 px-4 py-2.5 text-right ${textClass} ${SALES_YOY_CELL_CLASS}`}>
-                    {formatYoY(row.salesYoY)}
+                    {isSalesYoYAdjustable ? (
+                      <div className="flex items-center justify-end">
+                        <div className="inline-flex items-center gap-0.5 rounded-lg border border-rose-200/70 bg-rose-50/70 px-1 py-0.5 shadow-none">
+                          <button
+                            type="button"
+                            onClick={() => handleSalesYoYChange(row.categoryLabel, Math.round((row.salesYoY ?? 0) * 100) - SALES_YOY_ADJUST_STEP)}
+                            className="flex h-5 w-4 items-center justify-center rounded-md text-sm font-medium leading-none text-rose-700/70 transition-colors hover:bg-rose-100 hover:text-rose-900"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            step={SALES_YOY_ADJUST_STEP}
+                            min={0}
+                            value={Math.round((row.salesYoY ?? 0) * 100)}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value);
+                              handleSalesYoYChange(row.categoryLabel, Number.isFinite(nextValue) ? nextValue : 0);
+                            }}
+                            className="h-5 w-11 bg-transparent px-0.5 text-right text-sm font-semibold text-slate-800 outline-none"
+                          />
+                          <span className="text-[10px] font-semibold tracking-wide text-rose-800/55">%</span>
+                          <button
+                            type="button"
+                            onClick={() => handleSalesYoYChange(row.categoryLabel, Math.round((row.salesYoY ?? 0) * 100) + SALES_YOY_ADJUST_STEP)}
+                            className="flex h-5 w-4 items-center justify-center rounded-md text-sm font-medium leading-none text-rose-700/70 transition-colors hover:bg-rose-100 hover:text-rose-900"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      formatYoY(row.salesYoY)
+                    )}
                   </td>
                 </tr>
               );
@@ -517,19 +679,30 @@ function InventoryMatrixTable({
         </table>
       </div>
       <div className="border-t border-slate-200 bg-slate-50 px-5 py-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-          <span className="font-semibold text-slate-800">
-            {isEnglish ? 'Target Weeks:' : '기준 재고주수:'}
-          </span>
-          {TARGET_WEEKS.map((item) => (
-            <span
-              key={item.label}
-              className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1"
-            >
-              {isEnglish ? item.enLabel : item.label} : {item.weeks}
-              {isEnglish ? 'w' : '주'}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-800">
+              {isEnglish ? 'Target Weeks:' : '기준 재고주수:'}
             </span>
-          ))}
+            {TARGET_WEEKS.map((item) => (
+              <span
+                key={item.label}
+                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1"
+              >
+                {isEnglish ? item.enLabel : item.label} : {item.weeks}
+                {isEnglish ? 'w' : '주'}
+              </span>
+            ))}
+          </div>
+          {hasAdjustments && (
+            <button
+              type="button"
+              onClick={handleResetAdjustments}
+              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 hover:text-slate-800"
+            >
+              {isEnglish ? 'Reset Adjustments' : '조정값 되돌리기'}
+            </button>
+          )}
         </div>
       </div>
     </div>
