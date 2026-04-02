@@ -18,12 +18,16 @@ const BRAND_LABELS: Record<InventoryBrandGroup, string> = {
 };
 
 const REGION_TITLES: Record<InventoryMatrixSection['regionGroup'], string> = {
-  TOTAL: '합산 재고 (K)',
+  TOTAL: '홍마대 합산재고 (K)',
   HKMC: '홍마 재고 (K)',
   TW: '대만 재고 (K)',
 };
 
 const REGION_ORDER: InventoryMatrixSection['regionGroup'][] = ['TOTAL', 'HKMC', 'TW'];
+
+function getRegionAnchorId(regionGroup: InventoryMatrixSection['regionGroup']) {
+  return `inventory-section-${regionGroup.toLowerCase()}`;
+}
 
 const METRIC_HEADER_CLASS = 'bg-amber-50';
 const METRIC_CELL_CLASS = 'bg-amber-50/60';
@@ -485,7 +489,10 @@ function InventoryMatrixTable({
     (Object.keys(targetWeeksOverrides).length > 0 || Object.keys(salesYoYOverrides).length > 0);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div
+      id={getRegionAnchorId(regionGroup)}
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm scroll-mt-24"
+    >
       <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -883,6 +890,18 @@ export default function InventoryPage({ locale = 'ko' }: InventoryPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [showRawMatrix, setShowRawMatrix] = useState<boolean>(false);
+  const sortedSections = [...(data?.sections ?? [])].sort(
+    (a, b) => REGION_ORDER.indexOf(a.regionGroup) - REGION_ORDER.indexOf(b.regionGroup)
+  );
+
+  const handleScrollToRegion = (regionGroup: InventoryMatrixSection['regionGroup']) => {
+    if (typeof document === 'undefined') return;
+
+    document.getElementById(getRegionAnchorId(regionGroup))?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
 
   const exportRawMatrix = () => {
     if (!data?.sections?.length) return;
@@ -1032,12 +1051,26 @@ export default function InventoryPage({ locale = 'ko' }: InventoryPageProps) {
             <div className="mt-3 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-4 py-1.5 text-sm font-extrabold tracking-wide text-amber-900">
               {isEnglish ? 'Tag Basis' : '택가 기준'}
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              {isEnglish ? 'This screen currently reflects HKMC MLB data first, based on `2602_inventory.xlsx`.' : '현재 화면은 `2602_inventory.xlsx` 기준 HKMC MLB 데이터만 우선 반영했습니다.'}
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {!loading &&
+              !error &&
+              sortedSections.length > 0 &&
+              sortedSections
+                .filter((section) => section.regionGroup !== 'TOTAL')
+                .map((section) => (
+                  <button
+                    key={`jump-${section.regionGroup}`}
+                    type="button"
+                    onClick={() => handleScrollToRegion(section.regionGroup)}
+                    className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
+                  >
+                    {section.regionGroup === 'HKMC'
+                      ? (isEnglish ? 'Hong Kong/Macau' : '홍콩마카오')
+                      : (isEnglish ? 'Taiwan' : '대만')}
+                  </button>
+                ))}
             <button
               onClick={() => setShowHistory((prev) => !prev)}
               className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
@@ -1079,9 +1112,7 @@ export default function InventoryPage({ locale = 'ko' }: InventoryPageProps) {
 
         {!loading &&
           !error &&
-          [...(data?.sections ?? [])]
-            .sort((a, b) => REGION_ORDER.indexOf(a.regionGroup) - REGION_ORDER.indexOf(b.regionGroup))
-            .map((section) => (
+          sortedSections.map((section) => (
             <InventoryMatrixTable
               key={section.regionGroup}
               title={REGION_TITLES[section.regionGroup]}
@@ -1110,9 +1141,7 @@ export default function InventoryPage({ locale = 'ko' }: InventoryPageProps) {
         {!loading &&
           !error &&
           showRawMatrix &&
-          [...(data?.sections ?? [])]
-            .sort((a, b) => REGION_ORDER.indexOf(a.regionGroup) - REGION_ORDER.indexOf(b.regionGroup))
-            .map((section) => (
+          sortedSections.map((section) => (
             <RawInventoryMatrixTable
               key={`${section.regionGroup}-raw`}
               title={isEnglish ? `${translateInventoryLabel(REGION_TITLES[section.regionGroup], locale)} Raw Number Matrix` : `${REGION_TITLES[section.regionGroup]} 원본 숫자 매트릭스`}
