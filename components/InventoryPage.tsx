@@ -23,6 +23,8 @@ const REGION_TITLES: Record<InventoryMatrixSection['regionGroup'], string> = {
   TW: '대만 재고 (K)',
 };
 
+const REGION_ORDER: InventoryMatrixSection['regionGroup'][] = ['TOTAL', 'HKMC', 'TW'];
+
 const METRIC_HEADER_CLASS = 'bg-amber-50';
 const METRIC_CELL_CLASS = 'bg-amber-50/60';
 const INBOUND_YOY_HEADER_CLASS = 'bg-sky-50';
@@ -368,16 +370,19 @@ function toRawMatrixRow(row: InventoryMatrixRow, sourceRows?: InventoryMatrixRow
 
 function InventoryMatrixTable({
   title,
+  regionGroup,
   rows,
   showHistory,
   locale,
 }: {
   title: string;
+  regionGroup: InventoryMatrixSection['regionGroup'];
   rows: InventoryMatrixRow[];
   showHistory: boolean;
   locale: 'ko' | 'en';
 }) {
   const isEnglish = locale === 'en';
+  const isAdjustableSection = regionGroup !== 'TOTAL';
   const [targetWeeksOverrides, setTargetWeeksOverrides] = useState<Record<string, number>>({});
   const [salesYoYOverrides, setSalesYoYOverrides] = useState<Record<string, number>>({});
 
@@ -475,7 +480,9 @@ function InventoryMatrixTable({
   const totalInboundYoY = totalDisplayRow.inboundYoY;
   const totalSalesYoY = totalDisplayRow.salesYoY;
   const totalEndingYoY = totalDisplayRow.endingYoY;
-  const hasAdjustments = Object.keys(targetWeeksOverrides).length > 0 || Object.keys(salesYoYOverrides).length > 0;
+  const hasAdjustments =
+    isAdjustableSection &&
+    (Object.keys(targetWeeksOverrides).length > 0 || Object.keys(salesYoYOverrides).length > 0);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -550,8 +557,10 @@ function InventoryMatrixTable({
             {displayRows.map((row) => {
               const bgClass = row.isSubtotal ? 'bg-slate-50' : 'bg-white';
               const textClass = row.isSubtotal ? 'font-bold text-slate-900' : 'text-slate-600';
-              const isTargetWeeksAdjustable = ADJUSTABLE_INBOUND_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
-              const isSalesYoYAdjustable = ADJUSTABLE_SALES_YOY_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
+              const isTargetWeeksAdjustable =
+                isAdjustableSection && ADJUSTABLE_INBOUND_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
+              const isSalesYoYAdjustable =
+                isAdjustableSection && ADJUSTABLE_SALES_YOY_CATEGORIES.has(row.categoryLabel) && !row.isSubtotal;
               const apparelMetricHighlightStyle = getRangeHighlightStyle(row.categoryLabel, APPAREL_HIGHLIGHT_ROWS);
               const accessoryInboundHighlightStyle = getRangeHighlightStyle(row.categoryLabel, ACCESSORY_HIGHLIGHT_ROWS);
 
@@ -1070,10 +1079,13 @@ export default function InventoryPage({ locale = 'ko' }: InventoryPageProps) {
 
         {!loading &&
           !error &&
-          data?.sections.map((section) => (
+          [...(data?.sections ?? [])]
+            .sort((a, b) => REGION_ORDER.indexOf(a.regionGroup) - REGION_ORDER.indexOf(b.regionGroup))
+            .map((section) => (
             <InventoryMatrixTable
               key={section.regionGroup}
               title={REGION_TITLES[section.regionGroup]}
+              regionGroup={section.regionGroup}
               rows={section.rows}
               showHistory={showHistory}
               locale={locale}
@@ -1098,7 +1110,9 @@ export default function InventoryPage({ locale = 'ko' }: InventoryPageProps) {
         {!loading &&
           !error &&
           showRawMatrix &&
-          data?.sections.map((section) => (
+          [...(data?.sections ?? [])]
+            .sort((a, b) => REGION_ORDER.indexOf(a.regionGroup) - REGION_ORDER.indexOf(b.regionGroup))
+            .map((section) => (
             <RawInventoryMatrixTable
               key={`${section.regionGroup}-raw`}
               title={isEnglish ? `${translateInventoryLabel(REGION_TITLES[section.regionGroup], locale)} Raw Number Matrix` : `${REGION_TITLES[section.regionGroup]} 원본 숫자 매트릭스`}
