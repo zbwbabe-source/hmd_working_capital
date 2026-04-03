@@ -9,6 +9,8 @@ export type ScenarioTreeSet = {
   detail: Record<DetailSource, Record<ScenarioKey, Node[]>>;
 };
 
+export type ScenarioFactorMap = Record<DetailSource, number>;
+
 const DETAIL_SOURCES: DetailSource[] = ['HK_MLB', 'HK_Discovery', 'TW_MLB', 'TW_Discovery'];
 const MONTH_KEYS: MonthKey[] = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'];
 
@@ -147,8 +149,8 @@ function buildScenarioRows(rows: Row[], factor: number): Row[] {
 
 export function buildScenarioTreeSet(
   detailTrees: Record<DetailSource, Node[]>,
-  goodFactor: number = 1.2,
-  badFactor: number = 0.8
+  goodFactors: ScenarioFactorMap,
+  badFactors: ScenarioFactorMap
 ): ScenarioTreeSet {
   const detailRowsBySource = Object.fromEntries(
     DETAIL_SOURCES.map((source) => [source, cloneRows(detailTrees[source])])
@@ -158,8 +160,8 @@ export function buildScenarioTreeSet(
     DETAIL_SOURCES.map((source) => [
       source,
       {
-        good: buildTree(buildScenarioRows(detailRowsBySource[source], goodFactor)),
-        bad: buildTree(buildScenarioRows(detailRowsBySource[source], badFactor)),
+        good: buildTree(buildScenarioRows(detailRowsBySource[source], goodFactors[source] ?? 1.2)),
+        bad: buildTree(buildScenarioRows(detailRowsBySource[source], badFactors[source] ?? 0.8)),
       },
     ])
   ) as Record<DetailSource, Record<ScenarioKey, Node[]>>;
