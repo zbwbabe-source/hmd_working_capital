@@ -257,10 +257,11 @@ function renderScenarioControl(
   value: number,
   defaultValue: number,
   onChange: (next: number) => void,
-  tone: 'good' | 'bad'
+  tone: 'good' | 'bad',
+  bounds?: { min: number; max: number }
 ) {
-  const min = tone === 'good' ? 110 : 70;
-  const max = tone === 'good' ? 150 : 90;
+  const min = bounds?.min ?? (tone === 'good' ? 110 : 70);
+  const max = bounds?.max ?? (tone === 'good' ? 150 : 90);
 
   return (
     <div className="mt-1 flex items-center justify-center gap-1">
@@ -586,7 +587,8 @@ export default function PLTable({
                       detailGoodScenarioPercent[detail.source],
                       defaultGoodScenarioPercent,
                       (next) => onDetailGoodScenarioChange(detail.source, next),
-                      'good'
+                      'good',
+                      { min: 70, max: 150 }
                     )}
                   </div>
                 </th>
@@ -617,7 +619,8 @@ export default function PLTable({
                       detailBadScenarioPercent[detail.source],
                       defaultBadScenarioPercent,
                       (next) => onDetailBadScenarioChange(detail.source, next),
-                      'bad'
+                      'bad',
+                      { min: 70, max: 150 }
                     )}
                   </div>
                 </th>
