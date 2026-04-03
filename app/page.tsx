@@ -467,6 +467,7 @@ export default function Home() {
     const hkNetDeltaByMonth = new Array(12).fill(0);
     const twNetDeltaByMonth = new Array(12).fill(0);
     const hkAdjustedSalesByMonth = new Array(12).fill(0);
+    const twSalesFactorByMonth = new Array(12).fill(1);
     const parentByLevel: string[] = [];
 
     clonedRows.forEach((row) => {
@@ -498,6 +499,7 @@ export default function Home() {
             hkNetDeltaByMonth[monthIdx] += diff;
           }
           if (norm(row.account) === norm(ACC_TW)) {
+            twSalesFactorByMonth[monthIdx] = factor;
             twNetDeltaByMonth[monthIdx] += diff;
           }
         }
@@ -525,6 +527,29 @@ export default function Home() {
 
           row.values[monthIdx] = updatedRent;
           hkNetDeltaByMonth[monthIdx] += diff;
+        }
+      }
+
+      const inTaiwanRentPath =
+        row.level >= 3 &&
+        norm(parentByLevel[0]) === norm(ACC_OPERATING) &&
+        (level1 === norm(ACC_OUTFLOW) || level1 === norm(ACC_COST)) &&
+        norm(parentByLevel[2]) === norm(ACC_TW) &&
+        norm(row.account) === norm(ACC_STORE_RENT);
+
+      if (inTaiwanRentPath) {
+        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+          const current = row.values[monthIdx];
+          if (typeof current !== 'number') continue;
+
+          const factor = twSalesFactorByMonth[monthIdx];
+          if (factor <= 0) continue;
+
+          const updatedRent = current * factor;
+          const diff = updatedRent - current;
+
+          row.values[monthIdx] = updatedRent;
+          twNetDeltaByMonth[monthIdx] += diff;
         }
       }
     });

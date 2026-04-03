@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { Node } from '@/PL/src/pl/tree';
+import type { ScenarioTreeSet } from '@/PL/src/pl/scenario';
 import type { MonthKey, Source } from '@/PL/src/pl/types';
 import { calcCols, calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
 import { translateFinanceLabel } from '@/lib/translate-finance-label';
@@ -14,9 +15,17 @@ type PLTableProps = {
   currTree: Node[];
   detailPrevTrees: Record<DetailSource, Node[]>;
   detailCurrTrees: Record<DetailSource, Node[]>;
+  annualScenarioTrees: ScenarioTreeSet | null;
   baseMonthIndex: number;
   showMonthly: boolean;
   showYTD: boolean;
+  annualOnly: boolean;
+  goodScenarioPercent: number;
+  badScenarioPercent: number;
+  defaultGoodScenarioPercent: number;
+  defaultBadScenarioPercent: number;
+  onGoodScenarioChange: (next: number) => void;
+  onBadScenarioChange: (next: number) => void;
   isExpandedAll: boolean;
   onToggleNode: (nodeKey: string) => void;
   expandedNodes: Set<string>;
@@ -203,15 +212,105 @@ function renderValue(value: number | null, isRate: boolean) {
   return isRate ? formatPercent(value) : formatNumber(value);
 }
 
+function getScenarioValue(
+  node: Node,
+  scenarioNode: Node | undefined,
+  scenarioMap: Map<string, Node>
+): number | null {
+  if (!scenarioNode) return null;
+
+  if (node.hasRateRow) {
+    const rateBase = getRateBaseNodes(scenarioNode, scenarioMap);
+    if (!rateBase.numerNode || !rateBase.denomNode) return null;
+
+    return calcRateColsFromNumerDenom(
+      12,
+      getNodeMonths(rateBase.numerNode),
+      getNodeMonths(rateBase.denomNode),
+      getNodeMonths(rateBase.numerNode),
+      getNodeMonths(rateBase.denomNode)
+    ).currYearTotal;
+  }
+
+  return calcCols(12, getNodeMonths(scenarioNode), getNodeMonths(scenarioNode), false).currYearTotal;
+}
+
+function getOpMarginResult(
+  monthIndex: number,
+  numerMap: Map<string, Node>,
+  denomMap: Map<string, Node>
+) {
+  const numerNode = numerMap.get('L1|영업이익');
+  const denomNode = denomMap.get('L1|실판매출');
+  if (!numerNode || !denomNode) return null;
+
+  return calcRateColsFromNumerDenom(
+    monthIndex,
+    getNodeMonths(numerNode),
+    getNodeMonths(denomNode),
+    getNodeMonths(numerNode),
+    getNodeMonths(denomNode)
+  );
+}
+
+function renderScenarioControl(
+  value: number,
+  defaultValue: number,
+  onChange: (next: number) => void,
+  tone: 'good' | 'bad'
+) {
+  const buttonClass =
+    tone === 'good'
+      ? 'bg-white/20 hover:bg-white/30'
+      : 'bg-white/20 hover:bg-white/30';
+  const min = tone === 'good' ? 110 : 70;
+  const max = tone === 'good' ? 150 : 90;
+
+  return (
+    <div className="mt-1 flex items-center justify-center gap-1">
+      <button
+        type="button"
+        className={`inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold text-white ${buttonClass}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onChange(Math.max(min, value - 10));
+        }}
+        disabled={value <= min}
+      >
+        -
+      </button>
+      <button
+        type="button"
+        className={`inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold text-white ${buttonClass}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onChange(Math.min(max, value + 10));
+        }}
+        disabled={value >= max}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 export default function PLTable({
   locale = 'ko',
   prevTree,
   currTree,
   detailPrevTrees,
   detailCurrTrees,
+  annualScenarioTrees,
   baseMonthIndex,
   showMonthly,
   showYTD,
+  annualOnly,
+  goodScenarioPercent,
+  badScenarioPercent,
+  defaultGoodScenarioPercent,
+  defaultBadScenarioPercent,
+  onGoodScenarioChange,
+  onBadScenarioChange,
   isExpandedAll,
   onToggleNode,
   expandedNodes,
@@ -221,8 +320,11 @@ export default function PLTable({
   const [showMonthDetails, setShowMonthDetails] = useState<boolean>(false);
   const [showYtdDetails, setShowYtdDetails] = useState<boolean>(false);
   const [showAnnualDetails, setShowAnnualDetails] = useState<boolean>(false);
+  const [showGoodDetails, setShowGoodDetails] = useState<boolean>(false);
+  const [showBadDetails, setShowBadDetails] = useState<boolean>(false);
 
   const baseWindowLabel = isEnglish ? monthNamesEn[Math.max(baseMonthIndex - 1, 0)] : (baseMonthIndex <= 1 ? '1월' : `${baseMonthIndex}월`);
+  const ytdMonthLabel = isEnglish ? monthNamesEn[Math.max(baseMonthIndex - 1, 0)] : `${baseMonthIndex}월`;
   const detailColumns = isEnglish
     ? DETAIL_COLUMNS.map((detail) => ({
         ...detail,
@@ -266,6 +368,14 @@ export default function PLTable({
 
   const totalPrevMap = useMemo(() => buildNodeMap(prevTree), [prevTree]);
   const totalCurrMap = useMemo(() => buildNodeMap(currTree), [currTree]);
+  const totalGoodMap = useMemo(
+    () => buildNodeMap(annualScenarioTrees?.total.good ?? []),
+    [annualScenarioTrees]
+  );
+  const totalBadMap = useMemo(
+    () => buildNodeMap(annualScenarioTrees?.total.bad ?? []),
+    [annualScenarioTrees]
+  );
 
   const detailCurrMaps = useMemo(
     () => ({
@@ -276,62 +386,169 @@ export default function PLTable({
     }),
     [detailCurrTrees]
   );
+  const detailGoodMaps = useMemo(
+    () => ({
+      HK_MLB: buildNodeMap(annualScenarioTrees?.detail.HK_MLB.good ?? []),
+      HK_Discovery: buildNodeMap(annualScenarioTrees?.detail.HK_Discovery.good ?? []),
+      TW_MLB: buildNodeMap(annualScenarioTrees?.detail.TW_MLB.good ?? []),
+      TW_Discovery: buildNodeMap(annualScenarioTrees?.detail.TW_Discovery.good ?? []),
+    }),
+    [annualScenarioTrees]
+  );
+  const detailBadMaps = useMemo(
+    () => ({
+      HK_MLB: buildNodeMap(annualScenarioTrees?.detail.HK_MLB.bad ?? []),
+      HK_Discovery: buildNodeMap(annualScenarioTrees?.detail.HK_Discovery.bad ?? []),
+      TW_MLB: buildNodeMap(annualScenarioTrees?.detail.TW_MLB.bad ?? []),
+      TW_Discovery: buildNodeMap(annualScenarioTrees?.detail.TW_Discovery.bad ?? []),
+    }),
+    [annualScenarioTrees]
+  );
 
   const monthHeaders = Array.from({ length: 12 }, (_, i) =>
     i < baseMonthIndex ? (isEnglish ? `${monthNamesEn[i]} (Act)` : `${i + 1}월(실적)`) : (isEnglish ? `${monthNamesEn[i]} (Plan)` : `${i + 1}월(계획)`)
   );
+  const isScenarioAdjusted =
+    goodScenarioPercent !== defaultGoodScenarioPercent || badScenarioPercent !== defaultBadScenarioPercent;
+  const nonAccountColumnCount =
+    (!annualOnly && showMonthly ? monthHeaders.length : 0) +
+    (!annualOnly ? 2 + (showMonthDetails ? detailColumns.length : 0) : 0) +
+    (!annualOnly && showYTD ? 2 + (showYtdDetails ? detailColumns.length : 0) : 0) +
+    2 +
+    (showAnnualDetails ? detailColumns.length : 0) +
+    1 +
+    (showGoodDetails ? detailColumns.length : 0) +
+    1 +
+    (showBadDetails ? detailColumns.length : 0);
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full table-fixed border-collapse text-sm">
+        <colgroup>
+          <col className="w-[260px]" />
+          {Array.from({ length: nonAccountColumnCount }, (_, idx) => (
+            <col key={`col-${idx}`} className="w-[120px]" />
+          ))}
+        </colgroup>
         <thead className="sticky top-0 z-10">
-          <tr className="bg-blue-700 text-white">
-            <th className="border border-white/30 px-4 py-3 text-left font-semibold sticky left-0 bg-blue-700 z-20 min-w-[220px]">
+          <tr className="bg-blue-900 text-white">
+            <th
+              className="border border-white/30 px-4 py-2 text-left font-semibold sticky left-0 bg-blue-900 z-20 w-[260px] min-w-[260px] max-w-[260px]"
+              rowSpan={2}
+            >
               {isEnglish ? 'Account' : '계정과목'}
             </th>
 
-            {showMonthly &&
+            {!annualOnly && showMonthly && (
+              <th
+                className="border border-white/30 px-4 py-2 text-center font-semibold"
+                colSpan={monthHeaders.length}
+              >
+                {isEnglish ? 'Monthly Data' : '월별 데이터'}
+              </th>
+            )}
+
+            {!annualOnly && (
+              <th
+                className="border border-white/30 px-4 py-2 text-center font-semibold"
+                colSpan={2 + (showMonthDetails ? detailColumns.length : 0)}
+              >
+                {isEnglish ? 'Base Month' : '기준월'}
+              </th>
+            )}
+
+            {!annualOnly && showYTD && (
+              <th
+                className="border border-white/30 px-4 py-2 text-center font-semibold"
+                colSpan={2 + (showYtdDetails ? detailColumns.length : 0)}
+              >
+                YTD
+              </th>
+            )}
+
+            <th
+              className="border border-white/30 px-4 py-2 text-center font-semibold"
+              colSpan={2 + (showAnnualDetails ? detailColumns.length : 0)}
+            >
+              {isEnglish ? 'Annual Rolling' : '연간 Rolling'}
+            </th>
+            <th
+              className="border border-white/30 px-4 py-2 text-center font-semibold bg-blue-800"
+              colSpan={2 + (showGoodDetails ? detailColumns.length : 0) + (showBadDetails ? detailColumns.length : 0)}
+            >
+              <div className="flex min-h-[24px] items-center justify-center gap-2">
+                <span>{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
+                <button
+                  type="button"
+                  className={`inline-flex h-6 items-center justify-center rounded px-2 text-[11px] font-bold text-white transition-colors ${
+                    isScenarioAdjusted ? 'bg-white/20 hover:bg-white/30' : 'bg-transparent opacity-0 pointer-events-none'
+                  }`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onGoodScenarioChange(defaultGoodScenarioPercent);
+                    onBadScenarioChange(defaultBadScenarioPercent);
+                  }}
+                  aria-hidden={!isScenarioAdjusted}
+                  tabIndex={isScenarioAdjusted ? 0 : -1}
+                >
+                  {isEnglish ? 'Reset' : '되돌리기'}
+                </button>
+              </div>
+            </th>
+          </tr>
+          <tr className="bg-blue-700 text-white">
+            {!annualOnly && showMonthly &&
               monthHeaders.map((month, idx) => (
                 <th key={`month-${idx}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[110px]">
                   {month}
                 </th>
               ))}
 
-            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
-              {isEnglish ? `Prev (${baseWindowLabel})` : `전년(${baseWindowLabel})`}
-            </th>
-            <th
-              className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
-              onClick={() => setShowMonthDetails((prev) => !prev)}
-            >
-              <span className="inline-flex items-center gap-2">
-                {isEnglish ? `Curr (${baseWindowLabel})` : `당년(${baseWindowLabel})`}
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
-                  {showMonthDetails ? '▼' : '▶'}
-                </span>
-              </span>
-            </th>
-            {showMonthDetails &&
-              detailColumns.map((detail) => (
-                <th key={`month-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
-                  {detail.label}
-                </th>
-              ))}
-
-            {showYTD && (
+            {!annualOnly && (
               <>
                 <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
-                  {isEnglish ? 'Prev YTD' : '전년YTD'}
+                  {isEnglish ? `Prev (${baseWindowLabel})` : `전년(${baseWindowLabel})`}
                 </th>
                 <th
-                  className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
-                  onClick={() => setShowYtdDetails((prev) => !prev)}
+                  className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]"
                 >
                   <span className="inline-flex items-center gap-2">
-                    {isEnglish ? 'Curr YTD' : '당년YTD'}
-                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
+                    {isEnglish ? `Curr (${baseWindowLabel})` : `당년(${baseWindowLabel})`}
+                    <button
+                      type="button"
+                      className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
+                      onClick={() => setShowMonthDetails((prev) => !prev)}
+                    >
+                      {showMonthDetails ? '▼' : '▶'}
+                    </button>
+                  </span>
+                </th>
+                {showMonthDetails &&
+                  detailColumns.map((detail) => (
+                    <th key={`month-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
+                      {detail.label}
+                    </th>
+                  ))}
+              </>
+            )}
+
+            {!annualOnly && showYTD && (
+              <>
+                <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
+                  {isEnglish ? `Prev YTD (${ytdMonthLabel})` : `전년YTD ${ytdMonthLabel}`}
+                </th>
+                <th
+                  className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px]"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {isEnglish ? `Curr YTD (${ytdMonthLabel})` : `당년YTD ${ytdMonthLabel}`}
+                    <button
+                      type="button"
+                      className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
+                      onClick={() => setShowYtdDetails((prev) => !prev)}
+                    >
                       {showYtdDetails ? '▼' : '▶'}
-                    </span>
+                    </button>
                   </span>
                 </th>
                 {showYtdDetails &&
@@ -343,24 +560,75 @@ export default function PLTable({
               </>
             )}
 
-            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-blue-800">
+            <th className="border-l-2 border-l-gray-400 border-r border-t border-b border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-blue-800">
               {isEnglish ? '25 Annual' : '25년 연간'}
             </th>
             <th
-              className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] cursor-pointer"
-              onClick={() => setShowAnnualDetails((prev) => !prev)}
+              className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px]"
             >
               <span className="inline-flex items-center gap-2">
                 {isEnglish ? '26 Annual' : '26년 연간'}
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30">
+                <button
+                  type="button"
+                  className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
+                  onClick={() => setShowAnnualDetails((prev) => !prev)}
+                >
                   {showAnnualDetails ? '▼' : '▶'}
-                </span>
+                </button>
               </span>
             </th>
             {showAnnualDetails &&
               detailColumns.map((detail) => (
-                <th key={`annual-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold min-w-[120px] bg-slate-700">
+                <th key={`annual-detail-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-slate-700">
                   {detail.label}
+                </th>
+              ))}
+            <th
+              className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-emerald-700"
+            >
+              <div className="flex min-h-[92px] flex-col items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span>{isEnglish ? '26 Upside' : '26년 상향'}</span>
+                  <button
+                    type="button"
+                    className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
+                    onClick={() => setShowGoodDetails((prev) => !prev)}
+                  >
+                    {showGoodDetails ? '▼' : '▶'}
+                  </button>
+                </div>
+                <div className="text-[15px] font-bold leading-none text-white">{goodScenarioPercent}%</div>
+                {renderScenarioControl(goodScenarioPercent, defaultGoodScenarioPercent, onGoodScenarioChange, 'good')}
+              </div>
+            </th>
+            {showGoodDetails &&
+              detailColumns.map((detail) => (
+                <th key={`annual-detail-good-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-emerald-800">
+                  {isEnglish ? `${detail.label} Upside (${goodScenarioPercent}%)` : `${detail.label} 상향 (${goodScenarioPercent}%)`}
+                </th>
+              ))}
+            <th
+              className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-700"
+            >
+              <div className="flex min-h-[92px] flex-col items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span>{isEnglish ? '26 Downside' : '26년 하향'}</span>
+                  <button
+                    type="button"
+                    className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
+                    onClick={() => setShowBadDetails((prev) => !prev)}
+                  >
+                    {showBadDetails ? '▼' : '▶'}
+                  </button>
+                </div>
+                <div className="text-[15px] font-bold leading-none text-white">{badScenarioPercent}%</div>
+                {renderScenarioControl(badScenarioPercent, defaultBadScenarioPercent, onBadScenarioChange, 'bad')}
+              </div>
+            </th>
+            {showBadDetails &&
+              detailColumns.map((detail) => (
+                <th key={`annual-detail-bad-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-800">
+                  {isEnglish ? `${detail.label} Downside (${badScenarioPercent}%)` : `${detail.label} 하향 (${badScenarioPercent}%)`}
                 </th>
               ))}
           </tr>
@@ -404,9 +672,11 @@ export default function PLTable({
                   getNodeMonths(totalCurrRateBase.denomNode)
                 )
               : calcCols(12, prevMonths, currMonths, isRate);
+            const totalGoodValue = getScenarioValue(node, totalGoodMap.get(key), totalGoodMap);
+            const totalBadValue = getScenarioValue(node, totalBadMap.get(key), totalBadMap);
 
-            const detailCells = (scope: 'month' | 'ytd' | 'annual') =>
-              detailColumns.map((detail) => {
+            const detailCells = (scope: 'month' | 'ytd' | 'annual' | 'annualGood' | 'annualBad') =>
+              detailColumns.flatMap((detail) => {
                 const prevDetail = detailPrevMaps[detail.source].get(key);
                 const currDetail = detailCurrMaps[detail.source].get(key);
                 const prevDetailMonths = getNodeMonths(prevDetail);
@@ -443,19 +713,44 @@ export default function PLTable({
                   currValue = detailResult.currYearTotal;
                 }
 
-                return (
+                const actualCell = (
                   <td key={`${scope}-${detail.source}-${key}`} className="border border-gray-200 px-2 py-2 text-right bg-white">
                     <div className={`font-semibold ${currValue !== null && currValue < 0 ? 'text-red-600' : ''}`}>
                       {renderValue(currValue, isRate)}
                     </div>
-                      {formatChange(currValue, prevValue, isRate, locale)}
+                    {formatChange(currValue, prevValue, isRate, locale)}
                   </td>
                 );
+
+                if (scope === 'month' || scope === 'ytd' || scope === 'annual') return [actualCell];
+
+                const detailGoodValue = getScenarioValue(node, detailGoodMaps[detail.source].get(key), detailGoodMaps[detail.source]);
+                const detailBadValue = getScenarioValue(node, detailBadMaps[detail.source].get(key), detailBadMaps[detail.source]);
+
+                if (scope === 'annualGood') {
+                  return [
+                    <td key={`${scope}-${detail.source}-${key}`} className="border border-gray-200 px-2 py-2 text-right bg-emerald-50">
+                      <div className={`font-semibold ${detailGoodValue !== null && detailGoodValue < 0 ? 'text-red-600' : ''}`}>
+                        {renderValue(detailGoodValue, isRate)}
+                      </div>
+                      {formatChange(detailGoodValue, prevValue, isRate, locale)}
+                    </td>,
+                  ];
+                }
+
+                return [
+                  <td key={`${scope}-${detail.source}-${key}`} className="border border-gray-200 px-2 py-2 text-right bg-amber-50">
+                    <div className={`font-semibold ${detailBadValue !== null && detailBadValue < 0 ? 'text-red-600' : ''}`}>
+                      {renderValue(detailBadValue, isRate)}
+                    </div>
+                    {formatChange(detailBadValue, prevValue, isRate, locale)}
+                  </td>,
+                ];
               });
 
-            return (
+            const mainRow = (
               <tr key={key} className={`${rowBg} hover:bg-gray-100 transition-colors`}>
-                <td className={`border border-gray-200 px-2 py-2 ${paddingLeft} sticky left-0 ${rowBg} z-10`}>
+                <td className={`border border-gray-200 px-2 py-2 ${paddingLeft} sticky left-0 ${rowBg} z-10 w-[260px] min-w-[260px] max-w-[260px]`}>
                   <div className="flex items-center gap-2">
                     {hasChildren ? (
                       <button
@@ -471,7 +766,7 @@ export default function PLTable({
                   </div>
                 </td>
 
-                {showMonthly &&
+                {!annualOnly && showMonthly &&
                   monthHeaders.map((_, monthIdx) => {
                     const monthKey = `m${monthIdx + 1}` as MonthKey;
                     const prevVal = prevMonths[monthKey] || 0;
@@ -482,39 +777,43 @@ export default function PLTable({
                         <div className={`font-semibold ${currVal < 0 ? 'text-red-600' : ''}`}>
                           {renderValue(currVal, isRate)}
                         </div>
-                    {formatChange(currVal, prevVal, isRate, locale)}
+                        {formatChange(currVal, prevVal, isRate, locale)}
                       </td>
                     );
                   })}
 
-                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
-                  <div className={`font-semibold ${(baseResult.prevMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
-                    {renderValue(baseResult.prevMonth, isRate)}
-                  </div>
-                </td>
-
-                <td className="border border-gray-200 px-2 py-2 text-right">
-                  <div className={`font-semibold ${(baseResult.currMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
-                    {renderValue(baseResult.currMonth, isRate)}
-                  </div>
-                  {formatChange(baseResult.currMonth, baseResult.prevMonth, isRate, locale)}
-                </td>
-                {showMonthDetails && detailCells('month')}
-
-                {showYTD && (
+                {!annualOnly && (
                   <>
                     <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
-                      <div className={`font-semibold ${(baseResult.prevYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
-                        {renderValue(baseResult.prevYTD, isRate)}
+                      <div className={`font-semibold ${(baseResult.prevMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                        {renderValue(baseResult.prevMonth, isRate)}
                       </div>
                     </td>
+
                     <td className="border border-gray-200 px-2 py-2 text-right">
-                      <div className={`font-semibold ${(baseResult.currYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
-                        {renderValue(baseResult.currYTD, isRate)}
+                      <div className={`font-semibold ${(baseResult.currMonth ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                        {renderValue(baseResult.currMonth, isRate)}
                       </div>
-                      {formatChange(baseResult.currYTD, baseResult.prevYTD, isRate, locale)}
+                      {formatChange(baseResult.currMonth, baseResult.prevMonth, isRate, locale)}
                     </td>
-                    {showYtdDetails && detailCells('ytd')}
+                    {showMonthDetails && detailCells('month')}
+
+                    {showYTD && (
+                      <>
+                        <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
+                          <div className={`font-semibold ${(baseResult.prevYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                            {renderValue(baseResult.prevYTD, isRate)}
+                          </div>
+                        </td>
+                        <td className="border border-gray-200 px-2 py-2 text-right">
+                          <div className={`font-semibold ${(baseResult.currYTD ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                            {renderValue(baseResult.currYTD, isRate)}
+                          </div>
+                          {formatChange(baseResult.currYTD, baseResult.prevYTD, isRate, locale)}
+                        </td>
+                        {showYtdDetails && detailCells('ytd')}
+                      </>
+                    )}
                   </>
                 )}
 
@@ -530,7 +829,146 @@ export default function PLTable({
                   {formatChange(yearResult.currYearTotal, yearResult.prevYearTotal, isRate, locale)}
                 </td>
                 {showAnnualDetails && detailCells('annual')}
+                <td className="border border-gray-200 px-2 py-2 text-right bg-emerald-50">
+                  <div className={`font-semibold ${totalGoodValue !== null && totalGoodValue < 0 ? 'text-red-600' : ''}`}>
+                    {renderValue(totalGoodValue, isRate)}
+                  </div>
+                  {formatChange(totalGoodValue, yearResult.prevYearTotal, isRate, locale)}
+                </td>
+                {showGoodDetails && detailCells('annualGood')}
+                <td className="border border-gray-200 px-2 py-2 text-right bg-amber-50">
+                  <div className={`font-semibold ${totalBadValue !== null && totalBadValue < 0 ? 'text-red-600' : ''}`}>
+                    {renderValue(totalBadValue, isRate)}
+                  </div>
+                  {formatChange(totalBadValue, yearResult.prevYearTotal, isRate, locale)}
+                </td>
+                {showBadDetails && detailCells('annualBad')}
               </tr>
+            );
+
+            if (node.label !== '영업이익') {
+              return mainRow;
+            }
+
+            const opMarginPrev = getOpMarginResult(baseMonthIndex, totalPrevMap, totalPrevMap);
+            const opMarginCurr = getOpMarginResult(baseMonthIndex, totalCurrMap, totalCurrMap);
+            const opMarginYearPrev = getOpMarginResult(12, totalPrevMap, totalPrevMap);
+            const opMarginYearCurr = getOpMarginResult(12, totalCurrMap, totalCurrMap);
+            const opMarginGood = getOpMarginResult(12, totalGoodMap, totalGoodMap);
+            const opMarginBad = getOpMarginResult(12, totalBadMap, totalBadMap);
+            const opMarginDetailCells = (scope: 'month' | 'ytd' | 'annual' | 'annualGood' | 'annualBad') =>
+              detailColumns.map((detail) => {
+                const prevMap = detailPrevMaps[detail.source];
+                const currMap = detailCurrMaps[detail.source];
+                const goodMap = detailGoodMaps[detail.source];
+                const badMap = detailBadMaps[detail.source];
+                const prevRate = getOpMarginResult(baseMonthIndex, prevMap, prevMap);
+                const currRate = getOpMarginResult(baseMonthIndex, currMap, currMap);
+                const prevYearRate = getOpMarginResult(12, prevMap, prevMap);
+                const currYearRate = getOpMarginResult(12, currMap, currMap);
+                const goodRate = getOpMarginResult(12, goodMap, goodMap);
+                const badRate = getOpMarginResult(12, badMap, badMap);
+
+                let value: number | null = null;
+                let compare: number | null = null;
+                let cellBg = 'bg-white';
+
+                if (scope === 'month') {
+                  value = currRate?.currMonth ?? null;
+                  compare = prevRate?.currMonth ?? null;
+                } else if (scope === 'ytd') {
+                  value = currRate?.currYTD ?? null;
+                  compare = prevRate?.currYTD ?? null;
+                } else if (scope === 'annual') {
+                  value = currYearRate?.currYearTotal ?? null;
+                  compare = prevYearRate?.currYearTotal ?? null;
+                } else if (scope === 'annualGood') {
+                  value = goodRate?.currYearTotal ?? null;
+                  compare = prevYearRate?.currYearTotal ?? null;
+                  cellBg = 'bg-emerald-50';
+                } else {
+                  value = badRate?.currYearTotal ?? null;
+                  compare = prevYearRate?.currYearTotal ?? null;
+                  cellBg = 'bg-amber-50';
+                }
+
+                return (
+                  <td key={`opm-${scope}-${detail.source}-${key}`} className={`border border-gray-200 px-2 py-2 text-right ${cellBg}`}>
+                    <div className="font-semibold">{renderValue(value, true)}</div>
+                    {formatChange(value, compare, true, locale)}
+                  </td>
+                );
+              });
+
+            const opMarginRow = (
+              <tr key={`${key}-margin`} className="bg-blue-50/30 hover:bg-gray-100 transition-colors">
+                <td className="border border-gray-200 px-2 py-2 pl-4 sticky left-0 bg-blue-50/30 z-10 w-[260px] min-w-[260px] max-w-[260px]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5" />
+                    <span className="font-semibold">{translatePlLabel('영업이익률', locale)}</span>
+                  </div>
+                </td>
+                {!annualOnly && showMonthly &&
+                  monthHeaders.map((_, monthIdx) => {
+                    const monthRatePrev = getOpMarginResult(monthIdx + 1, totalPrevMap, totalPrevMap);
+                    const monthRateCurr = getOpMarginResult(monthIdx + 1, totalCurrMap, totalCurrMap);
+                    return (
+                      <td key={`opm-month-${monthIdx}`} className="border border-gray-200 px-2 py-2 text-right">
+                        <div className="font-semibold">{renderValue(monthRateCurr?.currMonth ?? null, true)}</div>
+                        {formatChange(monthRateCurr?.currMonth ?? null, monthRatePrev?.currMonth ?? null, true, locale)}
+                      </td>
+                    );
+                  })}
+                {!annualOnly && (
+                  <>
+                    <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
+                      <div className="font-semibold">{renderValue(opMarginPrev?.currMonth ?? null, true)}</div>
+                    </td>
+                    <td className="border border-gray-200 px-2 py-2 text-right">
+                      <div className="font-semibold">{renderValue(opMarginCurr?.currMonth ?? null, true)}</div>
+                      {formatChange(opMarginCurr?.currMonth ?? null, opMarginPrev?.currMonth ?? null, true, locale)}
+                    </td>
+                    {showMonthDetails && opMarginDetailCells('month')}
+                    {showYTD && (
+                      <>
+                        <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
+                          <div className="font-semibold">{renderValue(opMarginPrev?.currYTD ?? null, true)}</div>
+                        </td>
+                        <td className="border border-gray-200 px-2 py-2 text-right">
+                          <div className="font-semibold">{renderValue(opMarginCurr?.currYTD ?? null, true)}</div>
+                          {formatChange(opMarginCurr?.currYTD ?? null, opMarginPrev?.currYTD ?? null, true, locale)}
+                        </td>
+                        {showYtdDetails && opMarginDetailCells('ytd')}
+                      </>
+                    )}
+                  </>
+                )}
+                <td className="border-l-2 border-l-gray-300 border-r border-t border-b border-gray-200 px-2 py-2 text-right bg-slate-50">
+                  <div className="font-semibold">{renderValue(opMarginYearPrev?.currYearTotal ?? null, true)}</div>
+                </td>
+                <td className="border border-gray-200 px-2 py-2 text-right">
+                  <div className="font-semibold">{renderValue(opMarginYearCurr?.currYearTotal ?? null, true)}</div>
+                  {formatChange(opMarginYearCurr?.currYearTotal ?? null, opMarginYearPrev?.currYearTotal ?? null, true, locale)}
+                </td>
+                {showAnnualDetails && opMarginDetailCells('annual')}
+                <td className="border border-gray-200 px-2 py-2 text-right bg-emerald-50">
+                  <div className="font-semibold">{renderValue(opMarginGood?.currYearTotal ?? null, true)}</div>
+                  {formatChange(opMarginGood?.currYearTotal ?? null, opMarginYearPrev?.currYearTotal ?? null, true, locale)}
+                </td>
+                {showGoodDetails && opMarginDetailCells('annualGood')}
+                <td className="border border-gray-200 px-2 py-2 text-right bg-amber-50">
+                  <div className="font-semibold">{renderValue(opMarginBad?.currYearTotal ?? null, true)}</div>
+                  {formatChange(opMarginBad?.currYearTotal ?? null, opMarginYearPrev?.currYearTotal ?? null, true, locale)}
+                </td>
+                {showBadDetails && opMarginDetailCells('annualBad')}
+              </tr>
+            );
+
+            return (
+              <React.Fragment key={`${key}-group`}>
+                {mainRow}
+                {opMarginRow}
+              </React.Fragment>
             );
           })}
         </tbody>
