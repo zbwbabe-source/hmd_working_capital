@@ -3,12 +3,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PLTable from '@/components/PLTable';
 import { calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
-import { buildScenarioTreeSet } from '@/PL/src/pl/scenario';
+import { buildScenarioTreeSet, type ScenarioFactorMap } from '@/PL/src/pl/scenario';
 import type { Node } from '@/PL/src/pl/tree';
 import type { MonthKey, Source, Year } from '@/PL/src/pl/types';
 
 const DETAIL_SOURCES: Source[] = ['HK_MLB', 'HK_Discovery', 'TW_MLB', 'TW_Discovery'];
 const ALL_SOURCES: Source[] = ['Total', ...DETAIL_SOURCES];
+const DEFAULT_GOOD_PERCENT = 120;
+const DEFAULT_BAD_PERCENT = 80;
 
 type TreeMap = Record<Source, Node[]>;
 
@@ -100,8 +102,20 @@ interface PLPageProps {
 export default function PLPage({ locale = 'ko' }: PLPageProps) {
   const isEnglish = locale === 'en';
   const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const [goodScenarioPercent, setGoodScenarioPercent] = useState<number>(120);
-  const [badScenarioPercent, setBadScenarioPercent] = useState<number>(80);
+  const [goodScenarioPercent, setGoodScenarioPercent] = useState<number>(DEFAULT_GOOD_PERCENT);
+  const [badScenarioPercent, setBadScenarioPercent] = useState<number>(DEFAULT_BAD_PERCENT);
+  const [detailGoodScenarioPercent, setDetailGoodScenarioPercent] = useState<ScenarioFactorMap>({
+    HK_MLB: DEFAULT_GOOD_PERCENT,
+    HK_Discovery: DEFAULT_GOOD_PERCENT,
+    TW_MLB: DEFAULT_GOOD_PERCENT,
+    TW_Discovery: DEFAULT_GOOD_PERCENT,
+  });
+  const [detailBadScenarioPercent, setDetailBadScenarioPercent] = useState<ScenarioFactorMap>({
+    HK_MLB: DEFAULT_BAD_PERCENT,
+    HK_Discovery: DEFAULT_BAD_PERCENT,
+    TW_MLB: DEFAULT_BAD_PERCENT,
+    TW_Discovery: DEFAULT_BAD_PERCENT,
+  });
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
   const [baseMonthIndex, setBaseMonthIndex] = useState<number>(2);
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
@@ -190,9 +204,21 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             HK_Discovery: trees2026.HK_Discovery,
             TW_MLB: trees2026.TW_MLB,
             TW_Discovery: trees2026.TW_Discovery,
-          }, goodScenarioPercent / 100, badScenarioPercent / 100)
+          },
+          {
+            HK_MLB: detailGoodScenarioPercent.HK_MLB / 100,
+            HK_Discovery: detailGoodScenarioPercent.HK_Discovery / 100,
+            TW_MLB: detailGoodScenarioPercent.TW_MLB / 100,
+            TW_Discovery: detailGoodScenarioPercent.TW_Discovery / 100,
+          },
+          {
+            HK_MLB: detailBadScenarioPercent.HK_MLB / 100,
+            HK_Discovery: detailBadScenarioPercent.HK_Discovery / 100,
+            TW_MLB: detailBadScenarioPercent.TW_MLB / 100,
+            TW_Discovery: detailBadScenarioPercent.TW_Discovery / 100,
+          })
         : null,
-    [badScenarioPercent, goodScenarioPercent, selectedYear, trees2026]
+    [detailBadScenarioPercent, detailGoodScenarioPercent, selectedYear, trees2026]
   );
   const exportPayload = useMemo(() => {
     if (selectedYear !== 2026 || !annualScenarioTrees) {
@@ -263,10 +289,48 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
       scenarioControls: {
         goodPercentOfCurrent: goodScenarioPercent,
         badPercentOfCurrent: badScenarioPercent,
+        detailGoodPercentOfCurrent: detailGoodScenarioPercent,
+        detailBadPercentOfCurrent: detailBadScenarioPercent,
         stepPercent: 10,
       },
     };
-  }, [annualScenarioTrees, badScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
+  }, [annualScenarioTrees, badScenarioPercent, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
+  const isScenarioAdjusted =
+    goodScenarioPercent !== DEFAULT_GOOD_PERCENT || badScenarioPercent !== DEFAULT_BAD_PERCENT;
+
+  const handleGoodScenarioChange = (next: number) => {
+    setGoodScenarioPercent(next);
+    setDetailGoodScenarioPercent({
+      HK_MLB: next,
+      HK_Discovery: next,
+      TW_MLB: next,
+      TW_Discovery: next,
+    });
+  };
+
+  const handleBadScenarioChange = (next: number) => {
+    setBadScenarioPercent(next);
+    setDetailBadScenarioPercent({
+      HK_MLB: next,
+      HK_Discovery: next,
+      TW_MLB: next,
+      TW_Discovery: next,
+    });
+  };
+
+  const handleDetailGoodScenarioChange = (source: keyof ScenarioFactorMap, next: number) => {
+    setDetailGoodScenarioPercent((prev) => ({
+      ...prev,
+      [source]: next,
+    }));
+  };
+
+  const handleDetailBadScenarioChange = (source: keyof ScenarioFactorMap, next: number) => {
+    setDetailBadScenarioPercent((prev) => ({
+      ...prev,
+      [source]: next,
+    }));
+  };
 
   const handleExportJson = () => {
     const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
@@ -331,7 +395,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
       </div>
 
       <div className="bg-gray-100 border-b border-gray-300 px-6 py-3">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={handleToggleAll}
             className="px-4 py-2 bg-gray-700 text-white rounded text-sm font-medium hover:bg-gray-800 transition-colors"
@@ -368,7 +432,73 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             {showAnnualOnly ? (isEnglish ? 'Show Full View' : '전체 보기') : (isEnglish ? 'Annual Only' : '연간만 보기')}
           </button>
 
-          <span className="text-xs text-gray-500 ml-2">{isEnglish ? '(Comp cols fixed)' : '(비교 컬럼은 항상 표시됩니다)'}</span>
+          <div className="ml-auto flex flex-wrap items-center gap-3 text-sm text-gray-700">
+            <span className="font-medium text-gray-600">{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
+
+            <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-900">
+              <span className="text-sm font-semibold">{isEnglish ? 'Upside' : '상향'}</span>
+              <span className="min-w-[42px] text-center text-[15px] font-bold leading-none">{goodScenarioPercent}%</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-300 bg-transparent text-[12px] font-bold text-emerald-800 hover:bg-white/80 disabled:opacity-40"
+                  onClick={() => handleGoodScenarioChange(Math.max(110, goodScenarioPercent - 10))}
+                  disabled={goodScenarioPercent <= 110}
+                >
+                  -
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-300 bg-transparent text-[12px] font-bold text-emerald-800 hover:bg-white/80 disabled:opacity-40"
+                  onClick={() => handleGoodScenarioChange(Math.min(150, goodScenarioPercent + 10))}
+                  disabled={goodScenarioPercent >= 150}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-900">
+              <span className="text-sm font-semibold">{isEnglish ? 'Downside' : '하향'}</span>
+              <span className="min-w-[42px] text-center text-[15px] font-bold leading-none">{badScenarioPercent}%</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-transparent text-[12px] font-bold text-amber-800 hover:bg-white/80 disabled:opacity-40"
+                  onClick={() => handleBadScenarioChange(Math.max(70, badScenarioPercent - 10))}
+                  disabled={badScenarioPercent <= 70}
+                >
+                  -
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-transparent text-[12px] font-bold text-amber-800 hover:bg-white/80 disabled:opacity-40"
+                  onClick={() => handleBadScenarioChange(Math.min(90, badScenarioPercent + 10))}
+                  disabled={badScenarioPercent >= 90}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className={`inline-flex h-8 items-center justify-center rounded border px-3 text-sm font-medium transition-colors ${
+                isScenarioAdjusted
+                  ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  : 'border-transparent bg-transparent text-transparent pointer-events-none'
+              }`}
+              onClick={() => {
+                handleGoodScenarioChange(DEFAULT_GOOD_PERCENT);
+                handleBadScenarioChange(DEFAULT_BAD_PERCENT);
+              }}
+              aria-hidden={!isScenarioAdjusted}
+              tabIndex={isScenarioAdjusted ? 0 : -1}
+            >
+              {isEnglish ? 'Reset' : '되돌리기'}
+            </button>
+          </div>
+
         </div>
       </div>
 
@@ -398,12 +528,12 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             showMonthly={showMonthly}
             showYTD={showYTD}
             annualOnly={showAnnualOnly}
-            goodScenarioPercent={goodScenarioPercent}
-            badScenarioPercent={badScenarioPercent}
-            defaultGoodScenarioPercent={120}
-            defaultBadScenarioPercent={80}
-            onGoodScenarioChange={setGoodScenarioPercent}
-            onBadScenarioChange={setBadScenarioPercent}
+            detailGoodScenarioPercent={detailGoodScenarioPercent}
+            detailBadScenarioPercent={detailBadScenarioPercent}
+            defaultGoodScenarioPercent={DEFAULT_GOOD_PERCENT}
+            defaultBadScenarioPercent={DEFAULT_BAD_PERCENT}
+            onDetailGoodScenarioChange={handleDetailGoodScenarioChange}
+            onDetailBadScenarioChange={handleDetailBadScenarioChange}
             isExpandedAll={isExpandedAll}
             onToggleNode={handleToggleNode}
             expandedNodes={expandedNodes}

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { Node } from '@/PL/src/pl/tree';
-import type { ScenarioTreeSet } from '@/PL/src/pl/scenario';
+import type { ScenarioFactorMap, ScenarioTreeSet } from '@/PL/src/pl/scenario';
 import type { MonthKey, Source } from '@/PL/src/pl/types';
 import { calcCols, calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
 import { translateFinanceLabel } from '@/lib/translate-finance-label';
@@ -20,12 +20,12 @@ type PLTableProps = {
   showMonthly: boolean;
   showYTD: boolean;
   annualOnly: boolean;
-  goodScenarioPercent: number;
-  badScenarioPercent: number;
+  detailGoodScenarioPercent: ScenarioFactorMap;
+  detailBadScenarioPercent: ScenarioFactorMap;
   defaultGoodScenarioPercent: number;
   defaultBadScenarioPercent: number;
-  onGoodScenarioChange: (next: number) => void;
-  onBadScenarioChange: (next: number) => void;
+  onDetailGoodScenarioChange: (source: keyof ScenarioFactorMap, next: number) => void;
+  onDetailBadScenarioChange: (source: keyof ScenarioFactorMap, next: number) => void;
   isExpandedAll: boolean;
   onToggleNode: (nodeKey: string) => void;
   expandedNodes: Set<string>;
@@ -259,10 +259,6 @@ function renderScenarioControl(
   onChange: (next: number) => void,
   tone: 'good' | 'bad'
 ) {
-  const buttonClass =
-    tone === 'good'
-      ? 'bg-white/20 hover:bg-white/30'
-      : 'bg-white/20 hover:bg-white/30';
   const min = tone === 'good' ? 110 : 70;
   const max = tone === 'good' ? 150 : 90;
 
@@ -270,7 +266,7 @@ function renderScenarioControl(
     <div className="mt-1 flex items-center justify-center gap-1">
       <button
         type="button"
-        className={`inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold text-white ${buttonClass}`}
+        className="inline-flex h-5 w-5 items-center justify-center rounded border border-white/30 bg-transparent text-[11px] font-bold text-white hover:bg-white/10 disabled:opacity-40"
         onClick={(event) => {
           event.stopPropagation();
           onChange(Math.max(min, value - 10));
@@ -281,7 +277,7 @@ function renderScenarioControl(
       </button>
       <button
         type="button"
-        className={`inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold text-white ${buttonClass}`}
+        className="inline-flex h-5 w-5 items-center justify-center rounded border border-white/30 bg-transparent text-[11px] font-bold text-white hover:bg-white/10 disabled:opacity-40"
         onClick={(event) => {
           event.stopPropagation();
           onChange(Math.min(max, value + 10));
@@ -305,12 +301,12 @@ export default function PLTable({
   showMonthly,
   showYTD,
   annualOnly,
-  goodScenarioPercent,
-  badScenarioPercent,
+  detailGoodScenarioPercent,
+  detailBadScenarioPercent,
   defaultGoodScenarioPercent,
   defaultBadScenarioPercent,
-  onGoodScenarioChange,
-  onBadScenarioChange,
+  onDetailGoodScenarioChange,
+  onDetailBadScenarioChange,
   isExpandedAll,
   onToggleNode,
   expandedNodes,
@@ -408,8 +404,6 @@ export default function PLTable({
   const monthHeaders = Array.from({ length: 12 }, (_, i) =>
     i < baseMonthIndex ? (isEnglish ? `${monthNamesEn[i]} (Act)` : `${i + 1}월(실적)`) : (isEnglish ? `${monthNamesEn[i]} (Plan)` : `${i + 1}월(계획)`)
   );
-  const isScenarioAdjusted =
-    goodScenarioPercent !== defaultGoodScenarioPercent || badScenarioPercent !== defaultBadScenarioPercent;
   const nonAccountColumnCount =
     (!annualOnly && showMonthly ? monthHeaders.length : 0) +
     (!annualOnly ? 2 + (showMonthDetails ? detailColumns.length : 0) : 0) +
@@ -476,24 +470,7 @@ export default function PLTable({
               className="border border-white/30 px-4 py-2 text-center font-semibold bg-blue-800"
               colSpan={2 + (showGoodDetails ? detailColumns.length : 0) + (showBadDetails ? detailColumns.length : 0)}
             >
-              <div className="flex min-h-[24px] items-center justify-center gap-2">
-                <span>{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
-                <button
-                  type="button"
-                  className={`inline-flex h-6 items-center justify-center rounded px-2 text-[11px] font-bold text-white transition-colors ${
-                    isScenarioAdjusted ? 'bg-white/20 hover:bg-white/30' : 'bg-transparent opacity-0 pointer-events-none'
-                  }`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onGoodScenarioChange(defaultGoodScenarioPercent);
-                    onBadScenarioChange(defaultBadScenarioPercent);
-                  }}
-                  aria-hidden={!isScenarioAdjusted}
-                  tabIndex={isScenarioAdjusted ? 0 : -1}
-                >
-                  {isEnglish ? 'Reset' : '되돌리기'}
-                </button>
-              </div>
+              {isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}
             </th>
           </tr>
           <tr className="bg-blue-700 text-white">
@@ -586,9 +563,9 @@ export default function PLTable({
             <th
               className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-emerald-700"
             >
-              <div className="flex min-h-[92px] flex-col items-center justify-between">
+              <div className="flex min-h-[92px] flex-col items-center justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span>{isEnglish ? '26 Upside' : '26년 상향'}</span>
+                  <span>{isEnglish ? '26 Upside Total' : '26년 상향 합계'}</span>
                   <button
                     type="button"
                     className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
@@ -597,22 +574,29 @@ export default function PLTable({
                     {showGoodDetails ? '▼' : '▶'}
                   </button>
                 </div>
-                <div className="text-[15px] font-bold leading-none text-white">{goodScenarioPercent}%</div>
-                {renderScenarioControl(goodScenarioPercent, defaultGoodScenarioPercent, onGoodScenarioChange, 'good')}
               </div>
             </th>
             {showGoodDetails &&
               detailColumns.map((detail) => (
-                <th key={`annual-detail-good-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-emerald-800">
-                  {isEnglish ? `${detail.label} Upside (${goodScenarioPercent}%)` : `${detail.label} 상향 (${goodScenarioPercent}%)`}
+                <th key={`annual-detail-good-${detail.source}`} className="border border-white/30 px-3 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-emerald-800">
+                  <div className="flex min-h-[92px] flex-col items-center justify-between">
+                    <div>{isEnglish ? `${detail.label} Upside` : `${detail.label} 상향`}</div>
+                    <div className="text-[14px] font-bold leading-none text-white">{detailGoodScenarioPercent[detail.source]}%</div>
+                    {renderScenarioControl(
+                      detailGoodScenarioPercent[detail.source],
+                      defaultGoodScenarioPercent,
+                      (next) => onDetailGoodScenarioChange(detail.source, next),
+                      'good'
+                    )}
+                  </div>
                 </th>
               ))}
             <th
               className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-700"
             >
-              <div className="flex min-h-[92px] flex-col items-center justify-between">
+              <div className="flex min-h-[92px] flex-col items-center justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span>{isEnglish ? '26 Downside' : '26년 하향'}</span>
+                  <span>{isEnglish ? '26 Downside Total' : '26년 하향 합계'}</span>
                   <button
                     type="button"
                     className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
@@ -621,14 +605,21 @@ export default function PLTable({
                     {showBadDetails ? '▼' : '▶'}
                   </button>
                 </div>
-                <div className="text-[15px] font-bold leading-none text-white">{badScenarioPercent}%</div>
-                {renderScenarioControl(badScenarioPercent, defaultBadScenarioPercent, onBadScenarioChange, 'bad')}
               </div>
             </th>
             {showBadDetails &&
               detailColumns.map((detail) => (
-                <th key={`annual-detail-bad-${detail.source}`} className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-800">
-                  {isEnglish ? `${detail.label} Downside (${badScenarioPercent}%)` : `${detail.label} 하향 (${badScenarioPercent}%)`}
+                <th key={`annual-detail-bad-${detail.source}`} className="border border-white/30 px-3 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-800">
+                  <div className="flex min-h-[92px] flex-col items-center justify-between">
+                    <div>{isEnglish ? `${detail.label} Downside` : `${detail.label} 하향`}</div>
+                    <div className="text-[14px] font-bold leading-none text-white">{detailBadScenarioPercent[detail.source]}%</div>
+                    {renderScenarioControl(
+                      detailBadScenarioPercent[detail.source],
+                      defaultBadScenarioPercent,
+                      (next) => onDetailBadScenarioChange(detail.source, next),
+                      'bad'
+                    )}
+                  </div>
                 </th>
               ))}
           </tr>
