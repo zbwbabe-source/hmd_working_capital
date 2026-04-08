@@ -20,7 +20,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [locale, setLocale] = useState<'ko' | 'en'>('ko');
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('PL');
-  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
+  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(119);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
@@ -418,12 +418,12 @@ export default function Home() {
     }
   }, [effectiveView]);
 
-  // 월 컬럼 (1월 실적, 2~12월 계획)
+  // 월 컬럼 (1~3월 실적, 4~12월 계획)
   const monthColumns = [
     isEnglish ? 'Account' : '계정과목',
     isEnglish ? 'Jan (Act)' : '1월(실적)',
     isEnglish ? 'Feb (Act)' : '2월(실적)',
-    isEnglish ? 'Mar (Plan)' : '3월(계획)',
+    isEnglish ? 'Mar (Act)' : '3월(실적)',
     isEnglish ? 'Apr (Plan)' : '4월(계획)',
     isEnglish ? 'May (Plan)' : '5월(계획)',
     isEnglish ? 'Jun (Plan)' : '6월(계획)',
@@ -486,7 +486,7 @@ export default function Home() {
         if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
         if (factor === null) return;
 
-        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
 
@@ -514,7 +514,7 @@ export default function Home() {
         norm(row.account) === norm(ACC_STORE_RENT);
 
       if (inHongKongRentPath) {
-        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           const adjustedSales = hkAdjustedSalesByMonth[monthIdx];
           if (typeof current !== 'number' || adjustedSales <= 0) continue;
@@ -538,7 +538,7 @@ export default function Home() {
         norm(row.account) === norm(ACC_STORE_RENT);
 
       if (inTaiwanRentPath) {
-        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
 
@@ -571,7 +571,7 @@ export default function Home() {
 
       const deltaByMonth = norm(row.account) === norm(ACC_HK) ? hkNetDeltaByMonth : twNetDeltaByMonth;
 
-      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
 
@@ -614,7 +614,7 @@ export default function Home() {
       if (!inCashBalancePath) return;
 
       const cumulative = norm(row.account) === norm(ACC_HK) ? hkCumulative : twCumulative;
-      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current === 'number') {
           row.values[monthIdx] = current + cumulative[monthIdx];
@@ -679,12 +679,13 @@ export default function Home() {
       }
     }
 
-    // 1~2월은 실적 고정: 슬라이더 영향 완전 차단
+    // 1~3월은 실적 고정: 슬라이더 영향 완전 차단
     for (let i = 0; i < clonedRows.length; i++) {
       const source = cfData[i];
       if (!source) continue;
       if (typeof source.values[0] === 'number') clonedRows[i].values[0] = source.values[0];
       if (typeof source.values[1] === 'number') clonedRows[i].values[1] = source.values[1];
+      if (typeof source.values[2] === 'number') clonedRows[i].values[2] = source.values[2];
     }
 
     return clonedRows;
@@ -748,7 +749,7 @@ export default function Home() {
         if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
         if (factor === null) return;
 
-        for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
           totalSalesDeltaByMonth[monthIdx] += (current * factor) - current;
@@ -775,7 +776,7 @@ export default function Home() {
 
           if (!inGoodsPaymentPath) return;
 
-          for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+          for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
             const value = row.values[monthIdx];
             monthly[monthIdx] += typeof value === 'number' ? value : 0;
           }
@@ -804,7 +805,7 @@ export default function Home() {
       if (!isTaiwanArLeaf) return;
 
       const factor = 1 + (delta * AR_SENSITIVITY);
-      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
         row.values[monthIdx] = current * factor;
@@ -824,7 +825,7 @@ export default function Home() {
     });
 
     if (apLeafRows.length > 0) {
-      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
         // 물품대 증감과 동일금액, 반대방향으로 매입채무 반영
         const apTotalDelta = -goodsPaymentDeltaByMonth[monthIdx];
         if (apTotalDelta === 0) continue;
@@ -872,7 +873,7 @@ export default function Home() {
 
       if (!isInventoryLeaf) return;
 
-      for (let monthIdx = 2; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
 
@@ -945,12 +946,13 @@ export default function Home() {
       }
     }
 
-    // 1~2월은 실적 고정: 슬라이더 영향 완전 차단
+    // 1~3월은 실적 고정: 슬라이더 영향 완전 차단
     for (let i = 0; i < clonedRows.length; i++) {
       const source = wcStatementData[i];
       if (!source) continue;
       if (typeof source.values[0] === 'number') clonedRows[i].values[0] = source.values[0];
       if (typeof source.values[1] === 'number') clonedRows[i].values[1] = source.values[1];
+      if (typeof source.values[2] === 'number') clonedRows[i].values[2] = source.values[2];
     }
 
     return clonedRows;

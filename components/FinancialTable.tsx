@@ -533,7 +533,7 @@ export default function FinancialTable({
             ...accountCol,
             isEnglish ? `24 (${translateColumnLabel(valueLabel)})` : `24년(${valueLabel})`,
             prevYearHeader,
-            isEnglish ? `${currentYearShort} (Feb)` : `${currentYearShort}년(2월)`,
+            isEnglish ? `${currentYearShort} (Mar)` : `${currentYearShort}년(3월)`,
             `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
             'YoY',
           ];
@@ -560,7 +560,7 @@ export default function FinancialTable({
       }
     } else if (isBalanceSheet && !showComparisons) {
       // B/S 전용: 24년말, 25년말, 2601~2612
-      // 접힌 상태: ['계정과목', '24년말', '25년말', '26년2월', '26년기말', 'YoY', '비고']
+      // 접힌 상태: ['계정과목', '24년말', '25년말', '26년3월', '26년기말', 'YoY', '비고']
       // 펼친 상태: ['계정과목', '24년말', '25년말', '1월'~'12월', 'YoY', '비고']
       if (monthsCollapsed) {
         // 접힌 상태: 이미 올바른 컬럼들이 전달됨
@@ -790,10 +790,10 @@ export default function FinancialTable({
                   return undefined;
                 };
                 
-                // B/S 26년 2월/롤링 헤더 강조
-                const is26년2월Header = isCashFlow && currentYear === 2026 && col.startsWith('26년(2월)');
+                // B/S 26년 3월/롤링 헤더 강조
+                const is26년3월Header = isCashFlow && currentYear === 2026 && col.startsWith('26년(3월)');
                 const is26년롤링Header = isCashFlow && currentYear === 2026 && col.startsWith('26년 롤링');
-                const isBsCurrentHighlightHeader = is26년2월Header || is26년롤링Header;
+                const isBsCurrentHighlightHeader = is26년3월Header || is26년롤링Header;
                 
                 const translatedCol = translateColumnLabel(col);
                 const headerLabel =
@@ -868,7 +868,7 @@ export default function FinancialTable({
               const isNetCashStrict =
                 isCashFlow &&
                 (/netcash/i.test(normalizedAccount) || /\uC21C\uD604\uAE08\uD750\uB984/.test(normalizedAccount));
-              const reportMonthValueIndex = 3; // 26년 2월(2602)
+              const reportMonthValueIndex = 4; // 26년 3월(2603)
               const aggregateValueIndex = effectiveValues.length >= 15 ? 13 : 12;
               const yoyValueIndex = effectiveValues.length >= 15 ? 14 : 13;
               const previousTwoYearsValue = row.year2023Value ?? effectiveValues[0] ?? null;
@@ -1146,8 +1146,8 @@ export default function FinancialTable({
                         valueIndex = 0;
                       } else if (col === '25년말') {
                         valueIndex = 1;
-                      } else if (col.startsWith('26년2월')) {
-                        valueIndex = 3; // 2602 = values[3]
+                      } else if (col.startsWith('26년3월')) {
+                        valueIndex = 4; // 2603 = values[4]
                       } else if (col === '26년기말' || col === '26년기말(e)') {
                         valueIndex = 13; // 2612 = values[13]
                       } else if (col === 'YoY' || col === 'YoY(증감)') {
@@ -1165,7 +1165,7 @@ export default function FinancialTable({
                       
                       const value = row.values[valueIndex];
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
-                      const is26년2월 = col.startsWith('26년2월'); // 당월 강조
+                      const is26년3월 = col.startsWith('26년3월'); // 당월 강조
                       
                       // Balance Check일 때 각 셀별로 체크 (YoY 제외)
                       const isCellOk = isBalanceCheck && !isYoYCol && (value === null || Math.abs(value) < 1000);
@@ -1176,7 +1176,7 @@ export default function FinancialTable({
                           key={`bs-col-${colIndex}`}
                           className={`
                             border border-gray-300 px-4 py-2 text-right
-                            ${is26년2월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
+                            ${is26년3월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
                             ${row.isBold ? 'font-semibold' : ''}
                             ${isNegative(value) && !showCheckMark ? 'text-red-600' : ''}
                           `}
