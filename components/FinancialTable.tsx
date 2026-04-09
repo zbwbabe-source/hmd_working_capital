@@ -1544,7 +1544,7 @@ export default function FinancialTable({
                           (e.currentTarget as HTMLInputElement).blur();
                         }
                       }}
-                      placeholder={uiText.remarksPlaceholder}
+                      placeholder=""
                       className="w-full px-2 py-1 text-xs bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 focus:rounded transition-colors"
                     />
                   </td>
