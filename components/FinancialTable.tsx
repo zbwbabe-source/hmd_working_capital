@@ -65,6 +65,7 @@ export default function FinancialTable({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
   const [internalAllRowsCollapsed, setInternalAllRowsCollapsed] = useState<boolean>(true);
+  const [draftRemarks, setDraftRemarks] = useState<Record<string, string>>({});
 
   // CF 지역 그룹 토글 상태 (홍콩마카오/대만 전용, 기본 펼쳐진 상태)
   const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({
@@ -144,6 +145,14 @@ export default function FinancialTable({
       .replace(/전월계획/g, 'Prev Plan')
       .replace(/연간/g, 'Annual')
       .replace(/월/g, 'M');
+  };
+
+  const getRemarkValue = (account: string) =>
+    draftRemarks[account] ?? remarks?.get(account) ?? autoRemarks?.[account] ?? '';
+
+  const commitRemark = (account: string) => {
+    if (!onRemarkChange) return;
+    onRemarkChange(account, getRemarkValue(account));
   };
   
   // 외부에서 monthsCollapsed를 제어하는 경우와 내부에서 제어하는 경우 모두 지원
@@ -1522,8 +1531,19 @@ export default function FinancialTable({
                   <td className={`border border-gray-300 px-3 py-2 ${getHighlightClass(row.isHighlight)}`}>
                     <input
                       type="text"
-                      value={remarks?.get(row.account) || autoRemarks?.[row.account] || ''}
-                      onChange={(e) => onRemarkChange?.(row.account, e.target.value)}
+                      value={getRemarkValue(row.account)}
+                      onChange={(e) =>
+                        setDraftRemarks(prev => ({
+                          ...prev,
+                          [row.account]: e.target.value,
+                        }))
+                      }
+                      onBlur={() => commitRemark(row.account)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          (e.currentTarget as HTMLInputElement).blur();
+                        }
+                      }}
                       placeholder={uiText.remarksPlaceholder}
                       className="w-full px-2 py-1 text-xs bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 focus:rounded transition-colors"
                     />
