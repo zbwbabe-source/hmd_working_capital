@@ -1128,6 +1128,10 @@ export default function Home() {
       if (!rows) return null;
 
       const norm = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, '').trim();
+      const normalizeBsValueForWc = (account: string, value: number | null): number | null => {
+        if (value === null) return null;
+        return norm(account) === norm('매입채무') ? -Math.abs(value) : value;
+      };
       const findBsEndingValue = (tree: TableRow[] | null, account: string): number | null => {
         if (!tree) return null;
 
@@ -1153,8 +1157,8 @@ export default function Home() {
         const wcRow = rows.find((row) => row.level === 0 && norm(row.account) === norm(account));
         metrics.set(account, {
           prev: wcRow?.year2024Value ?? null,
-          plan: findBsEndingValue(bsPlanData, account),
-          rolling: findBsEndingValue(bsFinancialData, account),
+          plan: normalizeBsValueForWc(account, findBsEndingValue(bsPlanData, account)),
+          rolling: normalizeBsValueForWc(account, findBsEndingValue(bsFinancialData, account)),
         });
       }
 
