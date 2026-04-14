@@ -840,6 +840,13 @@ export default function FinancialTable({
                   col === 'YoY' &&
                   (displayColumns[index - 1]?.includes('전월계획') ?? false);
                 const isMutedHeader = isPrevPlanHeader || isPrevPlanYoYHeader;
+                const isBsPrevPlanHeader =
+                  isBalanceSheet &&
+                  (col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs Prev Plan' || col === 'vs Prev Plan%' || col === '전월계획대비' || col === '전월계획대비%');
+                const isBsYoYHeader = isBalanceSheet && col === 'YoY';
+                const isBsCurrentHeader =
+                  isBalanceSheet &&
+                  (col === '26년(3월)' || col === '26 (Mar)' || col === '26년 롤링' || col === '26 Rolling');
 
                 return (
                   <th
@@ -847,6 +854,9 @@ export default function FinancialTable({
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
                       ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : isYoYHeader ? 'min-w-[72px] px-2' : 'min-w-[100px] px-4'}
+                      ${isBsCurrentHeader ? 'bg-blue-500' : ''}
+                      ${isBsYoYHeader ? 'bg-gray-500' : ''}
+                      ${isBsPrevPlanHeader ? 'bg-gray-800' : ''}
                       ${!isMutedHeader && isBsCurrentHighlightHeader ? 'bg-blue-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && isYoYHeader ? 'bg-gray-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
@@ -854,6 +864,9 @@ export default function FinancialTable({
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
                       ${isMutedHeader ? 'bg-gray-800' : ''}
                       ${isBrandCol ? 'bg-gray-700' : ''}
+                      ${isBsCurrentHeader ? 'bg-blue-500' : ''}
+                      ${isBsYoYHeader ? 'bg-gray-500' : ''}
+                      ${isBsPrevPlanHeader ? 'bg-gray-800' : ''}
                       ${(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) ? 'cursor-pointer hover:bg-gray-700' : ''}
                     `}
                     style={getColumnWidth()}
@@ -1206,6 +1219,12 @@ export default function FinancialTable({
                       if (valueIndex === -1) return null;
                       
                       const value = row.values[valueIndex];
+                      const isBsPlanMetricCol =
+                        isBalanceSheet &&
+                        (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === '26년말 전월계획' || col === '26 Prev Plan' || col === '전월계획대비' || col === '전월계획대비%' || col === 'vs Prev Plan' || col === 'vs Prev Plan%');
+                      const isBsCurrentMetricCol =
+                        isBalanceSheet &&
+                        (col === '26년(3월)' || col === '26 (Mar)' || col === '26년 롤링' || col === '26 Rolling');
                       const isPlanRateCol = valueIndex === 17 || col === '전월계획대비%' || col === 'vs Prev Plan%';
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
                       const is26년3월 = col.startsWith('26년3월'); // 당월 강조
@@ -1219,7 +1238,7 @@ export default function FinancialTable({
                           key={`bs-col-${colIndex}`}
                           className={`
                             border border-gray-300 px-4 py-2 text-right
-                            ${is26년3월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
+                            ${isBsPlanMetricCol ? 'bg-gray-50' : isBsCurrentMetricCol || is26년3월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
                             ${row.isBold ? 'font-semibold' : ''}
                             ${isNegative(value) && !showCheckMark ? 'text-red-600' : ''}
                           `}
