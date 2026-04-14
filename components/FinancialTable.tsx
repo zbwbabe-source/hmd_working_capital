@@ -848,11 +848,11 @@ export default function FinancialTable({
                   isBalanceSheet &&
                   (col === '26년(3월)' || col === '26 (Mar)' || col === '26년 롤링' || col === '26 Rolling');
                 const bsHeaderToneClass = isBsCurrentHeader
-                  ? 'bg-blue-500'
+                  ? '!bg-blue-500'
                   : isBsYoYHeader
-                    ? 'bg-gray-500'
+                    ? '!bg-gray-500'
                     : isBsPrevPlanHeader
-                      ? 'bg-gray-800'
+                      ? '!bg-gray-800'
                       : '';
 
                 return (
