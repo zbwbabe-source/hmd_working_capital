@@ -1124,9 +1124,125 @@ export default function Home() {
       }));
     };
 
+    const alignWcRowsWithBs = (rows: TableRow[] | null): TableRow[] | null => {
+      if (!rows) return null;
+
+      const norm = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, '').trim();
+      const findBsEndingValue = (tree: TableRow[] | null, account: string): number | null => {
+        if (!tree) return null;
+
+        for (const row of tree) {
+          if (norm(row.account) === norm(account)) {
+            const endingValue = row.values[13];
+            return typeof endingValue === 'number' ? endingValue : null;
+          }
+
+          if (row.children) {
+            const childMatch = findBsEndingValue(row.children, account);
+            if (childMatch !== null) return childMatch;
+          }
+        }
+
+        return null;
+      };
+
+      const accountKeys = ['매출채권', '재고자산', '매입채무'] as const;
+      const metrics = new Map<string, { prev: number | null; plan: number | null; rolling: number | null }>();
+
+      for (const account of accountKeys) {
+        const wcRow = rows.find((row) => row.level === 0 && norm(row.account) === norm(account));
+        metrics.set(account, {
+          prev: wcRow?.year2024Value ?? null,
+          plan: findBsEndingValue(bsPlanData, account),
+          rolling: findBsEndingValue(bsFinancialData, account),
+        });
+      }
+
+      const totalPrev = Array.from(metrics.values()).reduce((sum, item) => sum + (item.prev ?? 0), 0);
+      const totalPlan = Array.from(metrics.values()).reduce((sum, item) => sum + (item.plan ?? 0), 0);
+      const totalRolling = Array.from(metrics.values()).reduce((sum, item) => sum + (item.rolling ?? 0), 0);
+
+      return rows.map((row) => {
+        const account = norm(row.account);
+
+        if (accountKeys.some((key) => norm(key) === account)) {
+          const metric = metrics.get(row.account) ?? metrics.get(accountKeys.find((key) => norm(key) === account) ?? '');
+          if (!metric) return row;
+
+          const planYoY = typeof metric.plan === 'number' && typeof metric.prev === 'number' && metric.prev !== 0 ? metric.plan / metric.prev : null;
+          const rollingYoY = typeof metric.rolling === 'number' && typeof metric.prev === 'number' && metric.prev !== 0 ? metric.rolling / metric.prev : null;
+          const planDelta = typeof metric.rolling === 'number' && typeof metric.plan === 'number' ? metric.rolling - metric.plan : null;
+          const planDeltaRate = typeof metric.rolling === 'number' && typeof metric.plan === 'number' && metric.plan !== 0 ? metric.rolling / metric.plan : null;
+
+          const nextValues = [...row.values];
+          nextValues[12] = metric.rolling;
+          if (nextValues.length >= 14) {
+            nextValues[13] = typeof metric.rolling === 'number' && typeof metric.prev === 'number' ? metric.rolling - metric.prev : null;
+          }
+
+          return {
+            ...row,
+            values: nextValues,
+            planValue: metric.plan,
+            rollingValue: metric.rolling,
+            planYoY,
+            rollingYoY,
+            planDelta,
+            planDeltaRate,
+          } as TableRow;
+        }
+
+        if (account === norm('운전자본합계')) {
+          const planYoY = totalPrev !== 0 ? totalPlan / totalPrev : null;
+          const rollingYoY = totalPrev !== 0 ? totalRolling / totalPrev : null;
+          const planDelta = totalRolling - totalPlan;
+          const planDeltaRate = totalPlan !== 0 ? totalRolling / totalPlan : null;
+          const nextValues = [...row.values];
+          nextValues[12] = totalRolling;
+          if (nextValues.length >= 14) nextValues[13] = totalRolling - totalPrev;
+
+          return {
+            ...row,
+            values: nextValues,
+            year2024Value: totalPrev,
+            planValue: totalPlan,
+            rollingValue: totalRolling,
+            planYoY,
+            rollingYoY,
+            planDelta,
+            planDeltaRate,
+          } as TableRow;
+        }
+
+        if (account === norm('전년대비')) {
+          const planValue = totalPlan - totalPrev;
+          const rollingValue = totalRolling - totalPrev;
+          const planDelta = rollingValue - planValue;
+          const planDeltaRate = planValue !== 0 ? rollingValue / planValue : null;
+          const nextValues = [...row.values];
+          nextValues[12] = rollingValue;
+          if (nextValues.length >= 14) nextValues[13] = null;
+
+          return {
+            ...row,
+            values: nextValues,
+            year2024Value: totalPrev,
+            planValue,
+            rollingValue,
+            planYoY: null,
+            rollingYoY: null,
+            planDelta,
+            planDeltaRate,
+          } as TableRow;
+        }
+
+        return row;
+      });
+    };
+
     return {
       cf: attach(cfDataForView, cfPlanData),
-      wc: attach(wcStatementDataForView, wcStatementPlanData),
+      wc: alignWcRowsWithBs(attach(wcStatementDataForView, wcStatementPlanData)),
       bs: extendBsRowsForDisplay(
         fillChildMetrics(
           attach(bsFinancialData, bsPlanData, { previousValueIndex: 1, targetValueIndex: 13 }),
