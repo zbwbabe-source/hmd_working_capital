@@ -847,6 +847,13 @@ export default function FinancialTable({
                 const isBsCurrentHeader =
                   isBalanceSheet &&
                   (col === '26년(3월)' || col === '26 (Mar)' || col === '26년 롤링' || col === '26 Rolling');
+                const bsHeaderToneClass = isBsCurrentHeader
+                  ? 'bg-blue-500'
+                  : isBsYoYHeader
+                    ? 'bg-gray-500'
+                    : isBsPrevPlanHeader
+                      ? 'bg-gray-800'
+                      : '';
 
                 return (
                   <th
@@ -854,9 +861,6 @@ export default function FinancialTable({
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
                       ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : isYoYHeader ? 'min-w-[72px] px-2' : 'min-w-[100px] px-4'}
-                      ${isBsCurrentHeader ? 'bg-blue-500' : ''}
-                      ${isBsYoYHeader ? 'bg-gray-500' : ''}
-                      ${isBsPrevPlanHeader ? 'bg-gray-800' : ''}
                       ${!isMutedHeader && isBsCurrentHighlightHeader ? 'bg-blue-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && isYoYHeader ? 'bg-gray-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
@@ -864,9 +868,7 @@ export default function FinancialTable({
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && !isNonBaseMonthCol && !isComparisonCol && !isAccountCol && !isBrandCol ? 'bg-navy' : ''}
                       ${isMutedHeader ? 'bg-gray-800' : ''}
                       ${isBrandCol ? 'bg-gray-700' : ''}
-                      ${isBsCurrentHeader ? 'bg-blue-500' : ''}
-                      ${isBsYoYHeader ? 'bg-gray-500' : ''}
-                      ${isBsPrevPlanHeader ? 'bg-gray-800' : ''}
+                      ${bsHeaderToneClass}
                       ${(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) ? 'cursor-pointer hover:bg-gray-700' : ''}
                     `}
                     style={getColumnWidth()}
