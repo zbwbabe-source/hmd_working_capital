@@ -483,8 +483,8 @@ export default function FinancialTable({
   }, [showComparisons, isBalanceSheet, baseMonth, currentYear, isEnglish]);
 
   const hasPlanMetrics = useMemo(
-    () => isCashFlow && data.some((row) => row.planValue !== undefined),
-    [isCashFlow, data]
+    () => (isCashFlow || isBalanceSheet) && data.some((row) => row.planValue !== undefined),
+    [isCashFlow, isBalanceSheet, data]
   );
   const shouldShowPlanMetrics = hasPlanMetrics && showPlanMetricsColumns;
 
@@ -568,6 +568,33 @@ export default function FinancialTable({
         ];
       }
     } else if (isBalanceSheet && !showComparisons) {
+      if (shouldShowPlanMetrics && currentYear === 2026) {
+        if (monthsCollapsed) {
+          return [
+            columns[0],
+            isEnglish ? '24 Year-end' : '24년(기말)',
+            isEnglish ? '25 Year-end' : '25년(기말)',
+            isEnglish ? '26 (Mar)' : '26년(3월)',
+            isEnglish ? '26 Prev Plan' : '26년말 전월계획',
+            isEnglish ? '26 Rolling' : '26년 롤링',
+            'YoY',
+            isEnglish ? 'vs Prev Plan' : '전월계획대비',
+            isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
+          ];
+        }
+
+        return [
+          columns[0],
+          isEnglish ? '24 Year-end' : '24년(기말)',
+          isEnglish ? '25 Year-end' : '25년(기말)',
+          ...columns.slice(1, 13),
+          isEnglish ? '26 Prev Plan' : '26년말 전월계획',
+          isEnglish ? '26 Rolling' : '26년 롤링',
+          'YoY',
+          isEnglish ? 'vs Prev Plan' : '전월계획대비',
+          isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
+        ];
+      }
       // B/S 전용: 24년말, 25년말, 2601~2612
       // 접힌 상태: ['계정과목', '24년말', '25년말', '26년3월', '26년기말', 'YoY', '비고']
       // 펼친 상태: ['계정과목', '24년말', '25년말', '1월'~'12월', 'YoY', '비고']
@@ -1142,6 +1169,12 @@ export default function FinancialTable({
                         const monthOnlyMatch = normalizedCol.match(/^(\d+)월$/);
                         if (reportMonthMatch) {
                           valueIndex = parseInt(reportMonthMatch[1], 10) + 1;
+                        } else if (normalizedCol === '26년말전월계획' || normalizedCol === '26prevplan') {
+                          valueIndex = 15;
+                        } else if (normalizedCol === '전월계획대비' || normalizedCol === 'vsprevplan') {
+                          valueIndex = 16;
+                        } else if (normalizedCol === '전월계획대비%' || normalizedCol === 'vsprevplan%') {
+                          valueIndex = 17;
                         } else if (/^26년?(롤링|\((기말|말)\)|기말|말)$/.test(normalizedCol)) {
                           valueIndex = 13;
                         } else if (normalizedCol === 'YoY' || /^YoY\(/.test(normalizedCol)) {
@@ -1173,6 +1206,7 @@ export default function FinancialTable({
                       if (valueIndex === -1) return null;
                       
                       const value = row.values[valueIndex];
+                      const isPlanRateCol = valueIndex === 17 || col === '전월계획대비%' || col === 'vs Prev Plan%';
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
                       const is26년3월 = col.startsWith('26년3월'); // 당월 강조
                       
@@ -1194,6 +1228,8 @@ export default function FinancialTable({
                             <span className="text-green-600 font-bold">✓</span>
                           ) : isYoYCol && value !== null && value !== undefined ? (
                             `${value < 0 ? '△' : value > 0 ? '+' : ''}${formatValue(Math.abs(value), 'number', false, true)}`
+                          ) : isPlanRateCol && value !== null && value !== undefined ? (
+                            formatPercent(value, false, false, 0)
                           ) : (
                             formatValue(value, row.format, false, true)
                           )}

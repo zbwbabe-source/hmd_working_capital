@@ -1058,13 +1058,30 @@ export default function Home() {
       });
     };
 
+    const extendBsRowsForDisplay = (rows: TableRow[] | null): TableRow[] | null => {
+      if (!rows) return null;
+
+      return rows.map((row) => ({
+        ...row,
+        values: [
+          ...row.values,
+          row.planValue ?? null,
+          row.planDelta ?? null,
+          row.planDeltaRate ?? null,
+        ],
+        children: row.children ? extendBsRowsForDisplay(row.children) ?? row.children : row.children,
+      }));
+    };
+
     return {
       cf: attach(cfDataForView, cfPlanData),
       wc: attach(wcStatementDataForView, wcStatementPlanData),
-      bs: fillChildMetrics(
-        attach(bsFinancialData, bsPlanData, { previousValueIndex: 1, targetValueIndex: 13 }),
-        bsPlanData,
-        { previousValueIndex: 1, targetValueIndex: 13 }
+      bs: extendBsRowsForDisplay(
+        fillChildMetrics(
+          attach(bsFinancialData, bsPlanData, { previousValueIndex: 1, targetValueIndex: 13 }),
+          bsPlanData,
+          { previousValueIndex: 1, targetValueIndex: 13 }
+        )
       ),
     };
   }, [cfDataForView, cfPlanData, wcStatementDataForView, wcStatementPlanData, bsFinancialData, bsPlanData, wcYear]);
@@ -1413,8 +1430,8 @@ export default function Home() {
                       columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Year-end)` : `${String(wcYear).slice(-2)}년(기말)`, 'YoY', isEnglish ? 'Remarks' : '비고']}
                       locale={locale}
                       showTotal
-                      isCashFlow={true}
-                      showPlanMetricsColumns={false}
+                      isBalanceSheet={true}
+                      showPlanMetricsColumns={true}
                       monthsCollapsed={bsMonthsCollapsed}
                       onMonthsToggle={() => setBsMonthsCollapsed(!bsMonthsCollapsed)}
                       currentYear={wcYear}
