@@ -95,6 +95,48 @@ function getOperatingMarginSnapshot(tree: Node[]) {
   };
 }
 
+function pickMonthValue(months: Record<MonthKey, number>, monthKey: MonthKey): number {
+  return months[monthKey] ?? 0;
+}
+
+type BaseMonthTreeNode = {
+  key: string;
+  label: string;
+  level: 1 | 2 | 3;
+  value: number;
+  hasRateRow: boolean;
+  rows?: Array<{
+    year: Year;
+    source: Source;
+    lvl1: string;
+    lvl2: string;
+    lvl3: string | null;
+    value: number;
+    isRateRow: boolean;
+  }>;
+  children?: BaseMonthTreeNode[];
+};
+
+function buildBaseMonthTree(nodes: Node[], monthKey: MonthKey): BaseMonthTreeNode[] {
+  return nodes.map((node) => ({
+    key: node.key,
+    label: node.label,
+    level: node.level,
+    value: pickMonthValue(node.rollup, monthKey),
+    hasRateRow: node.hasRateRow,
+    rows: node.rows?.map((row) => ({
+      year: row.year,
+      source: row.source,
+      lvl1: row.lvl1,
+      lvl2: row.lvl2,
+      lvl3: row.lvl3,
+      value: pickMonthValue(row.months, monthKey),
+      isRateRow: row.isRateRow,
+    })),
+    children: node.children ? buildBaseMonthTree(node.children, monthKey) : undefined,
+  }));
+}
+
 interface PLPageProps {
   locale?: 'ko' | 'en';
 }
@@ -117,7 +159,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     TW_Discovery: DEFAULT_BAD_PERCENT,
   });
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
-  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(2);
+  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(3);
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
   const [showMonthly, setShowMonthly] = useState<boolean>(false);
   const [showYTD, setShowYTD] = useState<boolean>(true);
@@ -220,10 +262,13 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         : null,
     [detailBadScenarioPercent, detailGoodScenarioPercent, selectedYear, trees2026]
   );
+  const baseMonthKey = `m${baseMonthIndex}` as MonthKey;
   const exportPayload = useMemo(() => {
     if (selectedYear !== 2026 || !annualScenarioTrees) {
       return {
+        exportType: 'full',
         year: 2026,
+        baseMonth: baseMonthIndex,
         exportedAt: new Date().toISOString(),
         actual: {
           Total: trees2026.Total,
@@ -236,7 +281,9 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     }
 
     return {
+      exportType: 'full',
       year: 2026,
+      baseMonth: baseMonthIndex,
       exportedAt: new Date().toISOString(),
       actual: {
         Total: trees2026.Total,
@@ -294,7 +341,88 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         stepPercent: 10,
       },
     };
-  }, [annualScenarioTrees, badScenarioPercent, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
+  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
+  const baseMonthExportPayload = useMemo(() => {
+    const actual = {
+      Total: buildBaseMonthTree(trees2026.Total, baseMonthKey),
+      HK_MLB: buildBaseMonthTree(trees2026.HK_MLB, baseMonthKey),
+      HK_Discovery: buildBaseMonthTree(trees2026.HK_Discovery, baseMonthKey),
+      TW_MLB: buildBaseMonthTree(trees2026.TW_MLB, baseMonthKey),
+      TW_Discovery: buildBaseMonthTree(trees2026.TW_Discovery, baseMonthKey),
+    };
+
+    const payload: Record<string, unknown> = {
+      exportType: 'base-month',
+      year: 2026,
+      baseMonth: baseMonthIndex,
+      exportedAt: new Date().toISOString(),
+      actual,
+      derivedMetrics: {
+        operatingMargin: {
+          actual: {
+            Total: getOperatingMarginSnapshot(trees2026.Total).monthly[baseMonthKey] ?? 0,
+            HK_MLB: getOperatingMarginSnapshot(trees2026.HK_MLB).monthly[baseMonthKey] ?? 0,
+            HK_Discovery: getOperatingMarginSnapshot(trees2026.HK_Discovery).monthly[baseMonthKey] ?? 0,
+            TW_MLB: getOperatingMarginSnapshot(trees2026.TW_MLB).monthly[baseMonthKey] ?? 0,
+            TW_Discovery: getOperatingMarginSnapshot(trees2026.TW_Discovery).monthly[baseMonthKey] ?? 0,
+          },
+        },
+      },
+    };
+
+    if (selectedYear === 2026 && annualScenarioTrees) {
+      payload.scenarios = {
+        [`good_${goodScenarioPercent}pct_of_current`]: {
+          Total: buildBaseMonthTree(annualScenarioTrees.total.good, baseMonthKey),
+          HK_MLB: buildBaseMonthTree(annualScenarioTrees.detail.HK_MLB.good, baseMonthKey),
+          HK_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.HK_Discovery.good, baseMonthKey),
+          TW_MLB: buildBaseMonthTree(annualScenarioTrees.detail.TW_MLB.good, baseMonthKey),
+          TW_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.TW_Discovery.good, baseMonthKey),
+        },
+        [`bad_${badScenarioPercent}pct_of_current`]: {
+          Total: buildBaseMonthTree(annualScenarioTrees.total.bad, baseMonthKey),
+          HK_MLB: buildBaseMonthTree(annualScenarioTrees.detail.HK_MLB.bad, baseMonthKey),
+          HK_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.HK_Discovery.bad, baseMonthKey),
+          TW_MLB: buildBaseMonthTree(annualScenarioTrees.detail.TW_MLB.bad, baseMonthKey),
+          TW_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.TW_Discovery.bad, baseMonthKey),
+        },
+      };
+      payload.derivedMetrics = {
+        operatingMargin: {
+          actual: {
+            Total: getOperatingMarginSnapshot(trees2026.Total).monthly[baseMonthKey] ?? 0,
+            HK_MLB: getOperatingMarginSnapshot(trees2026.HK_MLB).monthly[baseMonthKey] ?? 0,
+            HK_Discovery: getOperatingMarginSnapshot(trees2026.HK_Discovery).monthly[baseMonthKey] ?? 0,
+            TW_MLB: getOperatingMarginSnapshot(trees2026.TW_MLB).monthly[baseMonthKey] ?? 0,
+            TW_Discovery: getOperatingMarginSnapshot(trees2026.TW_Discovery).monthly[baseMonthKey] ?? 0,
+          },
+          [`good_${goodScenarioPercent}pct_of_current`]: {
+            Total: getOperatingMarginSnapshot(annualScenarioTrees.total.good).monthly[baseMonthKey] ?? 0,
+            HK_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_MLB.good).monthly[baseMonthKey] ?? 0,
+            HK_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_Discovery.good).monthly[baseMonthKey] ?? 0,
+            TW_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_MLB.good).monthly[baseMonthKey] ?? 0,
+            TW_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_Discovery.good).monthly[baseMonthKey] ?? 0,
+          },
+          [`bad_${badScenarioPercent}pct_of_current`]: {
+            Total: getOperatingMarginSnapshot(annualScenarioTrees.total.bad).monthly[baseMonthKey] ?? 0,
+            HK_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_MLB.bad).monthly[baseMonthKey] ?? 0,
+            HK_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_Discovery.bad).monthly[baseMonthKey] ?? 0,
+            TW_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_MLB.bad).monthly[baseMonthKey] ?? 0,
+            TW_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_Discovery.bad).monthly[baseMonthKey] ?? 0,
+          },
+        },
+      };
+      payload.scenarioControls = {
+        goodPercentOfCurrent: goodScenarioPercent,
+        badPercentOfCurrent: badScenarioPercent,
+        detailGoodPercentOfCurrent: detailGoodScenarioPercent,
+        detailBadPercentOfCurrent: detailBadScenarioPercent,
+        stepPercent: 10,
+      };
+    }
+
+    return payload;
+  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, baseMonthKey, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
   const isScenarioAdjusted =
     goodScenarioPercent !== DEFAULT_GOOD_PERCENT || badScenarioPercent !== DEFAULT_BAD_PERCENT;
 
@@ -332,18 +460,26 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     }));
   };
 
-  const handleExportJson = () => {
-    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+  const downloadJson = (payload: unknown, fileName: string) => {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json;charset=utf-8',
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'pl_2026_monthly_by_brand.json';
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportFullJson = () => {
+    downloadJson(exportPayload, `pl_2026_full.json`);
+  };
+
+  const handleExportBaseMonthJson = () => {
+    downloadJson(baseMonthExportPayload, `pl_2026_base-month_m${baseMonthIndex}.json`);
   };
 
   return (
@@ -385,10 +521,16 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
 
           <div className="flex gap-2">
             <button
-              onClick={handleExportJson}
+              onClick={handleExportBaseMonthJson}
               className="px-4 py-2 rounded font-medium border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
             >
-              {isEnglish ? 'JSON' : 'json파일로 내보내기'}
+              {isEnglish ? 'Base Month JSON' : '당월 json'}
+            </button>
+            <button
+              onClick={handleExportFullJson}
+              className="px-4 py-2 rounded font-medium border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+            >
+              {isEnglish ? 'Full JSON' : '전체 json'}
             </button>
           </div>
         </div>
