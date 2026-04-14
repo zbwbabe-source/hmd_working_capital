@@ -729,6 +729,24 @@ export default function Home() {
       }
     };
 
+    const findBsEndingValue = (rows: TableRow[] | null, account: string): number | null => {
+      if (!rows) return null;
+
+      for (const row of rows) {
+        if (norm(row.account) === norm(account)) {
+          const endingValue = row.values[13];
+          return typeof endingValue === 'number' ? endingValue : null;
+        }
+
+        if (row.children) {
+          const childMatch = findBsEndingValue(row.children, account);
+          if (childMatch !== null) return childMatch;
+        }
+      }
+
+      return null;
+    };
+
     const totalSalesDeltaByMonth = new Array(12).fill(0);
     if (cfData) {
       const cfParentByLevel: string[] = [];
@@ -942,6 +960,40 @@ export default function Home() {
           typeof totalRow.values[12] === 'number' && prevYear !== null && prevYear !== undefined
             ? totalRow.values[12] - prevYear
             : null;
+      if (momRow.values.length >= 14) momRow.values[13] = null;
+      }
+    }
+
+    const bsAlignedAccounts = [ACC_AR, ACC_INVENTORY, ACC_AP];
+    for (const account of bsAlignedAccounts) {
+      const bsEndingValue = findBsEndingValue(bsFinancialData, account);
+      if (bsEndingValue === null) continue;
+
+      clonedRows.forEach((row) => {
+        if (norm(row.account) !== norm(account)) return;
+        row.values[11] = bsEndingValue;
+        recalcEndingAndYoy(row);
+      });
+    }
+
+    if (arRow && inventoryRow && apRow && totalRow) {
+      totalRow.values[11] =
+        (typeof arRow.values[11] === 'number' ? arRow.values[11] : 0) +
+        (typeof inventoryRow.values[11] === 'number' ? inventoryRow.values[11] : 0) +
+        (typeof apRow.values[11] === 'number' ? apRow.values[11] : 0);
+      recalcEndingAndYoy(totalRow);
+
+      const momRow = clonedRows.find((r) => r.level === 0 && norm(r.account) === norm(ACC_MOM));
+      if (momRow) {
+        const prevYear = totalRow.year2024Value;
+        momRow.values[11] =
+          typeof totalRow.values[11] === 'number' && typeof totalRow.values[10] === 'number'
+            ? totalRow.values[11] - totalRow.values[10]
+            : null;
+        momRow.values[12] =
+          typeof totalRow.values[12] === 'number' && prevYear !== null && prevYear !== undefined
+            ? totalRow.values[12] - prevYear
+            : null;
         if (momRow.values.length >= 14) momRow.values[13] = null;
       }
     }
@@ -956,7 +1008,7 @@ export default function Home() {
     }
 
     return clonedRows;
-  }, [wcStatementData, cfData, cfDataForView, wcYear, salesYoYRate]);
+  }, [wcStatementData, cfData, cfDataForView, wcYear, salesYoYRate, bsFinancialData]);
 
   const wcStatementDataForView = adjustedWcStatementData ?? wcStatementData;
 
