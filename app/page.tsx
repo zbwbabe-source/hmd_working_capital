@@ -697,7 +697,6 @@ export default function Home() {
     if (!wcStatementData || wcYear !== 2026) return wcStatementData;
 
     const delta = (salesYoYRate - 119) / 100;
-    if (delta === 0) return wcStatementData;
 
     const AR_SENSITIVITY = 1 - 0.2; // 매출 증감률의 80%만 매출채권에 반영
     const COGS_RATE = 0.43; // 2025년 연간 매출원가율
