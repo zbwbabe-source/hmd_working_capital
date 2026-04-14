@@ -31,8 +31,42 @@ function getBSBaseDirs(): string[] {
     .filter((dir, index, all) => all.indexOf(dir) === index);
 }
 
+function getLatestMatchingBSFile(baseDir: string, yearPrefix: string, mode: 'rolling' | 'plan'): string | null {
+  if (!fs.existsSync(baseDir)) return null;
+
+  const rollingPattern = new RegExp(`^${yearPrefix}(\\d{2})BS_(?:rolling|rolliing)\\.csv$`, 'i');
+  const planPattern = new RegExp(`^${yearPrefix}(\\d{2})BS_plan\\.csv$`, 'i');
+  const fallbackPattern = new RegExp(`^${yearPrefix}(\\d{2})BS\\.csv$`, 'i');
+
+  const matches = fs
+    .readdirSync(baseDir)
+    .map((fileName) => {
+      const primaryMatch = (mode === 'plan' ? planPattern : rollingPattern).exec(fileName);
+      const fallbackMatch = mode === 'rolling' ? fallbackPattern.exec(fileName) : null;
+      const match = primaryMatch ?? fallbackMatch;
+
+      if (!match) return null;
+
+      return {
+        fileName,
+        month: Number(match[1]),
+      };
+    })
+    .filter((entry): entry is { fileName: string; month: number } => entry !== null)
+    .sort((a, b) => b.month - a.month);
+
+  if (matches.length === 0) return null;
+  return path.join(baseDir, matches[0].fileName);
+}
+
 function resolveBSFilePath(year: number, mode: 'rolling' | 'plan'): string {
   const yearPrefix = String(year).slice(-2);
+  const resolvedFromDirectory = getBSBaseDirs()
+    .map((base) => getLatestMatchingBSFile(base, yearPrefix, mode))
+    .find((candidate): candidate is string => Boolean(candidate));
+
+  if (resolvedFromDirectory) return resolvedFromDirectory;
+
   const fileNames =
     mode === 'plan'
       ? [`${yearPrefix}02BS_plan.csv`, `${yearPrefix}02BS_Plan.csv`]
@@ -50,7 +84,7 @@ export async function readBSCSV(year: number = 2026, mode: 'rolling' | 'plan' = 
   financialPosition: TableRow[];
   workingCapital: TableRow[];
 }> {
-  // 파일명 형식: 2602BS_plan / 2602BS_rolling
+  // 파일명 형식: 2603BS_rolliing / 2602BS_plan 등, 같은 연도에서는 최신 월 파일 우선
   const bsFilePath = resolveBSFilePath(year, mode);
   const wcFilePath =
     getBSBaseDirs()
