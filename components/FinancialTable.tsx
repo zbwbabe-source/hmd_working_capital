@@ -172,7 +172,7 @@ export default function FinancialTable({
     }
   }, []);
 
-  const saveRemarkSize = (remarkKey: string, element: HTMLTextAreaElement) => {
+  const saveRemarkSize = (remarkKey: string, element: HTMLElement) => {
     const width = element.offsetWidth;
     const height = element.offsetHeight;
     setRemarkSizes((prev) => {
@@ -1664,17 +1664,9 @@ export default function FinancialTable({
 
                 {/* 비고 열 */}
                 {showRemarks && (
-                  <td className={`border border-gray-300 px-3 py-2 align-top w-[200px] min-w-[200px] max-w-[200px] ${getHighlightClass(row.isHighlight)}`}>
+                  <td className={`border border-gray-300 px-3 py-2 align-top w-[200px] min-w-[200px] max-w-[200px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
                     <div className="relative w-full overflow-visible">
-                      <textarea
-                        value={getRemarkValue(row.account, remarkKey)}
-                        onChange={(e) =>
-                          setDraftRemarks(prev => ({
-                            ...prev,
-                            [remarkKey]: e.target.value,
-                          }))
-                        }
-                        onBlur={() => commitRemark(row.account, remarkKey)}
+                      <div
                         onMouseDown={(e) => {
                           const element = e.currentTarget;
                           const width = element.offsetWidth;
@@ -1702,23 +1694,35 @@ export default function FinancialTable({
                             delete next[remarkKey];
                             return next;
                           });
-                          commitRemark(row.account, remarkKey);
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                            (e.currentTarget as HTMLTextAreaElement).blur();
-                          }
-                        }}
-                        placeholder=""
-                        rows={2}
                         style={{
                           width: remarkSizes[remarkKey]?.width ? `${remarkSizes[remarkKey].width}px` : '100%',
                           height: remarkSizes[remarkKey]?.height ? `${remarkSizes[remarkKey].height}px` : undefined,
                           minWidth: '160px',
+                          minHeight: '44px',
                           maxWidth: 'none',
                         }}
-                        className="block resize overflow-hidden whitespace-pre-wrap break-words rounded px-2 py-1 text-xs leading-5 bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 transition-colors"
-                      />
+                        className="inline-block resize overflow-hidden rounded bg-transparent transition-colors focus-within:bg-white/50 focus-within:ring-1 focus-within:ring-blue-300"
+                      >
+                        <textarea
+                          value={getRemarkValue(row.account, remarkKey)}
+                          onChange={(e) =>
+                            setDraftRemarks(prev => ({
+                              ...prev,
+                              [remarkKey]: e.target.value,
+                            }))
+                          }
+                          onBlur={() => commitRemark(row.account, remarkKey)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                              (e.currentTarget as HTMLTextAreaElement).blur();
+                            }
+                          }}
+                          placeholder=""
+                          rows={2}
+                          className="block h-full w-full resize-none whitespace-pre-wrap break-words rounded bg-transparent px-2 py-1 text-xs leading-5 focus:outline-none"
+                        />
+                      </div>
                     </div>
                   </td>
                 )}
