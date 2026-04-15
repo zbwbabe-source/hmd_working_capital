@@ -173,12 +173,14 @@ export default function FinancialTable({
   }, []);
 
   const saveRemarkSize = (remarkKey: string, element: HTMLTextAreaElement) => {
+    const width = element.offsetWidth;
+    const height = element.offsetHeight;
     setRemarkSizes((prev) => {
       const next = {
         ...prev,
         [remarkKey]: {
-          width: element.offsetWidth,
-          height: element.offsetHeight,
+          width,
+          height,
         },
       };
 
