@@ -147,13 +147,13 @@ export default function FinancialTable({
       .replace(/월/g, 'M');
   };
 
-  const getRemarkValue = (account: string, remarkKey?: string) =>
-    (remarkKey ? draftRemarks[remarkKey] : undefined) ??
-    draftRemarks[account] ??
-    (remarkKey ? remarks?.get(remarkKey) : undefined) ??
-    remarks?.get(account) ??
-    autoRemarks?.[account] ??
-    '';
+  const getRemarkValue = (account: string, remarkKey?: string) => {
+    if (remarkKey) {
+      return draftRemarks[remarkKey] ?? remarks?.get(remarkKey) ?? '';
+    }
+
+    return draftRemarks[account] ?? remarks?.get(account) ?? autoRemarks?.[account] ?? '';
+  };
 
   const commitRemark = (account: string, remarkKey?: string) => {
     if (!onRemarkChange) return;
@@ -926,7 +926,7 @@ export default function FinancialTable({
                           parentLevel -= 1;
                         }
                       }
-                      return path.join(' > ');
+                      return `${path.join(' > ')}__${originalIndex}`;
                     })()
                   : row.account;
               const normalizedAccount = row.account.replace(/\s+/g, '').trim();
