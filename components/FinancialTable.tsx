@@ -67,6 +67,7 @@ export default function FinancialTable({
   const [internalAllRowsCollapsed, setInternalAllRowsCollapsed] = useState<boolean>(true);
   const [draftRemarks, setDraftRemarks] = useState<Record<string, string>>({});
   const [remarkSizes, setRemarkSizes] = useState<Record<string, { width: number; height: number }>>({});
+  const [resizeStartSize, setResizeStartSize] = useState<Record<string, { width: number; height: number }>>({});
 
   // CF 지역 그룹 토글 상태 (홍콩마카오/대만 전용, 기본 펼쳐진 상태)
   const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({
@@ -1671,8 +1672,29 @@ export default function FinancialTable({
                         }))
                       }
                       onBlur={() => commitRemark(row.account, remarkKey)}
+                      onMouseDown={(e) =>
+                        setResizeStartSize((prev) => ({
+                          ...prev,
+                          [remarkKey]: {
+                            width: e.currentTarget.offsetWidth,
+                            height: e.currentTarget.offsetHeight,
+                          },
+                        }))
+                      }
                       onMouseUp={(e) => {
-                        saveRemarkSize(remarkKey, e.currentTarget);
+                        const startSize = resizeStartSize[remarkKey];
+                        const didResize =
+                          !!startSize &&
+                          (startSize.width !== e.currentTarget.offsetWidth || startSize.height !== e.currentTarget.offsetHeight);
+
+                        if (didResize) {
+                          saveRemarkSize(remarkKey, e.currentTarget);
+                        }
+                        setResizeStartSize((prev) => {
+                          const next = { ...prev };
+                          delete next[remarkKey];
+                          return next;
+                        });
                         commitRemark(row.account, remarkKey);
                       }}
                       onKeyDown={(e) => {
