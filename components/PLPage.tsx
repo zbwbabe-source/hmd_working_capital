@@ -574,6 +574,15 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             {showAnnualOnly ? (isEnglish ? 'Show Full View' : '전체 보기') : (isEnglish ? 'Annual Only' : '연간만 보기')}
           </button>
 
+          <a
+            href="https://hmdstoretrend.vercel.app/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-lg border border-blue-300 bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
+          >
+            {isEnglish ? '2026 Store Trend View' : '2026년 매장별 추세보기'}
+          </a>
+
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm text-gray-700">
             <span className="font-medium text-gray-600">{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
 
