@@ -1673,23 +1673,27 @@ export default function FinancialTable({
                           }))
                         }
                         onBlur={() => commitRemark(row.account, remarkKey)}
-                        onMouseDown={(e) =>
+                        onMouseDown={(e) => {
+                          const element = e.currentTarget;
+                          const width = element.offsetWidth;
+                          const height = element.offsetHeight;
                           setResizeStartSize((prev) => ({
                             ...prev,
                             [remarkKey]: {
-                              width: e.currentTarget.offsetWidth,
-                              height: e.currentTarget.offsetHeight,
+                              width,
+                              height,
                             },
-                          }))
-                        }
+                          }));
+                        }}
                         onMouseUp={(e) => {
+                          const element = e.currentTarget;
                           const startSize = resizeStartSize[remarkKey];
                           const didResize =
                             !!startSize &&
-                            (startSize.width !== e.currentTarget.offsetWidth || startSize.height !== e.currentTarget.offsetHeight);
+                            (startSize.width !== element.offsetWidth || startSize.height !== element.offsetHeight);
 
                           if (didResize) {
-                            saveRemarkSize(remarkKey, e.currentTarget);
+                            saveRemarkSize(remarkKey, element);
                           }
                           setResizeStartSize((prev) => {
                             const next = { ...prev };
