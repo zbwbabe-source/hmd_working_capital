@@ -1606,8 +1606,7 @@ export default function FinancialTable({
                 {/* 비고 열 */}
                 {showRemarks && (
                   <td className={`border border-gray-300 px-3 py-2 ${getHighlightClass(row.isHighlight)}`}>
-                    <input
-                      type="text"
+                    <textarea
                       value={getRemarkValue(row.account, remarkKey)}
                       onChange={(e) =>
                         setDraftRemarks(prev => ({
@@ -1618,11 +1617,12 @@ export default function FinancialTable({
                       onBlur={() => commitRemark(row.account, remarkKey)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          (e.currentTarget as HTMLInputElement).blur();
+                          (e.currentTarget as HTMLTextAreaElement).blur();
                         }
                       }}
                       placeholder=""
-                      className="w-full px-2 py-1 text-xs bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 focus:rounded transition-colors"
+                      rows={2}
+                      className="w-full resize-y overflow-hidden whitespace-pre-wrap break-words rounded px-2 py-1 text-xs leading-5 bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 transition-colors"
                     />
                   </td>
                 )}
