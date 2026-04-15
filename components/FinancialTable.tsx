@@ -164,6 +164,36 @@ export default function FinancialTable({
   const monthsCollapsed = externalMonthsCollapsed !== undefined ? externalMonthsCollapsed : internalMonthsCollapsed;
   const toggleMonths = onMonthsToggle || (() => setInternalMonthsCollapsed(!internalMonthsCollapsed));
 
+  const flattenRowsWithKeys = (
+    rows: TableRow[],
+    parentPath: string[] = []
+  ): Array<{ row: TableRow; key: string }> => {
+    const flattened: Array<{ row: TableRow; key: string }> = [];
+
+    rows.forEach((row, index) => {
+      const currentPath = [...parentPath, `${row.account}__${index}`];
+      flattened.push({
+        row,
+        key: currentPath.join(' > '),
+      });
+
+      if (row.children && row.children.length > 0) {
+        flattened.push(...flattenRowsWithKeys(row.children, currentPath));
+      }
+    });
+
+    return flattened;
+  };
+
+  const allFlatRowMetas = useMemo(() => flattenRowsWithKeys(data), [data]);
+  const allFlatRows = useMemo(() => allFlatRowMetas.map((item) => item.row), [allFlatRowMetas]);
+  const allGroupMetas = useMemo(
+    () => allFlatRowMetas.filter(({ row }) => row.isGroup),
+    [allFlatRowMetas]
+  );
+  const getRowUniqueKey = (row: TableRow): string =>
+    allFlatRowMetas.find((item) => item.row === row)?.key ?? row.account;
+
   // 초기 마운트 시 그룹 행 접기 (defaultExpandedAccounts는 펼친 상태로)
   useEffect(() => {
     // children이 있는 행을 포함하여 모든 그룹 수집
@@ -188,6 +218,14 @@ export default function FinancialTable({
   }, []); // 빈 의존성 배열로 초기 마운트 시에만 실행
 
   // 그룹 접기/펼치기 토글
+  useEffect(() => {
+    const defaultExpandedSet = new Set(defaultExpandedAccounts ?? []);
+    const toCollapse = allGroupMetas
+      .filter(({ row }) => !defaultExpandedSet.has(row.account))
+      .map(({ key }) => key);
+    setCollapsed(new Set(toCollapse));
+  }, [allGroupMetas, defaultExpandedAccountsKey]);
+
   const toggleCollapse = (account: string) => {
     const newCollapsed = new Set(collapsed);
     if (newCollapsed.has(account)) {
@@ -220,7 +258,7 @@ export default function FinancialTable({
           }
           return groups;
         };
-        const allGroups = collectAllGroups(data);
+        const allGroups = allGroupMetas.map(({ key }) => key);
         setCollapsed(new Set(allGroups));
         setInternalAllRowsCollapsed(true);
       }
@@ -243,14 +281,15 @@ export default function FinancialTable({
         }
         return groups;
       };
-      const allGroups = collectAllGroups(data);
       const defaultExpandedSet = new Set(defaultExpandedAccounts ?? []);
       const toCollapse = allRowsCollapsed
-        ? (defaultExpandedSet.size > 0 ? allGroups.filter(g => !defaultExpandedSet.has(g)) : allGroups)
+        ? allGroupMetas
+            .filter(({ row }) => !defaultExpandedSet.has(row.account))
+            .map(({ key }) => key)
         : [];
       setCollapsed(new Set(toCollapse));
     }
-  }, [isAllRowsControlled, allRowsCollapsed, defaultExpandedAccountsKey]);
+  }, [isAllRowsControlled, allRowsCollapsed, defaultExpandedAccountsKey, allGroupMetas]);
 
   // 표시할 행 필터링 (접힌 그룹의 자식은 숨김)
   // children 속성이 있는 행은 평면화하여 처리
@@ -270,10 +309,10 @@ export default function FinancialTable({
       return flattened;
     };
     
-    const flatData = flattenRows(data);
+    const flatData = allFlatRowMetas;
     let skipUntilLevel = -1;
 
-    for (const row of flatData) {
+    for (const { row, key } of flatData) {
       // 접힌 그룹의 자식인지 확인
       if (skipUntilLevel >= 0 && row.level > skipUntilLevel) {
         continue; // 숨김
@@ -285,7 +324,7 @@ export default function FinancialTable({
 
       // 이 행이 접힌 그룹이면 다음 행부터 스킵
       // CF 지역 그룹은 별도 summaryExpanded로 관리하므로 skipUntilLevel 설정 제외
-      if (row.isGroup && collapsed.has(row.account) && !(isCashFlow && REGION_GROUPS.includes(row.account))) {
+      if (row.isGroup && collapsed.has(key) && !(isCashFlow && REGION_GROUPS.includes(row.account))) {
         skipUntilLevel = row.level;
       }
     }
@@ -342,24 +381,8 @@ export default function FinancialTable({
     }
 
     return result;
-  }, [data, collapsed, summaryExpanded, isCashFlow]);
+  }, [allFlatRowMetas, collapsed, summaryExpanded, isCashFlow]);
   
-  // 원본 data를 평면화한 전체 리스트 (접힌 행도 포함)
-  const allFlatRows = useMemo(() => {
-    const flattenRows = (rows: TableRow[]): TableRow[] => {
-      const flattened: TableRow[] = [];
-      for (const row of rows) {
-        flattened.push(row);
-        if (row.children && row.children.length > 0) {
-          // 재귀적으로 children의 children도 평면화
-          flattened.push(...flattenRows(row.children));
-        }
-      }
-      return flattened;
-    };
-    return flattenRows(data);
-  }, [data]);
-
   const recomputedNetCashValues = useMemo(() => {
     if (!isCashFlow) return null;
     const norm = (v: string) => v.replace(/\s+/g, '').trim();
@@ -394,7 +417,7 @@ export default function FinancialTable({
       return true;
     }
     // flattened 데이터의 경우: 원본 전체 리스트에서 다음 행의 level이 현재보다 크면 자식이 있음
-    const index = allFlatRows.findIndex(r => r.account === row.account && r.level === row.level);
+    const index = allFlatRows.findIndex(r => r === row);
     if (index >= 0 && index < allFlatRows.length - 1) {
       return allFlatRows[index + 1].level > row.level;
     }
@@ -912,7 +935,7 @@ export default function FinancialTable({
               // 전월대비 행: +/- 표시
               const isMomRow = row.account === '전월대비' || row.account === '전년대비';
               // 비용의 지역 그룹인지 체크 (원본 데이터에서 찾기)
-              const originalIndex = allFlatRows.findIndex(r => r.account === row.account && r.level === row.level);
+              const originalIndex = allFlatRows.findIndex(r => r === row);
               const isCostRegion = originalIndex >= 0 ? isCostRegionGroup(row, allFlatRows, originalIndex) : false;
               const remarkKey =
                 originalIndex >= 0
@@ -976,7 +999,7 @@ export default function FinancialTable({
                     if (isCostRegion) {
                       toggleSummary(row.account);
                     } else if (row.isGroup) {
-                      toggleCollapse(row.account);
+                      toggleCollapse(getRowUniqueKey(row));
                     }
                   }}
                 >
@@ -986,7 +1009,7 @@ export default function FinancialTable({
                     </span>
                     {hasChildren(row) && !isCostRegion && (
                       <span className="text-gray-500 flex-shrink-0">
-                        {collapsed.has(row.account) ? '▶' : '▼'}
+                        {collapsed.has(getRowUniqueKey(row)) ? '▶' : '▼'}
                       </span>
                     )}
                     {isCostRegion && (
