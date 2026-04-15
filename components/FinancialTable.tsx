@@ -451,6 +451,7 @@ export default function FinancialTable({
     if (current === null || current === undefined || previous === null || previous === undefined) return '-';
     if (previous < 0 && current > 0) return uiText.profitTurnaround;
     if (previous > 0 && current < 0) return uiText.lossTurnaround;
+    if (previous < 0 && current < 0 && Math.abs(current) > Math.abs(previous)) return isEnglish ? 'Loss expansion' : '적자확대';
     if (previous <= 0) return '-';
     return formatPercent(current / previous, false, false, 0);
   };
@@ -458,6 +459,7 @@ export default function FinancialTable({
   const getNetCashYoYClass = (label: string): string => {
     if (label === uiText.profitTurnaround) return 'text-green-600';
     if (label === uiText.lossTurnaround) return 'text-red-600';
+    if (label === '적자확대' || label === 'Loss expansion') return 'text-red-600';
     return '';
   };
 
@@ -543,9 +545,9 @@ export default function FinancialTable({
             ...accountCol,
             `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
             `${currentYearShort}${isEnglish ? ' Prev Plan' : '년 전월계획'}`,
-            'YoY',
+            isEnglish ? `${currentYearShort} Prev Plan YoY` : `${currentYearShort}년 전월계획 YoY`,
             `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
-            'YoY',
+            isEnglish ? `${currentYearShort} Rolling YoY` : `${currentYearShort}년 롤링 YoY`,
             isEnglish ? 'vs Prev Plan' : '전월계획대비',
             isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
           ];
@@ -556,10 +558,10 @@ export default function FinancialTable({
           ...accountCol,
           `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
           `${currentYearShort}${isEnglish ? ' Prev Plan' : '년 전월계획'}`,
-          'YoY',
+          isEnglish ? `${currentYearShort} Prev Plan YoY` : `${currentYearShort}년 전월계획 YoY`,
           ...monthCols,
           `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
-          'YoY',
+          isEnglish ? `${currentYearShort} Rolling YoY` : `${currentYearShort}년 롤링 YoY`,
           isEnglish ? 'vs Prev Plan' : '전월계획대비',
           isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
         ];
