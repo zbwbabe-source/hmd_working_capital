@@ -67,7 +67,13 @@ export default function FinancialTable({
   const [internalAllRowsCollapsed, setInternalAllRowsCollapsed] = useState<boolean>(true);
   const [draftRemarks, setDraftRemarks] = useState<Record<string, string>>({});
   const [remarkSizes, setRemarkSizes] = useState<Record<string, { width: number; height: number }>>({});
-  const [resizeStartSize, setResizeStartSize] = useState<Record<string, { width: number; height: number }>>({});
+  const [activeRemarkResize, setActiveRemarkResize] = useState<{
+    remarkKey: string;
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+  } | null>(null);
 
   // CF 지역 그룹 토글 상태 (홍콩마카오/대만 전용, 기본 펼쳐진 상태)
   const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({
@@ -193,6 +199,47 @@ export default function FinancialTable({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!activeRemarkResize) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const nextWidth = Math.max(160, activeRemarkResize.startWidth + (event.clientX - activeRemarkResize.startX));
+      const nextHeight = Math.max(44, activeRemarkResize.startHeight + (event.clientY - activeRemarkResize.startY));
+
+      setRemarkSizes((prev) => ({
+        ...prev,
+        [activeRemarkResize.remarkKey]: {
+          width: nextWidth,
+          height: nextHeight,
+        },
+      }));
+    };
+
+    const handleMouseUp = () => {
+      const latestSize = remarkSizes[activeRemarkResize.remarkKey];
+      if (latestSize) {
+        try {
+          const next = {
+            ...remarkSizes,
+            [activeRemarkResize.remarkKey]: latestSize,
+          };
+          window.localStorage.setItem('financial-table-remark-sizes', JSON.stringify(next));
+        } catch {
+          // Ignore local storage write failures.
+        }
+      }
+      setActiveRemarkResize(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [activeRemarkResize, remarkSizes]);
   
   // 외부에서 monthsCollapsed를 제어하는 경우와 내부에서 제어하는 경우 모두 지원
   const monthsCollapsed = externalMonthsCollapsed !== undefined ? externalMonthsCollapsed : internalMonthsCollapsed;
@@ -1667,34 +1714,6 @@ export default function FinancialTable({
                   <td className={`border border-gray-300 px-3 py-2 align-top w-[200px] min-w-[200px] max-w-[200px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
                     <div className="relative w-full overflow-visible">
                       <div
-                        onMouseDown={(e) => {
-                          const element = e.currentTarget;
-                          const width = element.offsetWidth;
-                          const height = element.offsetHeight;
-                          setResizeStartSize((prev) => ({
-                            ...prev,
-                            [remarkKey]: {
-                              width,
-                              height,
-                            },
-                          }));
-                        }}
-                        onMouseUp={(e) => {
-                          const element = e.currentTarget;
-                          const startSize = resizeStartSize[remarkKey];
-                          const didResize =
-                            !!startSize &&
-                            (startSize.width !== element.offsetWidth || startSize.height !== element.offsetHeight);
-
-                          if (didResize) {
-                            saveRemarkSize(remarkKey, element);
-                          }
-                          setResizeStartSize((prev) => {
-                            const next = { ...prev };
-                            delete next[remarkKey];
-                            return next;
-                          });
-                        }}
                         style={{
                           width: remarkSizes[remarkKey]?.width ? `${remarkSizes[remarkKey].width}px` : '100%',
                           height: remarkSizes[remarkKey]?.height ? `${remarkSizes[remarkKey].height}px` : undefined,
@@ -1721,6 +1740,24 @@ export default function FinancialTable({
                           placeholder=""
                           rows={2}
                           className="block h-full w-full resize-none whitespace-pre-wrap break-words rounded bg-transparent px-2 py-1 text-xs leading-5 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          aria-label="Resize remark field"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const container = e.currentTarget.parentElement;
+                            if (!container) return;
+                            setActiveRemarkResize({
+                              remarkKey,
+                              startX: e.clientX,
+                              startY: e.clientY,
+                              startWidth: container.offsetWidth,
+                              startHeight: container.offsetHeight,
+                            });
+                          }}
+                          className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize rounded-tl border-l border-t border-blue-200/70 bg-white/80"
                         />
                       </div>
                     </div>
