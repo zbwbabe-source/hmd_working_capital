@@ -1126,6 +1126,7 @@ export default function Home() {
 
     const alignWcRowsWithBs = (rows: TableRow[] | null): TableRow[] | null => {
       if (!rows) return null;
+      if (!bsFinancialData || !bsPlanData) return rows;
 
       const norm = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, '').trim();
       const normalizeBsValueForWc = (account: string, value: number | null): number | null => {
@@ -1161,6 +1162,11 @@ export default function Home() {
           rolling: normalizeBsValueForWc(account, findBsEndingValue(bsFinancialData, account)),
         });
       }
+
+      const hasAllBsMetrics = Array.from(metrics.values()).every(
+        (item) => typeof item.plan === 'number' && typeof item.rolling === 'number'
+      );
+      if (!hasAllBsMetrics) return rows;
 
       const totalPrev = Array.from(metrics.values()).reduce((sum, item) => sum + (item.prev ?? 0), 0);
       const totalPlan = Array.from(metrics.values()).reduce((sum, item) => sum + (item.plan ?? 0), 0);
