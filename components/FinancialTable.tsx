@@ -1707,7 +1707,7 @@ export default function FinancialTable({
                       style={{
                         width: remarkSizes[remarkKey]?.width ? `${remarkSizes[remarkKey].width}px` : '100%',
                         height: remarkSizes[remarkKey]?.height ? `${remarkSizes[remarkKey].height}px` : undefined,
-                        minWidth: '100%',
+                        minWidth: '160px',
                         maxWidth: 'none',
                       }}
                       className="block resize overflow-hidden whitespace-pre-wrap break-words rounded px-2 py-1 text-xs leading-5 bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 transition-colors"
