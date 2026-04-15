@@ -1640,6 +1640,7 @@ export default function FinancialTable({
                         }))
                       }
                       onBlur={() => commitRemark(row.account, remarkKey)}
+                      onMouseUp={() => commitRemark(row.account, remarkKey)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           (e.currentTarget as HTMLTextAreaElement).blur();
