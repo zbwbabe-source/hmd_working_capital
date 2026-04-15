@@ -66,6 +66,7 @@ export default function FinancialTable({
   const [internalMonthsCollapsed, setInternalMonthsCollapsed] = useState<boolean>(true);
   const [internalAllRowsCollapsed, setInternalAllRowsCollapsed] = useState<boolean>(true);
   const [draftRemarks, setDraftRemarks] = useState<Record<string, string>>({});
+  const [remarkSizes, setRemarkSizes] = useState<Record<string, { width: number; height: number }>>({});
 
   // CF 지역 그룹 토글 상태 (홍콩마카오/대만 전용, 기본 펼쳐진 상태)
   const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({
@@ -158,6 +159,36 @@ export default function FinancialTable({
   const commitRemark = (account: string, remarkKey?: string) => {
     if (!onRemarkChange) return;
     onRemarkChange(remarkKey ?? account, getRemarkValue(account, remarkKey));
+  };
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('financial-table-remark-sizes');
+      if (!raw) return;
+      setRemarkSizes(JSON.parse(raw));
+    } catch {
+      // Ignore local storage parsing failures.
+    }
+  }, []);
+
+  const saveRemarkSize = (remarkKey: string, element: HTMLTextAreaElement) => {
+    setRemarkSizes((prev) => {
+      const next = {
+        ...prev,
+        [remarkKey]: {
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+        },
+      };
+
+      try {
+        window.localStorage.setItem('financial-table-remark-sizes', JSON.stringify(next));
+      } catch {
+        // Ignore local storage write failures.
+      }
+
+      return next;
+    });
   };
   
   // 외부에서 monthsCollapsed를 제어하는 경우와 내부에서 제어하는 경우 모두 지원
@@ -1640,15 +1671,24 @@ export default function FinancialTable({
                         }))
                       }
                       onBlur={() => commitRemark(row.account, remarkKey)}
-                      onMouseUp={() => commitRemark(row.account, remarkKey)}
+                      onMouseUp={(e) => {
+                        saveRemarkSize(remarkKey, e.currentTarget);
+                        commitRemark(row.account, remarkKey);
+                      }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                           (e.currentTarget as HTMLTextAreaElement).blur();
                         }
                       }}
                       placeholder=""
                       rows={2}
-                      className="w-full resize-y overflow-hidden whitespace-pre-wrap break-words rounded px-2 py-1 text-xs leading-5 bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 transition-colors"
+                      style={{
+                        width: remarkSizes[remarkKey]?.width ? `${remarkSizes[remarkKey].width}px` : '100%',
+                        height: remarkSizes[remarkKey]?.height ? `${remarkSizes[remarkKey].height}px` : undefined,
+                        minWidth: '100%',
+                        maxWidth: 'none',
+                      }}
+                      className="block resize overflow-hidden whitespace-pre-wrap break-words rounded px-2 py-1 text-xs leading-5 bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 transition-colors"
                     />
                   </td>
                 )}
