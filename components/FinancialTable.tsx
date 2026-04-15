@@ -168,37 +168,7 @@ export default function FinancialTable({
     onRemarkChange(remarkKey ?? account, getRemarkValue(account, remarkKey));
   };
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem('financial-table-remark-sizes');
-      if (!raw) return;
-      setRemarkSizes(JSON.parse(raw));
-    } catch {
-      // Ignore local storage parsing failures.
-    }
-  }, []);
-
-  const saveRemarkSize = (remarkKey: string, element: HTMLElement) => {
-    const width = element.offsetWidth;
-    const height = element.offsetHeight;
-    setRemarkSizes((prev) => {
-      const next = {
-        ...prev,
-        [remarkKey]: {
-          width,
-          height,
-        },
-      };
-
-      try {
-        window.localStorage.setItem('financial-table-remark-sizes', JSON.stringify(next));
-      } catch {
-        // Ignore local storage write failures.
-      }
-
-      return next;
-    });
-  };
+  
 
   useEffect(() => {
     if (!activeRemarkResize) return;
@@ -1712,55 +1682,24 @@ export default function FinancialTable({
                 {/* 비고 열 */}
                 {showRemarks && (
                   <td className={`border border-gray-300 px-3 py-2 align-top w-[200px] min-w-[200px] max-w-[200px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
-                    <div className="relative w-full overflow-visible">
-                      <div
-                        style={{
-                          width: remarkSizes[remarkKey]?.width ? `${remarkSizes[remarkKey].width}px` : '100%',
-                          height: remarkSizes[remarkKey]?.height ? `${remarkSizes[remarkKey].height}px` : undefined,
-                          minWidth: '160px',
-                          minHeight: '44px',
-                          maxWidth: 'none',
-                        }}
-                        className="inline-block resize overflow-hidden rounded bg-transparent transition-colors focus-within:bg-white/50 focus-within:ring-1 focus-within:ring-blue-300"
-                      >
-                        <textarea
-                          value={getRemarkValue(row.account, remarkKey)}
-                          onChange={(e) =>
-                            setDraftRemarks(prev => ({
-                              ...prev,
-                              [remarkKey]: e.target.value,
-                            }))
-                          }
-                          onBlur={() => commitRemark(row.account, remarkKey)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                              (e.currentTarget as HTMLTextAreaElement).blur();
-                            }
-                          }}
-                          placeholder=""
-                          rows={2}
-                          className="block h-full w-full resize-none whitespace-pre-wrap break-words rounded bg-transparent px-2 py-1 text-xs leading-5 focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          aria-label="Resize remark field"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const container = e.currentTarget.parentElement;
-                            if (!container) return;
-                            setActiveRemarkResize({
-                              remarkKey,
-                              startX: e.clientX,
-                              startY: e.clientY,
-                              startWidth: container.offsetWidth,
-                              startHeight: container.offsetHeight,
-                            });
-                          }}
-                          className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize rounded-tl border-l border-t border-blue-200/70 bg-white/80"
-                        />
-                      </div>
-                    </div>
+                    <textarea
+                      value={getRemarkValue(row.account, remarkKey)}
+                      onChange={(e) =>
+                        setDraftRemarks(prev => ({
+                          ...prev,
+                          [remarkKey]: e.target.value,
+                        }))
+                      }
+                      onBlur={() => commitRemark(row.account, remarkKey)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                          (e.currentTarget as HTMLTextAreaElement).blur();
+                        }
+                      }}
+                      placeholder=""
+                      rows={2}
+                      className="block min-h-[44px] w-full resize-y whitespace-pre-wrap break-words rounded bg-transparent px-2 py-1 text-xs leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                    />
                   </td>
                 )}
               </tr>
