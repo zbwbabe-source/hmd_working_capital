@@ -147,12 +147,17 @@ export default function FinancialTable({
       .replace(/월/g, 'M');
   };
 
-  const getRemarkValue = (account: string) =>
-    draftRemarks[account] ?? remarks?.get(account) ?? autoRemarks?.[account] ?? '';
+  const getRemarkValue = (account: string, remarkKey?: string) =>
+    (remarkKey ? draftRemarks[remarkKey] : undefined) ??
+    draftRemarks[account] ??
+    (remarkKey ? remarks?.get(remarkKey) : undefined) ??
+    remarks?.get(account) ??
+    autoRemarks?.[account] ??
+    '';
 
-  const commitRemark = (account: string) => {
+  const commitRemark = (account: string, remarkKey?: string) => {
     if (!onRemarkChange) return;
-    onRemarkChange(account, getRemarkValue(account));
+    onRemarkChange(remarkKey ?? account, getRemarkValue(account, remarkKey));
   };
   
   // 외부에서 monthsCollapsed를 제어하는 경우와 내부에서 제어하는 경우 모두 지원
@@ -909,6 +914,21 @@ export default function FinancialTable({
               // 비용의 지역 그룹인지 체크 (원본 데이터에서 찾기)
               const originalIndex = allFlatRows.findIndex(r => r.account === row.account && r.level === row.level);
               const isCostRegion = originalIndex >= 0 ? isCostRegionGroup(row, allFlatRows, originalIndex) : false;
+              const remarkKey =
+                originalIndex >= 0
+                  ? (() => {
+                      const path: string[] = [row.account];
+                      let parentLevel = row.level - 1;
+                      for (let i = originalIndex - 1; i >= 0 && parentLevel >= 0; i--) {
+                        const candidate = allFlatRows[i];
+                        if (candidate.level === parentLevel) {
+                          path.unshift(candidate.account);
+                          parentLevel -= 1;
+                        }
+                      }
+                      return path.join(' > ');
+                    })()
+                  : row.account;
               const normalizedAccount = row.account.replace(/\s+/g, '').trim();
               const isNetCashRow =
                 isCashFlow &&
@@ -1588,14 +1608,14 @@ export default function FinancialTable({
                   <td className={`border border-gray-300 px-3 py-2 ${getHighlightClass(row.isHighlight)}`}>
                     <input
                       type="text"
-                      value={getRemarkValue(row.account)}
+                      value={getRemarkValue(row.account, remarkKey)}
                       onChange={(e) =>
                         setDraftRemarks(prev => ({
                           ...prev,
-                          [row.account]: e.target.value,
+                          [remarkKey]: e.target.value,
                         }))
                       }
-                      onBlur={() => commitRemark(row.account)}
+                      onBlur={() => commitRemark(row.account, remarkKey)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           (e.currentTarget as HTMLInputElement).blur();
