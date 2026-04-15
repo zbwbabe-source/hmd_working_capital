@@ -1662,56 +1662,58 @@ export default function FinancialTable({
 
                 {/* 비고 열 */}
                 {showRemarks && (
-                  <td className={`border border-gray-300 px-3 py-2 ${getHighlightClass(row.isHighlight)}`}>
-                    <textarea
-                      value={getRemarkValue(row.account, remarkKey)}
-                      onChange={(e) =>
-                        setDraftRemarks(prev => ({
-                          ...prev,
-                          [remarkKey]: e.target.value,
-                        }))
-                      }
-                      onBlur={() => commitRemark(row.account, remarkKey)}
-                      onMouseDown={(e) =>
-                        setResizeStartSize((prev) => ({
-                          ...prev,
-                          [remarkKey]: {
-                            width: e.currentTarget.offsetWidth,
-                            height: e.currentTarget.offsetHeight,
-                          },
-                        }))
-                      }
-                      onMouseUp={(e) => {
-                        const startSize = resizeStartSize[remarkKey];
-                        const didResize =
-                          !!startSize &&
-                          (startSize.width !== e.currentTarget.offsetWidth || startSize.height !== e.currentTarget.offsetHeight);
+                  <td className={`border border-gray-300 px-3 py-2 align-top ${getHighlightClass(row.isHighlight)}`}>
+                    <div className="w-0 min-w-full overflow-visible">
+                      <textarea
+                        value={getRemarkValue(row.account, remarkKey)}
+                        onChange={(e) =>
+                          setDraftRemarks(prev => ({
+                            ...prev,
+                            [remarkKey]: e.target.value,
+                          }))
+                        }
+                        onBlur={() => commitRemark(row.account, remarkKey)}
+                        onMouseDown={(e) =>
+                          setResizeStartSize((prev) => ({
+                            ...prev,
+                            [remarkKey]: {
+                              width: e.currentTarget.offsetWidth,
+                              height: e.currentTarget.offsetHeight,
+                            },
+                          }))
+                        }
+                        onMouseUp={(e) => {
+                          const startSize = resizeStartSize[remarkKey];
+                          const didResize =
+                            !!startSize &&
+                            (startSize.width !== e.currentTarget.offsetWidth || startSize.height !== e.currentTarget.offsetHeight);
 
-                        if (didResize) {
-                          saveRemarkSize(remarkKey, e.currentTarget);
-                        }
-                        setResizeStartSize((prev) => {
-                          const next = { ...prev };
-                          delete next[remarkKey];
-                          return next;
-                        });
-                        commitRemark(row.account, remarkKey);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                          (e.currentTarget as HTMLTextAreaElement).blur();
-                        }
-                      }}
-                      placeholder=""
-                      rows={2}
-                      style={{
-                        width: remarkSizes[remarkKey]?.width ? `${remarkSizes[remarkKey].width}px` : '100%',
-                        height: remarkSizes[remarkKey]?.height ? `${remarkSizes[remarkKey].height}px` : undefined,
-                        minWidth: '160px',
-                        maxWidth: 'none',
-                      }}
-                      className="block resize overflow-hidden whitespace-pre-wrap break-words rounded px-2 py-1 text-xs leading-5 bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 transition-colors"
-                    />
+                          if (didResize) {
+                            saveRemarkSize(remarkKey, e.currentTarget);
+                          }
+                          setResizeStartSize((prev) => {
+                            const next = { ...prev };
+                            delete next[remarkKey];
+                            return next;
+                          });
+                          commitRemark(row.account, remarkKey);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                            (e.currentTarget as HTMLTextAreaElement).blur();
+                          }
+                        }}
+                        placeholder=""
+                        rows={2}
+                        style={{
+                          width: remarkSizes[remarkKey]?.width ? `${remarkSizes[remarkKey].width}px` : '100%',
+                          height: remarkSizes[remarkKey]?.height ? `${remarkSizes[remarkKey].height}px` : undefined,
+                          minWidth: '160px',
+                          maxWidth: 'none',
+                        }}
+                        className="block resize overflow-hidden whitespace-pre-wrap break-words rounded px-2 py-1 text-xs leading-5 bg-transparent focus:outline-none focus:bg-white/50 focus:border focus:border-blue-300 transition-colors"
+                      />
+                    </div>
                   </td>
                 )}
               </tr>
