@@ -155,6 +155,23 @@ export default function FinancialTable({
       .replace(/월/g, 'M');
   };
 
+  const formatHeaderLabel = (label: string) => {
+    const explicitBreaks: Record<string, string> = {
+      '26년 전월계획': '26년\n전월계획',
+      '26년 전월계획 YoY': '26년 전월계획\nYoY',
+      '26년 롤링 YoY': '26년 롤링\nYoY',
+      '전월계획대비': '전월계획\n대비',
+      '전월계획대비%': '전월계획\n대비%',
+      '26 Prev Plan': '26\nPrev Plan',
+      '26 Prev Plan YoY': '26 Prev Plan\nYoY',
+      '26 Rolling YoY': '26 Rolling\nYoY',
+      'vs Prev Plan': 'vs\nPrev Plan',
+      'vs Prev Plan %': 'vs Prev Plan\n%',
+    };
+
+    return explicitBreaks[label] ?? label;
+  };
+
   const getRemarkValue = (account: string, remarkKey?: string) => {
     if (remarkKey) {
       return draftRemarks[remarkKey] ?? remarks?.get(remarkKey) ?? '';
@@ -914,8 +931,7 @@ export default function FinancialTable({
                 const isBsCurrentHighlightHeader = is26년3월Header || is26년롤링Header;
                 
                 const translatedCol = translateColumnLabel(col);
-                const headerLabel =
-                  /^\d{2}년 전월계획$/.test(col) ? translatedCol.replace(' ', '\n') : translatedCol;
+                const headerLabel = formatHeaderLabel(translatedCol);
                 const isPrevPlanHeader = isCashFlow && col.includes('전월계획');
                 const isPrevPlanYoYHeader =
                   isCashFlow &&
@@ -960,7 +976,7 @@ export default function FinancialTable({
                       if (isAnnualGroupHeader) setBrandAnnualCollapsed(!brandAnnualCollapsed);
                     }}
                   >
-                    <div className="flex items-center justify-center gap-1 whitespace-pre-line leading-tight">
+                    <div className="flex items-center justify-center gap-1 whitespace-pre-line break-keep leading-tight">
                     {headerLabel}
                       {(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) && (
                         <span className="text-xs">
