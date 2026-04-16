@@ -23,7 +23,9 @@ export interface TableRow {
   brandComparisons?: BrandComparisonData; // 브랜드별 비교 데이터 (FinancialTable 범용 지원용)
   planValue?: number | null; // 2026년 계획값(합계/기말)
   rollingValue?: number | null; // 2026년 롤링/예상값(합계/기말)
+  planYoYAmount?: number | null; // 전년대비 전월계획 증가금액
   planYoY?: number | null; // 계획 YoY 비율 (계획/전년)
+  rollingYoYAmount?: number | null; // 전년대비 롤링 증가금액
   rollingYoY?: number | null; // Rolling YoY 비율 (Rolling/전년)
   planDelta?: number | null; // 계획대비 증감 (Rolling-계획)
   planDeltaRate?: number | null; // 계획대비 증감률 (Rolling/계획)

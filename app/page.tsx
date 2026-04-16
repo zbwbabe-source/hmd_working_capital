@@ -1288,10 +1288,20 @@ export default function Home() {
         const rollingValue = row.values[targetValueIndex];
         const planValue = planRow?.values[targetValueIndex];
 
+        const planYoYAmount = isYoYRow
+          ? null
+          : (typeof planValue === 'number' && typeof prev === 'number'
+              ? planValue - prev
+              : null);
         const planYoY = isYoYRow
           ? null
           : (typeof planValue === 'number' && typeof prev === 'number' && prev !== 0
               ? planValue / prev
+              : null);
+        const rollingYoYAmount = isYoYRow
+          ? null
+          : (typeof rollingValue === 'number' && typeof prev === 'number'
+              ? rollingValue - prev
               : null);
         const rollingYoY = isYoYRow
           ? null
@@ -1310,7 +1320,9 @@ export default function Home() {
           year2024Value: typeof prev === 'number' ? prev : row.year2024Value ?? null,
           planValue: typeof planValue === 'number' ? planValue : null,
           rollingValue: typeof rollingValue === 'number' ? rollingValue : null,
+          planYoYAmount,
           planYoY,
+          rollingYoYAmount,
           rollingYoY,
           planDelta,
           planDeltaRate,
@@ -1339,7 +1351,9 @@ export default function Home() {
           row.planValue ??
           (planRow && typeof planRow.values[targetValueIndex] === 'number' ? planRow.values[targetValueIndex] : null);
 
+        const planYoYAmount = isYoYRow ? null : (typeof planValue === 'number' && typeof prev === 'number' ? planValue - prev : null);
         const planYoY = isYoYRow ? null : (typeof planValue === 'number' && typeof prev === 'number' && prev !== 0 ? planValue / prev : null);
+        const rollingYoYAmount = isYoYRow ? null : (typeof rollingValue === 'number' && typeof prev === 'number' ? rollingValue - prev : null);
         const rollingYoY = isYoYRow ? null : (typeof rollingValue === 'number' && typeof prev === 'number' && prev !== 0 ? rollingValue / prev : null);
         const planDelta = typeof rollingValue === 'number' && typeof planValue === 'number' ? rollingValue - planValue : null;
         const planDeltaRate = typeof rollingValue === 'number' && typeof planValue === 'number' && planValue !== 0 ? rollingValue / planValue : null;
@@ -1349,7 +1363,9 @@ export default function Home() {
           year2024Value: typeof prev === 'number' ? prev : row.year2024Value ?? null,
           rollingValue: typeof rollingValue === 'number' ? rollingValue : row.rollingValue ?? null,
           planValue: typeof planValue === 'number' ? planValue : row.planValue ?? null,
+          planYoYAmount: row.planYoYAmount ?? planYoYAmount,
           planYoY: row.planYoY ?? planYoY,
+          rollingYoYAmount: row.rollingYoYAmount ?? rollingYoYAmount,
           rollingYoY: row.rollingYoY ?? rollingYoY,
           planDelta: row.planDelta ?? planDelta,
           planDeltaRate: row.planDeltaRate ?? planDeltaRate,
@@ -1444,7 +1460,9 @@ export default function Home() {
             values: nextValues,
             planValue: metric.plan,
             rollingValue: metric.rolling,
+            planYoYAmount: typeof metric.plan === 'number' && typeof metric.prev === 'number' ? metric.plan - metric.prev : null,
             planYoY,
+            rollingYoYAmount: typeof metric.rolling === 'number' && typeof metric.prev === 'number' ? metric.rolling - metric.prev : null,
             rollingYoY,
             planDelta,
             planDeltaRate,
@@ -1466,7 +1484,9 @@ export default function Home() {
             year2024Value: totalPrev,
             planValue: totalPlan,
             rollingValue: totalRolling,
+            planYoYAmount: totalPlan - totalPrev,
             planYoY,
+            rollingYoYAmount: totalRolling - totalPrev,
             rollingYoY,
             planDelta,
             planDeltaRate,
@@ -1488,7 +1508,9 @@ export default function Home() {
             year2024Value: totalPrev,
             planValue,
             rollingValue,
+            planYoYAmount: planValue,
             planYoY: null,
+            rollingYoYAmount: rollingValue,
             rollingYoY: null,
             planDelta,
             planDeltaRate,
