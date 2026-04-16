@@ -185,6 +185,11 @@ export default function FinancialTable({
     onRemarkChange(remarkKey ?? account, getRemarkValue(account, remarkKey));
   };
 
+  const isSingleLineRemark = (value: string) => {
+    const normalized = value.replace(/\r\n/g, '\n');
+    return !normalized.includes('\n');
+  };
+
   
 
   useEffect(() => {
@@ -1698,7 +1703,7 @@ export default function FinancialTable({
 
                 {/* 비고 열 */}
                 {showRemarks && (
-                  <td className={`border border-gray-300 px-3 py-2 align-top w-[430px] min-w-[430px] max-w-[430px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
+                  <td className={`border border-gray-300 px-3 py-2 ${isSingleLineRemark(getRemarkValue(row.account, remarkKey)) ? 'align-middle' : 'align-top'} w-[430px] min-w-[430px] max-w-[430px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
                     <textarea
                       value={getRemarkValue(row.account, remarkKey)}
                       onChange={(e) =>
@@ -1715,7 +1720,7 @@ export default function FinancialTable({
                       }}
                       placeholder=""
                       rows={2}
-                      className="block min-h-[44px] w-full resize-y whitespace-pre-wrap break-words rounded bg-transparent px-2 py-1 text-xs leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                      className={`block w-full resize-y whitespace-pre-wrap break-words rounded bg-transparent px-2 text-xs leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLineRemark(getRemarkValue(row.account, remarkKey)) ? 'min-h-[44px] py-[11px]' : 'min-h-[44px] py-1'}`}
                     />
                   </td>
                 )}
