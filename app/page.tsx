@@ -159,6 +159,32 @@ export default function Home() {
   const toggleMonthlyLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Show Mo. ▶' : '월별 데이터 펼치기 ▶') : (isEnglish ? 'Hide Mo. ◀' : '월별 데이터 접기 ◀'));
   const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const formatDelta = (value: number) => `${value >= 0 ? '+' : '△'}${formatNumber(Math.abs(value))}`;
+  const monthlyWcCombinedItems: MonthlyWcItem[] = [
+    {
+      label: '재고자산',
+      previous: MONTHLY_WC_SECTIONS.HK.items[0].previous + MONTHLY_WC_SECTIONS.TW.items[0].previous,
+      plan: MONTHLY_WC_SECTIONS.HK.items[0].plan + MONTHLY_WC_SECTIONS.TW.items[0].plan,
+      current: MONTHLY_WC_SECTIONS.HK.items[0].current + MONTHLY_WC_SECTIONS.TW.items[0].current,
+      delta: MONTHLY_WC_SECTIONS.HK.items[0].delta + MONTHLY_WC_SECTIONS.TW.items[0].delta,
+      remark: '',
+    },
+    {
+      label: '매출채권',
+      previous: MONTHLY_WC_SECTIONS.HK.items[1].previous + MONTHLY_WC_SECTIONS.TW.items[1].previous,
+      plan: MONTHLY_WC_SECTIONS.HK.items[1].plan + MONTHLY_WC_SECTIONS.TW.items[1].plan,
+      current: MONTHLY_WC_SECTIONS.HK.items[1].current + MONTHLY_WC_SECTIONS.TW.items[1].current,
+      delta: MONTHLY_WC_SECTIONS.HK.items[1].delta + MONTHLY_WC_SECTIONS.TW.items[1].delta,
+      remark: '',
+    },
+    {
+      label: '매입채무',
+      previous: MONTHLY_WC_SECTIONS.HK.items[2].previous + MONTHLY_WC_SECTIONS.TW.items[2].previous,
+      plan: MONTHLY_WC_SECTIONS.HK.items[2].plan + MONTHLY_WC_SECTIONS.TW.items[2].plan,
+      current: MONTHLY_WC_SECTIONS.HK.items[2].current + MONTHLY_WC_SECTIONS.TW.items[2].current,
+      delta: MONTHLY_WC_SECTIONS.HK.items[2].delta + MONTHLY_WC_SECTIONS.TW.items[2].delta,
+      remark: '',
+    },
+  ];
   const monthlyWcCombined = {
     previous: MONTHLY_WC_SECTIONS.HK.total.previous + MONTHLY_WC_SECTIONS.TW.total.previous,
     plan: MONTHLY_WC_SECTIONS.HK.total.plan + MONTHLY_WC_SECTIONS.TW.total.plan,
@@ -243,7 +269,7 @@ export default function Home() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-blue-50 text-gray-700">
-                <th className="border border-blue-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Section' : '구분'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Account' : '계정과목'}</th>
                 <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
                 <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
                 <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Current' : '당월'}</th>
@@ -251,8 +277,17 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
+              {monthlyWcCombinedItems.map((item) => (
+                <tr key={`combined-${item.label}`} className="bg-blue-50/40 text-gray-900">
+                  <td className="border border-blue-200 px-3 py-2 font-medium">{item.label}</td>
+                  <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
+                  <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
+                  <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.current)}</td>
+                  <td className={`border border-blue-200 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
+                </tr>
+              ))}
               <tr className="bg-white font-semibold text-gray-900">
-                <td className="border border-blue-200 px-3 py-2">{isEnglish ? 'HKMC+TW Total' : '홍마대 합계'}</td>
+                <td className="border border-blue-200 px-3 py-2">{isEnglish ? 'Working Capital Total' : '운전자본 합계'}</td>
                 <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.previous)}</td>
                 <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.plan)}</td>
                 <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.current)}</td>
