@@ -102,7 +102,7 @@ export default function Home() {
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(119);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
-  const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(520);
+  const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(420);
   const [isResizingAnalysis, setIsResizingAnalysis] = useState<boolean>(false);
   const analysisResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
@@ -323,7 +323,7 @@ export default function Home() {
       if (!analysisResizeRef.current) return;
       const { startX, startWidth } = analysisResizeRef.current;
       const nextWidth = startWidth + (startX - event.clientX);
-      const clamped = Math.max(240, Math.min(Math.floor(window.innerWidth * 0.68), nextWidth));
+      const clamped = Math.max(200, Math.min(Math.floor(window.innerWidth * 0.52), nextWidth));
       setAnalysisPanelWidth(clamped);
     };
 
@@ -1916,7 +1916,7 @@ export default function Home() {
             {(cfDataForView || wcStatementDataForView) && !loading && effectiveView === 'CF' && (
               <div className="px-6 pt-6 pb-6">
                 {workingCapitalMonthsCollapsed ? (
-                  <div className="flex items-start">
+                  <div className="flex items-start gap-2">
                     <div className="flex-1 flex-shrink-0" style={{ minWidth: 0 }}>
                       {cfDataForView && (
                         <>
@@ -1981,13 +1981,13 @@ export default function Home() {
                       )}
                     </div>
                     <div
-                      className="hidden md:block mx-3 w-1.5 rounded cursor-col-resize bg-gray-300 hover:bg-blue-400 transition-colors"
+                      className="hidden md:block mx-1 w-1.5 rounded cursor-col-resize bg-gray-300 hover:bg-blue-400 transition-colors"
                       style={{ height: 'calc(100vh - 220px)' }}
                       onMouseDown={startAnalysisResize}
                     />
                     <aside
-                      className="rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0"
-                      style={{ width: `${analysisPanelWidth}px`, minWidth: '240px' }}
+                      className="rounded-lg border border-gray-200 bg-gray-50 p-5 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0"
+                      style={{ width: `${analysisPanelWidth}px`, minWidth: '200px' }}
                     >
                       <EditableAnalysis
                         year={wcYear}

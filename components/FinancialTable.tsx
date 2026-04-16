@@ -992,7 +992,7 @@ export default function FinancialTable({
               
               {/* 비고 열 헤더 */}
               {showRemarks && (
-                <th className="border border-gray-300 py-3 px-4 text-center font-semibold text-white bg-navy w-[380px] min-w-[380px] max-w-[380px]">
+                <th className="border border-gray-300 py-3 px-4 text-center font-semibold text-white bg-navy w-[430px] min-w-[430px] max-w-[430px]">
                   {uiText.remarks}
                 </th>
               )}
@@ -1698,7 +1698,7 @@ export default function FinancialTable({
 
                 {/* 비고 열 */}
                 {showRemarks && (
-                  <td className={`border border-gray-300 px-3 py-2 align-top w-[380px] min-w-[380px] max-w-[380px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
+                  <td className={`border border-gray-300 px-3 py-2 align-top w-[430px] min-w-[430px] max-w-[430px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
                     <textarea
                       value={getRemarkValue(row.account, remarkKey)}
                       onChange={(e) =>
