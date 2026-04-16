@@ -202,12 +202,12 @@ export default function Home() {
           <thead>
             <tr className="bg-slate-50 text-gray-700">
               <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Division' : '구분'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Account' : '계정'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Current' : '당월'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Account' : '계정'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Current' : '당월'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
             </tr>
           </thead>
           <tbody>
@@ -269,12 +269,12 @@ export default function Home() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-blue-50 text-gray-700">
-                <th className="border border-blue-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Account' : '계정과목'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Current' : '당월'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Account' : '계정과목'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Current' : '당월'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
               </tr>
             </thead>
             <tbody>
