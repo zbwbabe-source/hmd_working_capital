@@ -16,6 +16,102 @@ import {
 } from '@/lib/analysis';
 import { formatNumber, formatMillionYuan } from '@/lib/utils';
 
+type MonthlyWcItem = {
+  label: string;
+  previous: number;
+  plan: number;
+  current: number;
+  delta: number;
+  remark: string;
+};
+
+type MonthlyWcSection = {
+  code: string;
+  currencyLabel: string;
+  items: MonthlyWcItem[];
+  total: {
+    previous: number;
+    plan: number;
+    current: number;
+    delta: number;
+  };
+};
+
+const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
+  HK: {
+    code: 'HKMC',
+    currencyLabel: 'HKD',
+    items: [
+      {
+        label: '재고자산',
+        previous: 106688,
+        plan: 100532,
+        current: 102404,
+        delta: 1872,
+        remark: '계획비 재고입고 +2.0m(전월 계획비 △4.7m), 계획비 매출증가로 출고 +0.1m',
+      },
+      {
+        label: '매출채권',
+        previous: 1450,
+        plan: 1450,
+        current: 435,
+        delta: -1015,
+        remark: '전월 2일(금도) 컷오프, 당월 1일 컷오프로 컷오프 금액 감소',
+      },
+      {
+        label: '매입채무',
+        previous: 87534,
+        plan: 84914,
+        current: 88676,
+        delta: 3762,
+        remark: '계획비 입고증가로 채무 +2.0m, 4월초 리뉴얼 투자지출로 계획비 상환 △1.7m',
+      },
+    ],
+    total: {
+      previous: 20604,
+      plan: 17068,
+      current: 14163,
+      delta: -2905,
+    },
+  },
+  TW: {
+    code: 'TW',
+    currencyLabel: 'HKD',
+    items: [
+      {
+        label: '재고자산',
+        previous: 55909,
+        plan: 48962,
+        current: 50130,
+        delta: 1168,
+        remark: '계획비 재고입고 +1.1m(전월계획비 △3.6m), 계획비 매출감소로 출고 △0.02m',
+      },
+      {
+        label: '매출채권',
+        previous: 26369,
+        plan: 20991,
+        current: 20909,
+        delta: -82,
+        remark: '계획대비 매출 0.07m 감소로 매출채권 감소',
+      },
+      {
+        label: '매입채무',
+        previous: 34247,
+        plan: 28566,
+        current: 30083,
+        delta: 1517,
+        remark: '계획비 입고증가로 채무 +1.1m, 계획비 상환 △0.4m',
+      },
+    ],
+    total: {
+      previous: 116525,
+      plan: 98519,
+      current: 101121,
+      delta: 2602,
+    },
+  },
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [locale, setLocale] = useState<'ko' | 'en'>('ko');
@@ -29,6 +125,8 @@ export default function Home() {
   const analysisResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
   const [wcStatementAllRowsCollapsed, setWcStatementAllRowsCollapsed] = useState<boolean>(true);
+  const [showMonthlyWcHongKong, setShowMonthlyWcHongKong] = useState<boolean>(false);
+  const [showMonthlyWcTaiwan, setShowMonthlyWcTaiwan] = useState<boolean>(false);
   const [cfData, setCfData] = useState<TableRow[] | null>(null);
   const [cfPlanData, setCfPlanData] = useState<TableRow[] | null>(null);
   const [wcStatementData, setWcStatementData] = useState<TableRow[] | null>(null);
@@ -60,6 +158,117 @@ export default function Home() {
   const toggleRowsLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Expand ▼' : '펼치기 ▼') : (isEnglish ? 'Collapse ▲' : '접기 ▲'));
   const toggleMonthlyLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Show Mo. ▶' : '월별 데이터 펼치기 ▶') : (isEnglish ? 'Hide Mo. ◀' : '월별 데이터 접기 ◀'));
   const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const formatDelta = (value: number) => `${value >= 0 ? '+' : '△'}${formatNumber(Math.abs(value))}`;
+  const monthlyWcCombined = {
+    previous: MONTHLY_WC_SECTIONS.HK.total.previous + MONTHLY_WC_SECTIONS.TW.total.previous,
+    plan: MONTHLY_WC_SECTIONS.HK.total.plan + MONTHLY_WC_SECTIONS.TW.total.plan,
+    current: MONTHLY_WC_SECTIONS.HK.total.current + MONTHLY_WC_SECTIONS.TW.total.current,
+    delta: MONTHLY_WC_SECTIONS.HK.total.delta + MONTHLY_WC_SECTIONS.TW.total.delta,
+  };
+
+  const renderMonthlyWorkingCapitalSection = () => {
+    const renderTable = (title: string, section: MonthlyWcSection) => (
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+          <div className="font-semibold text-gray-800">{title}</div>
+        </div>
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-slate-50 text-gray-700">
+              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Division' : '구분'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Account' : '계정'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Current' : '당월'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
+              <th className="border border-gray-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {section.items.map((item, index) => (
+              <tr key={`${section.code}-${item.label}`} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+                {index === 0 && (
+                  <td rowSpan={section.items.length + 1} className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-800 align-middle">
+                    <div>{section.code}</div>
+                    <div>{section.currencyLabel}</div>
+                  </td>
+                )}
+                <td className="border border-gray-200 px-3 py-2 font-medium text-gray-800">{item.label}</td>
+                <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
+                <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
+                <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(item.current)}</td>
+                <td className={`border border-gray-200 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
+                <td className="border border-gray-200 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
+              </tr>
+            ))}
+            <tr className="bg-slate-100 font-semibold text-gray-900">
+              <td className="border border-gray-200 px-3 py-2">{isEnglish ? 'Total' : '합계'}</td>
+              <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(section.total.previous)}</td>
+              <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(section.total.plan)}</td>
+              <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(section.total.current)}</td>
+              <td className={`border border-gray-200 px-3 py-2 text-right ${section.total.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(section.total.delta)}</td>
+              <td className="border border-gray-200 px-3 py-2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+
+    return (
+      <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-base font-bold text-gray-800">{isEnglish ? 'Current Month Working Capital' : '당월 운전자본'}</h3>
+            <p className="text-sm text-gray-500">{smallUnitLabel}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMonthlyWcHongKong((prev) => !prev)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+            >
+              {showMonthlyWcHongKong ? (isEnglish ? 'Hide Hong Kong ▲' : '홍콩 접기 ▲') : (isEnglish ? 'Show Hong Kong ▼' : '홍콩 펼치기 ▼')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMonthlyWcTaiwan((prev) => !prev)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+            >
+              {showMonthlyWcTaiwan ? (isEnglish ? 'Hide Taiwan ▲' : '대만 접기 ▲') : (isEnglish ? 'Show Taiwan ▼' : '대만 펼치기 ▼')}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 bg-white shadow-sm">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-blue-50 text-gray-700">
+                <th className="border border-blue-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Section' : '구분'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Current' : '당월'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="bg-white font-semibold text-gray-900">
+                <td className="border border-blue-200 px-3 py-2">{isEnglish ? 'HKMC+TW Total' : '홍마대 합계'}</td>
+                <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.previous)}</td>
+                <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.plan)}</td>
+                <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.current)}</td>
+                <td className={`border border-blue-200 px-3 py-2 text-right ${monthlyWcCombined.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(monthlyWcCombined.delta)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {showMonthlyWcHongKong && renderTable(isEnglish ? 'Hong Kong' : '홍콩', MONTHLY_WC_SECTIONS.HK)}
+          {showMonthlyWcTaiwan && renderTable(isEnglish ? 'Taiwan' : '대만', MONTHLY_WC_SECTIONS.TW)}
+        </div>
+      </div>
+    );
+  };
 
   const startAnalysisResize = (event: React.MouseEvent<HTMLDivElement>) => {
     analysisResizeRef.current = { startX: event.clientX, startWidth: analysisPanelWidth };
@@ -1648,6 +1857,7 @@ export default function Home() {
                       remarks={wcRemarks}
                       onRemarkChange={saveWCRemark}
                     />
+                    {renderMonthlyWorkingCapitalSection()}
                   </div>
                 )}
               </div>
@@ -1726,6 +1936,7 @@ export default function Home() {
                             remarks={wcRemarks}
                             onRemarkChange={saveWCRemark}
                           />
+                          {renderMonthlyWorkingCapitalSection()}
                         </div>
                       )}
                     </div>
@@ -1812,6 +2023,7 @@ export default function Home() {
                           remarks={wcRemarks}
                           onRemarkChange={saveWCRemark}
                         />
+                        {renderMonthlyWorkingCapitalSection()}
                       </div>
                     )}
                   </>
