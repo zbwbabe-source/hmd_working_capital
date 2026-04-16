@@ -159,6 +159,10 @@ export default function Home() {
   const toggleMonthlyLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Show Mo. ▶' : '월별 데이터 펼치기 ▶') : (isEnglish ? 'Hide Mo. ◀' : '월별 데이터 접기 ◀'));
   const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const formatDelta = (value: number) => `${value >= 0 ? '+' : '△'}${formatNumber(Math.abs(value))}`;
+  const isPayableLabel = (label: string) => label === '매입채무';
+  const formatMonthlyWcAmount = (label: string, value: number) =>
+    isPayableLabel(label) ? `(${formatNumber(Math.abs(value))})` : formatNumber(value);
+  const getMonthlyWcAmountClass = (label: string) => (isPayableLabel(label) ? 'text-red-600' : '');
   const monthlyWcCombinedItems: MonthlyWcItem[] = [
     {
       label: '재고자산',
@@ -220,9 +224,9 @@ export default function Home() {
                   </td>
                 )}
                 <td className="border border-gray-300 px-3 py-2 font-medium text-gray-800">{item.label}</td>
-                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
-                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
-                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.current)}</td>
+                <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.previous)}</td>
+                <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.plan)}</td>
+                <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.current)}</td>
                 <td className={`border border-gray-300 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
                 <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
               </tr>
@@ -281,9 +285,9 @@ export default function Home() {
               {monthlyWcCombinedItems.map((item) => (
                 <tr key={`combined-${item.label}`} className="bg-[#d9edf9] text-gray-900">
                   <td className="border border-gray-300 px-3 py-2 font-medium">{item.label}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.current)}</td>
+                  <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.previous)}</td>
+                  <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.plan)}</td>
+                  <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.current)}</td>
                   <td className={`border border-gray-300 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
                   <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
                 </tr>
