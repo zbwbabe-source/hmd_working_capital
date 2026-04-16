@@ -194,46 +194,46 @@ export default function Home() {
 
   const renderMonthlyWorkingCapitalSection = () => {
     const renderTable = (title: string, section: MonthlyWcSection) => (
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+      <div className="overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm">
+        <div className="border-b border-gray-300 bg-white px-4 py-3">
           <div className="font-semibold text-gray-800">{title}</div>
         </div>
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-50 text-gray-700">
-              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Division' : '구분'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Account' : '계정'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Current' : '당월'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
-              <th className="border border-gray-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
+            <tr className="bg-[#34589a] text-white">
+              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Division' : '구분'}</th>
+              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Account' : '계정'}</th>
+              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
+              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
+              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Current' : '당월'}</th>
+              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
+              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
             </tr>
           </thead>
           <tbody>
             {section.items.map((item, index) => (
-              <tr key={`${section.code}-${item.label}`} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+              <tr key={`${section.code}-${item.label}`} className="bg-[#d9edf9]">
                 {index === 0 && (
-                  <td rowSpan={section.items.length + 1} className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-800 align-middle">
+                  <td rowSpan={section.items.length + 1} className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-800 align-middle">
                     <div>{section.code}</div>
                     <div>{section.currencyLabel}</div>
                   </td>
                 )}
-                <td className="border border-gray-200 px-3 py-2 font-medium text-gray-800">{item.label}</td>
-                <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
-                <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
-                <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(item.current)}</td>
-                <td className={`border border-gray-200 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
-                <td className="border border-gray-200 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
+                <td className="border border-gray-300 px-3 py-2 font-medium text-gray-800">{item.label}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.current)}</td>
+                <td className={`border border-gray-300 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
               </tr>
             ))}
-            <tr className="bg-slate-100 font-semibold text-gray-900">
-              <td className="border border-gray-200 px-3 py-2">{isEnglish ? 'Total' : '합계'}</td>
-              <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(section.total.previous)}</td>
-              <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(section.total.plan)}</td>
-              <td className="border border-gray-200 px-3 py-2 text-right">{formatNumber(section.total.current)}</td>
-              <td className={`border border-gray-200 px-3 py-2 text-right ${section.total.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(section.total.delta)}</td>
-              <td className="border border-gray-200 px-3 py-2"></td>
+            <tr className="bg-[#f2f2f2] font-semibold text-gray-900">
+              <td className="border border-gray-300 px-3 py-2">{isEnglish ? 'Total' : '합계'}</td>
+              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(section.total.previous)}</td>
+              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(section.total.plan)}</td>
+              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(section.total.current)}</td>
+              <td className={`border border-gray-300 px-3 py-2 text-right ${section.total.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(section.total.delta)}</td>
+              <td className="border border-gray-300 px-3 py-2"></td>
             </tr>
           </tbody>
         </table>
@@ -241,7 +241,7 @@ export default function Home() {
     );
 
     return (
-      <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-base font-bold text-gray-800">{isEnglish ? 'Current Month Working Capital' : '당월 운전자본'}</h3>
@@ -265,36 +265,36 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 bg-white shadow-sm">
+        <div className="mt-4 overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-blue-50 text-gray-700">
-                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Account' : '계정과목'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Current' : '당월'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
-                <th className="border border-blue-200 px-3 py-2 text-center font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
+              <tr className="bg-[#34589a] text-white">
+                <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Account' : '계정과목'}</th>
+                <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Prev.' : '전월'}</th>
+                <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
+                <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Current' : '당월'}</th>
+                <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
+                <th className="border border-gray-300 px-3 py-2 text-center font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
               </tr>
             </thead>
             <tbody>
               {monthlyWcCombinedItems.map((item) => (
-                <tr key={`combined-${item.label}`} className="bg-blue-50/40 text-gray-900">
-                  <td className="border border-blue-200 px-3 py-2 font-medium">{item.label}</td>
-                  <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
-                  <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
-                  <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.current)}</td>
-                  <td className={`border border-blue-200 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
-                  <td className="border border-blue-200 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
+                <tr key={`combined-${item.label}`} className="bg-[#d9edf9] text-gray-900">
+                  <td className="border border-gray-300 px-3 py-2 font-medium">{item.label}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.previous)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(item.current)}</td>
+                  <td className={`border border-gray-300 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
                 </tr>
               ))}
-              <tr className="bg-white font-semibold text-gray-900">
-                <td className="border border-blue-200 px-3 py-2">{isEnglish ? 'Working Capital Total' : '운전자본 합계'}</td>
-                <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.previous)}</td>
-                <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.plan)}</td>
-                <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.current)}</td>
-                <td className={`border border-blue-200 px-3 py-2 text-right ${monthlyWcCombined.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(monthlyWcCombined.delta)}</td>
-                <td className="border border-blue-200 px-3 py-2 text-sm text-gray-700">
+              <tr className="bg-[#fbf6dd] font-semibold text-gray-900">
+                <td className="border border-gray-300 px-3 py-2">{isEnglish ? 'Working Capital Total' : '운전자본 합계'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.previous)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.plan)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.current)}</td>
+                <td className={`border border-gray-300 px-3 py-2 text-right ${monthlyWcCombined.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(monthlyWcCombined.delta)}</td>
+                <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">
                   홍콩 합계 {MONTHLY_WC_SECTIONS.HK.total.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(MONTHLY_WC_SECTIONS.HK.total.delta))} / 대만 합계 {MONTHLY_WC_SECTIONS.TW.total.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(MONTHLY_WC_SECTIONS.TW.total.delta))}
                 </td>
               </tr>
