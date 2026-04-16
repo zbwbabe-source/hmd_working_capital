@@ -1702,10 +1702,15 @@ export default function FinancialTable({
                 })()}
 
                 {/* 비고 열 */}
-                {showRemarks && (
-                  <td className={`border border-gray-300 px-3 py-2 ${isSingleLineRemark(getRemarkValue(row.account, remarkKey)) ? 'align-middle' : 'align-top'} w-[430px] min-w-[430px] max-w-[430px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
+                {showRemarks && (() => {
+                  const remarkValue = getRemarkValue(row.account, remarkKey);
+                  const isSingleLine = isSingleLineRemark(remarkValue);
+
+                  return (
+                  <td className={`border border-gray-300 px-0 py-0 ${isSingleLine ? 'align-middle' : 'align-top'} w-[430px] min-w-[430px] max-w-[430px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
+                    <div className={`px-3 ${isSingleLine ? 'flex min-h-[64px] items-center' : 'py-2'}`}>
                     <textarea
-                      value={getRemarkValue(row.account, remarkKey)}
+                      value={remarkValue}
                       onChange={(e) =>
                         setDraftRemarks(prev => ({
                           ...prev,
@@ -1719,11 +1724,13 @@ export default function FinancialTable({
                         }
                       }}
                       placeholder=""
-                      rows={2}
-                      className={`block w-full resize-y whitespace-pre-wrap break-words rounded bg-transparent px-2 text-xs leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLineRemark(getRemarkValue(row.account, remarkKey)) ? 'min-h-[44px] py-[11px]' : 'min-h-[44px] py-1'}`}
+                      rows={isSingleLine ? 1 : 2}
+                      className={`block w-full resize-y whitespace-pre-wrap break-words rounded bg-transparent px-2 text-xs leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLine ? 'h-[32px] py-1.5' : 'min-h-[44px] py-1'}`}
                     />
+                    </div>
                   </td>
-                )}
+                  );
+                })()}
               </tr>
               );
             })}
