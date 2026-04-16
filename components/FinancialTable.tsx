@@ -1254,12 +1254,6 @@ export default function FinancialTable({
                     <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(rollingDisplayValue) ? 'text-red-600' : ''}`}>
                       {formatValue(rollingDisplayValue ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDelta) ? 'text-red-600' : ''}`}>
-                      {formatValue(row.planDelta ?? null, row.format, true, false)}
-                    </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDeltaRate) ? 'text-red-600' : ''}`}>
-                      {row.planDeltaRate !== null && row.planDeltaRate !== undefined ? formatPercent(row.planDeltaRate, false, false, 0) : '-'}
-                    </td>
                     <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.rollingYoYAmount) ? 'text-red-600' : ''}`}>
                       {formatValue(row.rollingYoYAmount ?? null, row.format, true, false)}
                     </td>
@@ -1269,6 +1263,12 @@ export default function FinancialTable({
                         : ((row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined
                           ? formatPercent((row.rollingYoY ?? effectiveValues[13] ?? null) as number, false, false, 0)
                           : '-')}
+                    </td>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDelta) ? 'text-red-600' : ''}`}>
+                      {formatValue(row.planDelta ?? null, row.format, true, false)}
+                    </td>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDeltaRate) ? 'text-red-600' : ''}`}>
+                      {row.planDeltaRate !== null && row.planDeltaRate !== undefined ? formatPercent(row.planDeltaRate, false, false, 0) : '-'}
                     </td>
                   </>
                 )}
