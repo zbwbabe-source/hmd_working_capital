@@ -166,7 +166,7 @@ export default function Home() {
       plan: MONTHLY_WC_SECTIONS.HK.items[0].plan + MONTHLY_WC_SECTIONS.TW.items[0].plan,
       current: MONTHLY_WC_SECTIONS.HK.items[0].current + MONTHLY_WC_SECTIONS.TW.items[0].current,
       delta: MONTHLY_WC_SECTIONS.HK.items[0].delta + MONTHLY_WC_SECTIONS.TW.items[0].delta,
-      remark: '',
+      remark: `홍콩 ${MONTHLY_WC_SECTIONS.HK.items[0].remark} / 대만 ${MONTHLY_WC_SECTIONS.TW.items[0].remark}`,
     },
     {
       label: '매출채권',
@@ -174,7 +174,7 @@ export default function Home() {
       plan: MONTHLY_WC_SECTIONS.HK.items[1].plan + MONTHLY_WC_SECTIONS.TW.items[1].plan,
       current: MONTHLY_WC_SECTIONS.HK.items[1].current + MONTHLY_WC_SECTIONS.TW.items[1].current,
       delta: MONTHLY_WC_SECTIONS.HK.items[1].delta + MONTHLY_WC_SECTIONS.TW.items[1].delta,
-      remark: '',
+      remark: `홍콩 ${MONTHLY_WC_SECTIONS.HK.items[1].remark} / 대만 ${MONTHLY_WC_SECTIONS.TW.items[1].remark}`,
     },
     {
       label: '매입채무',
@@ -182,7 +182,7 @@ export default function Home() {
       plan: MONTHLY_WC_SECTIONS.HK.items[2].plan + MONTHLY_WC_SECTIONS.TW.items[2].plan,
       current: MONTHLY_WC_SECTIONS.HK.items[2].current + MONTHLY_WC_SECTIONS.TW.items[2].current,
       delta: MONTHLY_WC_SECTIONS.HK.items[2].delta + MONTHLY_WC_SECTIONS.TW.items[2].delta,
-      remark: '',
+      remark: `홍콩 ${MONTHLY_WC_SECTIONS.HK.items[2].remark} / 대만 ${MONTHLY_WC_SECTIONS.TW.items[2].remark}`,
     },
   ];
   const monthlyWcCombined = {
@@ -274,6 +274,7 @@ export default function Home() {
                 <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Plan' : '계획'}</th>
                 <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'Current' : '당월'}</th>
                 <th className="border border-blue-200 px-3 py-2 text-right font-semibold">{isEnglish ? 'vs Plan' : '계획비'}</th>
+                <th className="border border-blue-200 px-3 py-2 text-left font-semibold">{isEnglish ? 'Remarks' : '비고'}</th>
               </tr>
             </thead>
             <tbody>
@@ -284,6 +285,7 @@ export default function Home() {
                   <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.plan)}</td>
                   <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(item.current)}</td>
                   <td className={`border border-blue-200 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
+                  <td className="border border-blue-200 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
                 </tr>
               ))}
               <tr className="bg-white font-semibold text-gray-900">
@@ -292,6 +294,9 @@ export default function Home() {
                 <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.plan)}</td>
                 <td className="border border-blue-200 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.current)}</td>
                 <td className={`border border-blue-200 px-3 py-2 text-right ${monthlyWcCombined.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(monthlyWcCombined.delta)}</td>
+                <td className="border border-blue-200 px-3 py-2 text-sm text-gray-700">
+                  홍콩 합계 {MONTHLY_WC_SECTIONS.HK.total.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(MONTHLY_WC_SECTIONS.HK.total.delta))} / 대만 합계 {MONTHLY_WC_SECTIONS.TW.total.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(MONTHLY_WC_SECTIONS.TW.total.delta))}
+                </td>
               </tr>
             </tbody>
           </table>
