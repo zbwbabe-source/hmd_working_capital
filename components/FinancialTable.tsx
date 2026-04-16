@@ -163,14 +163,14 @@ export default function FinancialTable({
       '26년 롤링 YoY': '26년 롤링\nYoY',
       '전월계획대비': '전월계획\n대비',
       '전월계획대비%': '전월계획\n대비%',
-      '롤링 전년비': '롤링\n전년비',
+      '전년대비롤링': '전년대비\n롤링',
       '26 Prev Plan': '26\nPrev Plan',
       'Prev Gap Plan': 'Prev Gap\nPlan',
       '26 Prev Plan YoY': '26 Prev Plan\nYoY',
       '26 Rolling YoY': '26 Rolling\nYoY',
       'vs Prev Plan': 'vs\nPrev Plan',
       'vs Prev Plan %': 'vs Prev Plan\n%',
-      'Rolling Prev Gap': 'Rolling\nPrev Gap',
+      'Rolling Prev Gap': 'Prev Gap\nRolling',
     };
 
     return explicitBreaks[label] ?? label;
@@ -625,10 +625,10 @@ export default function FinancialTable({
             isEnglish ? 'Prev Gap Plan' : '전년대비 전월계획',
             isEnglish ? `${currentYearShort} Prev Plan YoY` : `${currentYearShort}년 전월계획 YoY`,
             `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
+            isEnglish ? 'Rolling Prev Gap' : '전년대비롤링',
+            isEnglish ? `${currentYearShort} Rolling YoY` : `${currentYearShort}년 롤링 YoY`,
             isEnglish ? 'vs Prev Plan' : '전월계획대비',
             isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
-            isEnglish ? 'Rolling Prev Gap' : '롤링 전년비',
-            isEnglish ? `${currentYearShort} Rolling YoY` : `${currentYearShort}년 롤링 YoY`,
           ];
         }
 
@@ -641,10 +641,10 @@ export default function FinancialTable({
           isEnglish ? `${currentYearShort} Prev Plan YoY` : `${currentYearShort}년 전월계획 YoY`,
           ...monthCols,
           `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
+          isEnglish ? 'Rolling Prev Gap' : '전년대비롤링',
+          isEnglish ? `${currentYearShort} Rolling YoY` : `${currentYearShort}년 롤링 YoY`,
           isEnglish ? 'vs Prev Plan' : '전월계획대비',
           isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
-          isEnglish ? 'Rolling Prev Gap' : '롤링 전년비',
-          isEnglish ? `${currentYearShort} Rolling YoY` : `${currentYearShort}년 롤링 YoY`,
         ];
       }
       if (monthsCollapsed) {
