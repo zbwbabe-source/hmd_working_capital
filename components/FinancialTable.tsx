@@ -970,8 +970,8 @@ export default function FinancialTable({
                   <th
                     key={index}
                     className={`
-                      border border-gray-300 py-3 text-center font-semibold text-white
-                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[190px] px-3' : isYoYHeader ? 'min-w-[64px] px-2' : 'min-w-[88px] px-2.5'}
+                      border border-gray-300 py-2.5 text-center font-semibold text-white
+                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[190px] px-3 text-sm' : isYoYHeader ? 'min-w-[60px] px-1.5 text-[12px]' : 'min-w-[82px] px-2 text-[12px]'}
                       ${!isMutedHeader && isBsCurrentHighlightHeader ? 'bg-blue-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && isYoYHeader ? 'bg-gray-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
@@ -989,7 +989,7 @@ export default function FinancialTable({
                       if (isAnnualGroupHeader) setBrandAnnualCollapsed(!brandAnnualCollapsed);
                     }}
                   >
-                    <div className="flex items-center justify-center gap-1 whitespace-pre-line break-keep leading-tight">
+                    <div className="flex items-center justify-center gap-1 whitespace-pre-line break-keep leading-[1.15]">
                     {headerLabel}
                       {(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) && (
                         <span className="text-xs">
@@ -1005,7 +1005,7 @@ export default function FinancialTable({
               
               {/* 비고 열 헤더 */}
               {showRemarks && (
-                <th className="border border-gray-300 py-3 px-4 text-center font-semibold text-white bg-navy w-[430px] min-w-[430px] max-w-[430px]">
+                <th className="border border-gray-300 py-2.5 px-4 text-center font-semibold text-sm text-white bg-navy w-[430px] min-w-[430px] max-w-[430px]">
                   {uiText.remarks}
                 </th>
               )}
