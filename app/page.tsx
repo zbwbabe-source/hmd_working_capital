@@ -29,12 +29,6 @@ type MonthlyWcSection = {
   code: string;
   currencyLabel: string;
   items: MonthlyWcItem[];
-  total: {
-    previous: number;
-    plan: number;
-    current: number;
-    delta: number;
-  };
 };
 
 const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
@@ -67,12 +61,6 @@ const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
         remark: '계획비 입고증가로 채무 +2.0m, 4월초 리뉴얼 투자지출로 계획비 상환 △1.7m',
       },
     ],
-    total: {
-      previous: 20604,
-      plan: 17068,
-      current: 14163,
-      delta: -2905,
-    },
   },
   TW: {
     code: 'TW',
@@ -103,12 +91,6 @@ const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
         remark: '계획비 입고증가로 채무 +1.1m, 계획비 상환 △0.4m',
       },
     ],
-    total: {
-      previous: 116525,
-      plan: 98519,
-      current: 101121,
-      delta: 2602,
-    },
   },
 };
 
@@ -163,6 +145,20 @@ export default function Home() {
   const formatMonthlyWcAmount = (label: string, value: number) =>
     isPayableLabel(label) ? `(${formatNumber(Math.abs(value))})` : formatNumber(value);
   const getMonthlyWcAmountClass = (label: string) => (isPayableLabel(label) ? 'text-red-600' : '');
+  const getSignedMonthlyWcValue = (label: string, value: number) => (isPayableLabel(label) ? -value : value);
+  const calculateMonthlyWcTotal = (items: MonthlyWcItem[]) => {
+    const previous = items.reduce((sum, item) => sum + getSignedMonthlyWcValue(item.label, item.previous), 0);
+    const plan = items.reduce((sum, item) => sum + getSignedMonthlyWcValue(item.label, item.plan), 0);
+    const current = items.reduce((sum, item) => sum + getSignedMonthlyWcValue(item.label, item.current), 0);
+    return {
+      previous,
+      plan,
+      current,
+      delta: current - plan,
+    };
+  };
+  const hkMonthlyWcTotal = calculateMonthlyWcTotal(MONTHLY_WC_SECTIONS.HK.items);
+  const twMonthlyWcTotal = calculateMonthlyWcTotal(MONTHLY_WC_SECTIONS.TW.items);
   const monthlyWcCombinedItems: MonthlyWcItem[] = [
     {
       label: '재고자산',
@@ -190,10 +186,10 @@ export default function Home() {
     },
   ];
   const monthlyWcCombined = {
-    previous: MONTHLY_WC_SECTIONS.HK.total.previous + MONTHLY_WC_SECTIONS.TW.total.previous,
-    plan: MONTHLY_WC_SECTIONS.HK.total.plan + MONTHLY_WC_SECTIONS.TW.total.plan,
-    current: MONTHLY_WC_SECTIONS.HK.total.current + MONTHLY_WC_SECTIONS.TW.total.current,
-    delta: MONTHLY_WC_SECTIONS.HK.total.delta + MONTHLY_WC_SECTIONS.TW.total.delta,
+    previous: hkMonthlyWcTotal.previous + twMonthlyWcTotal.previous,
+    plan: hkMonthlyWcTotal.plan + twMonthlyWcTotal.plan,
+    current: hkMonthlyWcTotal.current + twMonthlyWcTotal.current,
+    delta: hkMonthlyWcTotal.delta + twMonthlyWcTotal.delta,
   };
 
   const renderMonthlyWorkingCapitalSection = () => {
@@ -233,10 +229,10 @@ export default function Home() {
             ))}
             <tr className="bg-[#f2f2f2] font-semibold text-gray-900">
               <td className="border border-gray-300 px-3 py-2">{isEnglish ? 'Total' : '합계'}</td>
-              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(section.total.previous)}</td>
-              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(section.total.plan)}</td>
-              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(section.total.current)}</td>
-              <td className={`border border-gray-300 px-3 py-2 text-right ${section.total.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(section.total.delta)}</td>
+              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(calculateMonthlyWcTotal(section.items).previous)}</td>
+              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(calculateMonthlyWcTotal(section.items).plan)}</td>
+              <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(calculateMonthlyWcTotal(section.items).current)}</td>
+              <td className={`border border-gray-300 px-3 py-2 text-right ${calculateMonthlyWcTotal(section.items).delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(calculateMonthlyWcTotal(section.items).delta)}</td>
               <td className="border border-gray-300 px-3 py-2"></td>
             </tr>
           </tbody>
@@ -299,7 +295,7 @@ export default function Home() {
                 <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.current)}</td>
                 <td className={`border border-gray-300 px-3 py-2 text-right ${monthlyWcCombined.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(monthlyWcCombined.delta)}</td>
                 <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">
-                  홍콩 합계 {MONTHLY_WC_SECTIONS.HK.total.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(MONTHLY_WC_SECTIONS.HK.total.delta))} / 대만 합계 {MONTHLY_WC_SECTIONS.TW.total.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(MONTHLY_WC_SECTIONS.TW.total.delta))}
+                  홍콩 합계 {hkMonthlyWcTotal.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(hkMonthlyWcTotal.delta))} / 대만 합계 {twMonthlyWcTotal.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(twMonthlyWcTotal.delta))}
                 </td>
               </tr>
             </tbody>
