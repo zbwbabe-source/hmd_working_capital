@@ -99,6 +99,64 @@ function pickMonthValue(months: Record<MonthKey, number>, monthKey: MonthKey): n
   return months[monthKey] ?? 0;
 }
 
+function sumMonthValues(months: Record<MonthKey, number>): number {
+  return (Object.values(months) as number[]).reduce((sum, value) => sum + (value || 0), 0);
+}
+
+function getNodeValue(tree: Node[], key: string, monthKey?: MonthKey): number {
+  const node = buildNodeMap(tree).get(key);
+  if (!node) return 0;
+  if (monthKey) return pickMonthValue(node.rollup, monthKey);
+  return sumMonthValues(node.rollup);
+}
+
+function calculateYoYRatio(current: number, previous: number): number | null {
+  if (!previous) return null;
+  return current / previous;
+}
+
+function buildPlResultSnapshot(currentTree: Node[], previousTree: Node[], monthKey?: MonthKey) {
+  const sellOut = getNodeValue(currentTree, 'L1|실판매출', monthKey);
+  const previousSellOut = getNodeValue(previousTree, 'L1|실판매출', monthKey);
+  const tagSales = getNodeValue(currentTree, 'L1|TAG매출', monthKey);
+  const previousTagSales = getNodeValue(previousTree, 'L1|TAG매출', monthKey);
+  const cogs = getNodeValue(currentTree, 'L1|매출원가', monthKey);
+  const previousCogs = getNodeValue(previousTree, 'L1|매출원가', monthKey);
+  const operatingProfit = getNodeValue(currentTree, 'L1|영업이익', monthKey);
+  const previousOperatingProfit = getNodeValue(previousTree, 'L1|영업이익', monthKey);
+  const operatingMarginSnapshot = getOperatingMarginSnapshot(currentTree);
+  const previousOperatingMarginSnapshot = getOperatingMarginSnapshot(previousTree);
+  const operatingMargin = monthKey
+    ? operatingMarginSnapshot.monthly[monthKey] ?? 0
+    : operatingMarginSnapshot.annual;
+  const previousOperatingMargin = monthKey
+    ? previousOperatingMarginSnapshot.monthly[monthKey] ?? 0
+    : previousOperatingMarginSnapshot.annual;
+
+  return {
+    sellOut: {
+      value: sellOut,
+      yoyRatioVs2025: calculateYoYRatio(sellOut, previousSellOut),
+    },
+    tagSales: {
+      value: tagSales,
+      yoyRatioVs2025: calculateYoYRatio(tagSales, previousTagSales),
+    },
+    cogs: {
+      value: cogs,
+      yoyRatioVs2025: calculateYoYRatio(cogs, previousCogs),
+    },
+    operatingProfit: {
+      value: operatingProfit,
+      yoyRatioVs2025: calculateYoYRatio(operatingProfit, previousOperatingProfit),
+    },
+    operatingMargin: {
+      value: operatingMargin,
+      yoyRatioVs2025: calculateYoYRatio(operatingMargin, previousOperatingMargin),
+    },
+  };
+}
+
 type BaseMonthTreeNode = {
   key: string;
   label: string;
@@ -263,6 +321,69 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     [detailBadScenarioPercent, detailGoodScenarioPercent, selectedYear, trees2026]
   );
   const baseMonthKey = `m${baseMonthIndex}` as MonthKey;
+  const annualResultSummary = useMemo(() => {
+    if (selectedYear !== 2026 || !annualScenarioTrees) return null;
+
+    return {
+      comparisonBaseYear: 2025,
+      actual: {
+        Total: buildPlResultSnapshot(trees2026.Total, trees2025.Total),
+        HK_MLB: buildPlResultSnapshot(trees2026.HK_MLB, trees2025.HK_MLB),
+        HK_Discovery: buildPlResultSnapshot(trees2026.HK_Discovery, trees2025.HK_Discovery),
+        TW_MLB: buildPlResultSnapshot(trees2026.TW_MLB, trees2025.TW_MLB),
+        TW_Discovery: buildPlResultSnapshot(trees2026.TW_Discovery, trees2025.TW_Discovery),
+      },
+      scenarios: {
+        [`good_${goodScenarioPercent}pct_of_current`]: {
+          Total: buildPlResultSnapshot(annualScenarioTrees.total.good, trees2025.Total),
+          HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.good, trees2025.HK_MLB),
+          HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.good, trees2025.HK_Discovery),
+          TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.good, trees2025.TW_MLB),
+          TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.good, trees2025.TW_Discovery),
+        },
+        [`bad_${badScenarioPercent}pct_of_current`]: {
+          Total: buildPlResultSnapshot(annualScenarioTrees.total.bad, trees2025.Total),
+          HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.bad, trees2025.HK_MLB),
+          HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.bad, trees2025.HK_Discovery),
+          TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.bad, trees2025.TW_MLB),
+          TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.bad, trees2025.TW_Discovery),
+        },
+      },
+    };
+  }, [annualScenarioTrees, badScenarioPercent, goodScenarioPercent, selectedYear, trees2025, trees2026]);
+
+  const baseMonthResultSummary = useMemo(() => {
+    if (selectedYear !== 2026 || !annualScenarioTrees) return null;
+
+    return {
+      comparisonBaseYear: 2025,
+      baseMonth: baseMonthIndex,
+      actual: {
+        Total: buildPlResultSnapshot(trees2026.Total, trees2025.Total, baseMonthKey),
+        HK_MLB: buildPlResultSnapshot(trees2026.HK_MLB, trees2025.HK_MLB, baseMonthKey),
+        HK_Discovery: buildPlResultSnapshot(trees2026.HK_Discovery, trees2025.HK_Discovery, baseMonthKey),
+        TW_MLB: buildPlResultSnapshot(trees2026.TW_MLB, trees2025.TW_MLB, baseMonthKey),
+        TW_Discovery: buildPlResultSnapshot(trees2026.TW_Discovery, trees2025.TW_Discovery, baseMonthKey),
+      },
+      scenarios: {
+        [`good_${goodScenarioPercent}pct_of_current`]: {
+          Total: buildPlResultSnapshot(annualScenarioTrees.total.good, trees2025.Total, baseMonthKey),
+          HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.good, trees2025.HK_MLB, baseMonthKey),
+          HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.good, trees2025.HK_Discovery, baseMonthKey),
+          TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.good, trees2025.TW_MLB, baseMonthKey),
+          TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.good, trees2025.TW_Discovery, baseMonthKey),
+        },
+        [`bad_${badScenarioPercent}pct_of_current`]: {
+          Total: buildPlResultSnapshot(annualScenarioTrees.total.bad, trees2025.Total, baseMonthKey),
+          HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.bad, trees2025.HK_MLB, baseMonthKey),
+          HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.bad, trees2025.HK_Discovery, baseMonthKey),
+          TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.bad, trees2025.TW_MLB, baseMonthKey),
+          TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.bad, trees2025.TW_Discovery, baseMonthKey),
+        },
+      },
+    };
+  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, baseMonthKey, goodScenarioPercent, selectedYear, trees2025, trees2026]);
+
   const exportPayload = useMemo(() => {
     if (selectedYear !== 2026 || !annualScenarioTrees) {
       return {
@@ -340,8 +461,9 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         detailBadPercentOfCurrent: detailBadScenarioPercent,
         stepPercent: 10,
       },
+      resultSummary: annualResultSummary,
     };
-  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
+  }, [annualResultSummary, annualScenarioTrees, badScenarioPercent, baseMonthIndex, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
   const baseMonthExportPayload = useMemo(() => {
     const actual = {
       Total: buildBaseMonthTree(trees2026.Total, baseMonthKey),
@@ -419,10 +541,11 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         detailBadPercentOfCurrent: detailBadScenarioPercent,
         stepPercent: 10,
       };
+      payload.resultSummary = baseMonthResultSummary;
     }
 
     return payload;
-  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, baseMonthKey, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
+  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, baseMonthKey, baseMonthResultSummary, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
   const isScenarioAdjusted =
     goodScenarioPercent !== DEFAULT_GOOD_PERCENT || badScenarioPercent !== DEFAULT_BAD_PERCENT;
 
