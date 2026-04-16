@@ -896,15 +896,15 @@ export default function FinancialTable({
                 // CF 컴팩트 레이아웃: 컬럼별 고정 폭 설정
                 const getColumnWidth = () => {
                   if (!compactLayout && !showRemarks) return undefined;
-                  if (isAccountCol) return compactLayout ? { width: '280px', minWidth: '280px' } : { width: '210px', minWidth: '210px' };
+                  if (isAccountCol) return compactLayout ? { width: '280px', minWidth: '280px' } : { width: '190px', minWidth: '190px' };
                   // 합계/기말 컬럼 체크 (동적)
                   const isTotalCol = col.includes('년(합계)') || col.includes('년(기말)');
                   const isPrevYearCol = col === '2024년' || col === '2025년';
                   if (isPrevYearCol || isTotalCol || col === 'YoY') {
-                    return compactLayout ? { width: '160px', minWidth: '160px' } : { width: '112px', minWidth: '112px' };
+                    return compactLayout ? { width: '160px', minWidth: '160px' } : { width: '98px', minWidth: '98px' };
                   }
-                  if (isMonthCol) return compactLayout ? { width: '120px', minWidth: '120px' } : { width: '108px', minWidth: '108px' };
-                  if (showRemarks) return { width: '112px', minWidth: '112px' };
+                  if (isMonthCol) return compactLayout ? { width: '120px', minWidth: '120px' } : { width: '94px', minWidth: '94px' };
+                  if (showRemarks) return { width: '96px', minWidth: '96px' };
                   return undefined;
                 };
                 
@@ -942,7 +942,7 @@ export default function FinancialTable({
                     key={index}
                     className={`
                       border border-gray-300 py-3 text-center font-semibold text-white
-                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[200px] px-4' : isYoYHeader ? 'min-w-[72px] px-2' : 'min-w-[100px] px-3'}
+                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[190px] px-3' : isYoYHeader ? 'min-w-[64px] px-2' : 'min-w-[88px] px-2.5'}
                       ${!isMutedHeader && isBsCurrentHighlightHeader ? 'bg-blue-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && isYoYHeader ? 'bg-gray-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
@@ -976,7 +976,7 @@ export default function FinancialTable({
               
               {/* 비고 열 헤더 */}
               {showRemarks && (
-                <th className="border border-gray-300 py-3 px-4 text-center font-semibold text-white bg-navy w-[320px] min-w-[320px] max-w-[320px]">
+                <th className="border border-gray-300 py-3 px-4 text-center font-semibold text-white bg-navy w-[380px] min-w-[380px] max-w-[380px]">
                   {uiText.remarks}
                 </th>
               )}
@@ -1682,7 +1682,7 @@ export default function FinancialTable({
 
                 {/* 비고 열 */}
                 {showRemarks && (
-                  <td className={`border border-gray-300 px-3 py-2 align-top w-[320px] min-w-[320px] max-w-[320px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
+                  <td className={`border border-gray-300 px-3 py-2 align-top w-[380px] min-w-[380px] max-w-[380px] overflow-visible ${getHighlightClass(row.isHighlight)}`}>
                     <textarea
                       value={getRemarkValue(row.account, remarkKey)}
                       onChange={(e) =>
