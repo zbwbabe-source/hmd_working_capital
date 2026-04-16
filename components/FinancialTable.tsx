@@ -931,10 +931,10 @@ export default function FinancialTable({
                   const isTotalCol = col.includes('년(합계)') || col.includes('년(기말)');
                   const isPrevYearCol = col === '2024년' || col === '2025년';
                   if (isPrevYearCol || isTotalCol || col === 'YoY') {
-                    return compactLayout ? { width: '160px', minWidth: '160px' } : { width: '98px', minWidth: '98px' };
+                    return compactLayout ? { width: '160px', minWidth: '160px' } : { width: '92px', minWidth: '92px' };
                   }
-                  if (isMonthCol) return compactLayout ? { width: '120px', minWidth: '120px' } : { width: '94px', minWidth: '94px' };
-                  if (showRemarks) return { width: '96px', minWidth: '96px' };
+                  if (isMonthCol) return compactLayout ? { width: '120px', minWidth: '120px' } : { width: '90px', minWidth: '90px' };
+                  if (showRemarks) return { width: '90px', minWidth: '90px' };
                   return undefined;
                 };
                 
@@ -970,8 +970,8 @@ export default function FinancialTable({
                   <th
                     key={index}
                     className={`
-                      border border-gray-300 py-2.5 text-center font-semibold text-white
-                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[190px] px-3 text-sm' : isYoYHeader ? 'min-w-[60px] px-1.5 text-[12px]' : 'min-w-[82px] px-2 text-[12px]'}
+                      border border-gray-300 py-2 text-center font-semibold text-white
+                      ${isAccountCol ? 'sticky top-0 left-0 z-40 bg-navy min-w-[182px] px-2.5 text-[13px]' : isYoYHeader ? 'min-w-[56px] px-1 text-[11px]' : 'min-w-[76px] px-1.5 text-[11px]'}
                       ${!isMutedHeader && isBsCurrentHighlightHeader ? 'bg-blue-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && isYoYHeader ? 'bg-gray-500' : ''}
                       ${!isMutedHeader && !isBsCurrentHighlightHeader && !isYoYHeader && isNonBaseMonthCol ? 'bg-gray-600' : ''}
@@ -989,7 +989,7 @@ export default function FinancialTable({
                       if (isAnnualGroupHeader) setBrandAnnualCollapsed(!brandAnnualCollapsed);
                     }}
                   >
-                    <div className="flex items-center justify-center gap-1 whitespace-pre-line break-keep leading-[1.15]">
+                    <div className="flex items-center justify-center gap-0.5 whitespace-pre-line break-keep leading-[1.05] tracking-[-0.01em]">
                     {headerLabel}
                       {(isMonthGroupHeader || isYtdGroupHeader || isAnnualGroupHeader) && (
                         <span className="text-xs">
@@ -1005,7 +1005,7 @@ export default function FinancialTable({
               
               {/* 비고 열 헤더 */}
               {showRemarks && (
-                <th className="border border-gray-300 py-2.5 px-4 text-center font-semibold text-sm text-white bg-navy w-[430px] min-w-[430px] max-w-[430px]">
+                <th className="border border-gray-300 py-2 px-4 text-center font-semibold text-[13px] text-white bg-navy w-[430px] min-w-[430px] max-w-[430px]">
                   {uiText.remarks}
                 </th>
               )}
