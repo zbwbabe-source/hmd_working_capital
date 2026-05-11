@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { ReactNode, useState, useEffect, useMemo, useRef } from 'react';
 import Tabs from '@/components/Tabs';
 import YearTabs from '@/components/YearTabs';
 import FinancialTable from '@/components/FinancialTable';
@@ -38,27 +38,27 @@ const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
     items: [
       {
         label: '재고자산',
-        previous: 106688,
-        plan: 100532,
-        current: 102404,
-        delta: 1872,
-        remark: '계획비 재고입고 +2.0m(전월 계획비 △4.7m), 계획비 매출증가로 출고 +0.1m',
+        previous: 102404,
+        plan: 100652,
+        current: 101734,
+        delta: 1082,
+        remark: '계획비 재고입고 동일(3.1m), 계획비 매출감소로 출고 △1.1m',
       },
       {
         label: '매출채권',
-        previous: 1450,
-        plan: 1450,
-        current: 435,
-        delta: -1015,
-        remark: '전월 2일(금도) 컷오프, 당월 1일 컷오프로 컷오프 금액 감소',
+        previous: 435,
+        plan: 435,
+        current: 422,
+        delta: -13,
+        remark: '전월 당월 컷오프 1일로 동일',
       },
       {
         label: '매입채무',
-        previous: 87534,
-        plan: 84914,
-        current: 88676,
-        delta: 3762,
-        remark: '계획비 입고증가로 채무 +2.0m, 4월초 리뉴얼 투자지출로 계획비 상환 △1.7m',
+        previous: 88676,
+        plan: 86369,
+        current: 85060,
+        delta: -1309,
+        remark: '계획비 입고동일(3.1m), 당월 계획비 상환 +1.3m',
       },
     ],
   },
@@ -68,41 +68,100 @@ const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
     items: [
       {
         label: '재고자산',
-        previous: 55909,
-        plan: 48962,
-        current: 50130,
-        delta: 1168,
-        remark: '계획비 재고입고 +1.1m(전월계획비 △3.6m), 계획비 매출감소로 출고 △0.02m',
+        previous: 50518,
+        plan: 53418,
+        current: 52169,
+        delta: -1249,
+        remark: '계획비 재고입고 △1.9m(전월계획비 +4.6m), 계획비 매출증가로 출고 +3.1m',
       },
       {
         label: '매출채권',
-        previous: 26369,
-        plan: 20991,
-        current: 20909,
-        delta: -82,
-        remark: '계획대비 매출 0.07m 감소로 매출채권 감소',
+        previous: 21071,
+        plan: 15966,
+        current: 16744,
+        delta: 778,
+        remark: '계획대비 매출 0.3m 감소로 매출채권 감소',
       },
       {
         label: '매입채무',
-        previous: 34247,
-        plan: 28566,
-        current: 30083,
-        delta: 1517,
-        remark: '계획비 입고증가로 채무 +1.1m, 계획비 상환 △0.4m',
+        previous: 30315,
+        plan: 25279,
+        current: 21485,
+        delta: -3794,
+        remark: '계획비 입고감소로 채무 △1.9m, 계획비 상환 +1.3m',
       },
     ],
   },
 };
 
+function NavIcon({ kind }: { kind: 'bs' | 'pl' | 'cf' | 'inventory' | 'fund' | 'perf' }) {
+  const props = {
+    width: 14,
+    height: 14,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+
+  const icons: Record<typeof kind, ReactNode> = {
+    bs: (
+      <>
+        <path d="M4 20h16" />
+        <path d="M7 20V10h3v10" />
+        <path d="M14 20V5h3v15" />
+      </>
+    ),
+    pl: (
+      <>
+        <path d="M4 19h16" />
+        <path d="M6 15l4-4 3 2 5-6" />
+      </>
+    ),
+    cf: (
+      <>
+        <rect x="3" y="6" width="18" height="12" rx="2" />
+        <path d="M8 12h8" />
+        <path d="M13 9l3 3-3 3" />
+      </>
+    ),
+    inventory: (
+      <>
+        <path d="M12 3l8 4-8 4-8-4 8-4Z" />
+        <path d="M4 7v7l8 4 8-4V7" />
+      </>
+    ),
+    fund: (
+      <>
+        <path d="M12 3v18" />
+        <path d="M16 7.5c0-1.8-1.8-3-4-3s-4 1.2-4 3 1.8 3 4 3 4 1.2 4 3-1.8 3-4 3-4-1.2-4-3" />
+      </>
+    ),
+    perf: (
+      <>
+        <path d="M4 19h16" />
+        <path d="M7 16V9" />
+        <path d="M12 16V5" />
+        <path d="M17 16v-4" />
+      </>
+    ),
+  };
+
+  return <svg {...props}>{icons[kind]}</svg>;
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [locale, setLocale] = useState<'ko' | 'en'>('ko');
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('PL');
-  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
+  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(119);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
-  const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(420);
+  const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(320);
   const [isResizingAnalysis, setIsResizingAnalysis] = useState<boolean>(false);
   const analysisResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
@@ -137,6 +196,16 @@ export default function Home() {
   const tabTypes: TabType[] = ['CF'];
   const unitLabel = isEnglish ? 'Unit: 1,000 HKD' : '단위: 1,000 HKD';
   const smallUnitLabel = isEnglish ? '(Unit: 1k HKD)' : '(단위: 1k HKD)';
+  const currentClosingMonth = 4;
+  const headerTitle = isEnglish
+    ? `FNF Financial Report (${String(wcYear).slice(-2)}.${currentClosingMonth})`
+    : `FNF 재무실적보고 (${String(wcYear).slice(-2)}. ${currentClosingMonth}월)`;
+  const headerSubtitle = isEnglish
+    ? 'F&F finance simulation dashboard'
+    : 'F&F 재무 시뮬레이션 · 롤링/계획 기준';
+  const basisLabel = isEnglish
+    ? `Basis: ${String(wcYear).slice(-2)}.${currentClosingMonth} reconciliation`
+    : `기준월: ${wcYear}년 ${currentClosingMonth}월`;
   const toggleRowsLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Expand ▼' : '펼치기 ▼') : (isEnglish ? 'Collapse ▲' : '접기 ▲'));
   const toggleMonthlyLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Show Mo. ▶' : '월별 데이터 펼치기 ▶') : (isEnglish ? 'Hide Mo. ◀' : '월별 데이터 접기 ◀'));
   const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -323,7 +392,7 @@ export default function Home() {
       if (!analysisResizeRef.current) return;
       const { startX, startWidth } = analysisResizeRef.current;
       const nextWidth = startWidth + (startX - event.clientX);
-      const clamped = Math.max(200, Math.min(Math.floor(window.innerWidth * 0.52), nextWidth));
+      const clamped = Math.max(168, Math.min(Math.floor(window.innerWidth * 0.4), nextWidth));
       setAnalysisPanelWidth(clamped);
     };
 
@@ -667,13 +736,13 @@ export default function Home() {
     }
   }, [effectiveView]);
 
-  // 월 컬럼 (1~3월 실적, 4~12월 계획)
+  // 월 컬럼 (1~4월 실적, 5~12월 계획)
   const monthColumns = [
     isEnglish ? 'Account' : '계정과목',
     isEnglish ? 'Jan (Act)' : '1월(실적)',
     isEnglish ? 'Feb (Act)' : '2월(실적)',
     isEnglish ? 'Mar (Act)' : '3월(실적)',
-    isEnglish ? 'Apr (Plan)' : '4월(계획)',
+    isEnglish ? 'Apr (Act)' : '4월(실적)',
     isEnglish ? 'May (Plan)' : '5월(계획)',
     isEnglish ? 'Jun (Plan)' : '6월(계획)',
     isEnglish ? 'Jul (Plan)' : '7월(계획)',
@@ -735,7 +804,7 @@ export default function Home() {
         if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
         if (factor === null) return;
 
-        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
 
@@ -763,7 +832,7 @@ export default function Home() {
         norm(row.account) === norm(ACC_STORE_RENT);
 
       if (inHongKongRentPath) {
-        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           const adjustedSales = hkAdjustedSalesByMonth[monthIdx];
           if (typeof current !== 'number' || adjustedSales <= 0) continue;
@@ -787,7 +856,7 @@ export default function Home() {
         norm(row.account) === norm(ACC_STORE_RENT);
 
       if (inTaiwanRentPath) {
-        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
 
@@ -820,7 +889,7 @@ export default function Home() {
 
       const deltaByMonth = norm(row.account) === norm(ACC_HK) ? hkNetDeltaByMonth : twNetDeltaByMonth;
 
-      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
 
@@ -863,7 +932,7 @@ export default function Home() {
       if (!inCashBalancePath) return;
 
       const cumulative = norm(row.account) === norm(ACC_HK) ? hkCumulative : twCumulative;
-      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current === 'number') {
           row.values[monthIdx] = current + cumulative[monthIdx];
@@ -928,13 +997,14 @@ export default function Home() {
       }
     }
 
-    // 1~3월은 실적 고정: 슬라이더 영향 완전 차단
+    // 1~4월은 실적 고정: 슬라이더 영향 완전 차단
     for (let i = 0; i < clonedRows.length; i++) {
       const source = cfData[i];
       if (!source) continue;
       if (typeof source.values[0] === 'number') clonedRows[i].values[0] = source.values[0];
       if (typeof source.values[1] === 'number') clonedRows[i].values[1] = source.values[1];
       if (typeof source.values[2] === 'number') clonedRows[i].values[2] = source.values[2];
+      if (typeof source.values[3] === 'number') clonedRows[i].values[3] = source.values[3];
     }
 
     return clonedRows;
@@ -1015,7 +1085,7 @@ export default function Home() {
         if (norm(row.account) === norm(ACC_TW)) factor = 1 + (delta * 0.8);
         if (factor === null) return;
 
-        for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+        for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
           const current = row.values[monthIdx];
           if (typeof current !== 'number') continue;
           totalSalesDeltaByMonth[monthIdx] += (current * factor) - current;
@@ -1042,7 +1112,7 @@ export default function Home() {
 
           if (!inGoodsPaymentPath) return;
 
-          for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+          for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
             const value = row.values[monthIdx];
             monthly[monthIdx] += typeof value === 'number' ? value : 0;
           }
@@ -1071,7 +1141,7 @@ export default function Home() {
       if (!isTaiwanArLeaf) return;
 
       const factor = 1 + (delta * AR_SENSITIVITY);
-      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
         row.values[monthIdx] = current * factor;
@@ -1091,7 +1161,7 @@ export default function Home() {
     });
 
     if (apLeafRows.length > 0) {
-      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
         // 물품대 증감과 동일금액, 반대방향으로 매입채무 반영
         const apTotalDelta = -goodsPaymentDeltaByMonth[monthIdx];
         if (apTotalDelta === 0) continue;
@@ -1139,7 +1209,7 @@ export default function Home() {
 
       if (!isInventoryLeaf) return;
 
-      for (let monthIdx = 3; monthIdx <= 11; monthIdx++) {
+      for (let monthIdx = 4; monthIdx <= 11; monthIdx++) {
         const current = row.values[monthIdx];
         if (typeof current !== 'number') continue;
 
@@ -1246,7 +1316,7 @@ export default function Home() {
       }
     }
 
-    // 1~3월은 실적 고정: 슬라이더 영향 완전 차단
+    // 1~4월은 실적 고정: 슬라이더 영향 완전 차단
     for (let i = 0; i < clonedRows.length; i++) {
       const source = wcStatementData[i];
       if (!source) continue;
@@ -1576,26 +1646,28 @@ export default function Home() {
   }, [cfDataForView, wcStatementDataForView, wcYear]);
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f7f9fc_42%,#edf2f7_100%)]">
       {/* 상단 탭 */}
       <Tabs
         tabs={tabs}
         activeTab={activeTab}
         onChange={setActiveTab}
+        title={headerTitle}
+        subtitle={headerSubtitle}
         tabSideContent={
-          <div className="inline-flex w-[92px] rounded-md border border-blue-600 overflow-hidden">
+          <div className="inline-flex overflow-hidden rounded-xl border border-white/15 bg-white/10 backdrop-blur">
             <button
               onClick={() => setLocale('ko')}
-              className={`w-[46px] py-1.5 text-sm font-semibold transition-colors ${
-                locale === 'ko' ? 'bg-white text-navy' : 'bg-blue-800 text-white hover:bg-blue-700'
+              className={`w-[48px] py-2 text-sm font-semibold transition-colors ${
+                locale === 'ko' ? 'bg-white text-slate-900' : 'bg-transparent text-white hover:bg-white/10'
               }`}
             >
               KR
             </button>
             <button
               onClick={() => setLocale('en')}
-              className={`w-[46px] py-1.5 text-sm font-semibold transition-colors ${
-                locale === 'en' ? 'bg-white text-navy' : 'bg-blue-800 text-white hover:bg-blue-700'
+              className={`w-[48px] py-2 text-sm font-semibold transition-colors ${
+                locale === 'en' ? 'bg-white text-slate-900' : 'bg-transparent text-white hover:bg-white/10'
               }`}
             >
               EN
@@ -1604,8 +1676,8 @@ export default function Home() {
         }
         afterTabsContent={
           effectiveView === 'CF' ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-700 bg-blue-800">
-              <label htmlFor="sales-yoy-slider" className="text-sm font-medium text-white whitespace-nowrap">
+            <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 backdrop-blur">
+              <label htmlFor="sales-yoy-slider" className="whitespace-nowrap text-sm font-medium text-white">
                 {isEnglish ? 'Sales YoY' : '매출 YoY'}
               </label>
               <input
@@ -1623,25 +1695,30 @@ export default function Home() {
           ) : null
         }
         rightContent={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white/90">
+              {basisLabel}
+            </div>
             <button
               onClick={() => setReportMode('FUND_MONTHLY')}
-              className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
                 reportMode === 'FUND_MONTHLY'
-                  ? 'bg-white text-navy'
-                  : 'bg-blue-800 text-white hover:bg-blue-700'
+                  ? 'bg-[#6d63ff] text-white shadow-sm'
+                  : 'bg-white/10 text-white hover:bg-white/18'
               }`}
             >
+              <span className="mr-1.5 inline-flex align-[-2px] text-white/90"><NavIcon kind="fund" /></span>
               {isEnglish ? 'Fund Mly' : '자금월보'}
             </button>
             <button
               onClick={() => setReportMode('PERFORMANCE')}
-              className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
                 reportMode === 'PERFORMANCE'
-                  ? 'bg-white text-navy'
-                  : 'bg-blue-800 text-white hover:bg-blue-700'
+                  ? 'bg-[#16a34a] text-white shadow-sm'
+                  : 'bg-white/10 text-white hover:bg-white/18'
               }`}
             >
+              <span className="mr-1.5 inline-flex align-[-2px] text-white/90"><NavIcon kind="perf" /></span>
               {isEnglish ? 'Perf.' : '실적보고'}
             </button>
           </div>
@@ -1649,62 +1726,68 @@ export default function Home() {
       />
 
       {/* 내용 - 상단 탭 높이만큼 패딩 추가 */}
-      <div className="p-0 pt-[104px]">
+      <div className="p-0 pt-[154px]">
         {/* 홍콩법인 F/S - 현금흐름표 */}
         {activeTab === 0 && (
           <div>
-            <div className="fixed top-[52px] left-0 right-0 z-40 bg-gray-100/95 border-b border-gray-300 backdrop-blur-sm shadow-sm">
-              <div className="flex items-center gap-4 px-6 py-3">
-                <div className="inline-flex gap-2">
+            <div className="fixed left-0 right-0 top-[74px] z-40 px-4 py-2">
+              <div className="flex items-center gap-3 rounded-[18px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_8px_18px_rgba(15,23,42,0.08)] backdrop-blur-md">
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/92 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
                   {reportMode === 'PERFORMANCE' ? (
                     <>
                       <button
                         onClick={() => setBsView('BS')}
-                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                        className={`inline-flex min-w-[150px] items-center justify-center gap-2 rounded-xl border px-5 py-2 text-sm font-semibold transition-colors ${
                           effectiveView === 'BS'
-                            ? 'bg-navy text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                            ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                            : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        B/S
+                        <span className="text-[13px] leading-none"><NavIcon kind="bs" /></span>
+                        {isEnglish ? 'Financial Position' : '재무상태 (BS)'}
                       </button>
                       <button
                         onClick={() => setBsView('PL')}
-                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                        className={`inline-flex min-w-[150px] items-center justify-center gap-2 rounded-xl border px-5 py-2 text-sm font-semibold transition-colors ${
                           effectiveView === 'PL'
-                            ? 'bg-navy text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                            ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                            : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        P/L
+                        <span className="text-[13px] leading-none"><NavIcon kind="pl" /></span>
+                        {isEnglish ? 'Profit & Loss' : '손익 (PL)'}
                       </button>
                       <button
                         onClick={() => setBsView('CF')}
-                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                        className={`inline-flex min-w-[150px] items-center justify-center gap-2 rounded-xl border px-5 py-2 text-sm font-semibold transition-colors ${
                           effectiveView === 'CF'
-                            ? 'bg-navy text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                            ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                            : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        C/F
+                        <span className="text-[13px] leading-none"><NavIcon kind="cf" /></span>
+                        {isEnglish ? 'Cash Flow' : '자금 (CF)'}
                       </button>
                       <button
                         onClick={() => setBsView('INVENTORY')}
-                        className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                        className={`inline-flex min-w-[150px] items-center justify-center gap-2 rounded-xl border px-5 py-2 text-sm font-semibold transition-colors ${
                           effectiveView === 'INVENTORY'
-                            ? 'bg-navy text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
+                            ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                            : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        {isEnglish ? 'Inventory' : '재고'}
+                        <span className="text-[13px] leading-none"><NavIcon kind="inventory" /></span>
+                        {isEnglish ? 'HC / Inventory' : 'HC / 재고'}
                       </button>
                     </>
                   ) : (
-                    <button className="px-4 py-2 text-sm font-medium rounded bg-navy text-white">
+                    <button className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.10)]">
+                      <span className="text-[13px] leading-none"><NavIcon kind="cf" /></span>
                       C/F
                     </button>
                   )}
                 </div>
+                <div className="flex-1" />
                 {effectiveView !== 'INVENTORY' && (
                   <button
                     onClick={() => {
@@ -1714,7 +1797,7 @@ export default function Home() {
                         setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed);
                       }
                     }}
-                    className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-sm"
+                    className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200"
                   >
                     {toggleMonthlyLabel(effectiveView === 'BS' ? bsMonthsCollapsed : workingCapitalMonthsCollapsed)}
                   </button>
@@ -1737,7 +1820,7 @@ export default function Home() {
                     <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{salesYoYRate}%</span>
                   </div>
                 )}
-                <span className="ml-auto text-sm font-medium text-gray-600">{unitLabel}</span>
+                <span className="ml-auto rounded-xl bg-slate-100 px-3 py-2 text-[11px] font-semibold text-slate-600">{unitLabel}</span>
               </div>
             </div>
             {loading && <div className="p-6 text-center">{isEnglish ? 'Loading...' : '로딩 중...'}</div>}
@@ -1745,7 +1828,7 @@ export default function Home() {
             
             {/* B/S 화면 */}
             {effectiveView === 'BS' && (bsFinancialData || wcStatementDataForView) && !loading && (
-              <div className="px-6 pt-6 pb-6">
+              <div className="px-4 pt-5 pb-8 lg:px-4">
                 {bsFinancialData && (
                   <>
                     {/* 재무비율 분석 */}
@@ -1794,81 +1877,73 @@ export default function Home() {
                       const 자기자본비율26 = 총자산26 !== 0 ? (총자본26 / 총자산26) * 100 : 0;
                       
                       return (
-                        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                          <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-                            <span className="text-blue-600">📊</span>
-                            {isEnglish ? 'Fin Ratio (2026 YE)' : '재무비율 분석 (2026년 기말 기준)'}
-                          </h3>
-                          <div className="grid grid-cols-3 gap-4">
-                            {/* 부채비율 */}
-                            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                              <div className="text-xs text-gray-600 mb-1">{isEnglish ? 'Debt' : '부채비율'}</div>
-                              <div className="text-2xl font-bold text-purple-600 mb-1">
-                                {부채비율26.toFixed(0)}%
-                              </div>
-                              <div className="text-xs text-gray-500 mb-1">
-                                {isEnglish ? `(2025 YE ${부채비율25.toFixed(0)}%)` : `(2025년말 ${부채비율25.toFixed(0)}%)`}
-                              </div>
-                              <div className="text-xs text-gray-600 mb-2">
-                                {isEnglish
-                                  ? `${(부채비율26 - 부채비율25).toFixed(0)}%p vs 2025 ${부채비율26 < 부채비율25 ? 'improved' : 'higher'}`
-                                  : `2025년 대비 ${(부채비율26 - 부채비율25).toFixed(0)}%p ${부채비율26 < 부채비율25 ? '개선' : '증가'}`}
-                              </div>
-                              <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
-                                {isEnglish ? `Excluding TP debt: ${부채비율제외TP26.toFixed(0)}%` : `TP채무 제외시: ${부채비율제외TP26.toFixed(0)}%`}
-                              </div>
+                        <div className="mb-5 grid gap-3 xl:grid-cols-4">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              {isEnglish ? 'Total Assets' : '총자산'}
                             </div>
-                            
-                            {/* 유동비율 */}
-                            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                              <div className="text-xs text-gray-600 mb-1">{isEnglish ? 'Current' : '유동비율'}</div>
-                              <div className="text-2xl font-bold text-orange-600 mb-1">
-                                {유동비율26.toFixed(0)}%
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {isEnglish ? '(Healthy)' : '(양호)'}
-                              </div>
-                              <div className="text-xs text-gray-600 mt-2">
-                                {isEnglish ? 'Short-term liquidity remains healthy.' : '단기 재무상황 양호 및 지속 충분'}
-                              </div>
+                            <div className="mt-1.5 text-[25px] font-bold leading-none text-slate-900">
+                              {formatNumber(총자산26)}
                             </div>
-                            
-                            {/* 자기자본비율 */}
-                            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                              <div className="text-xs text-gray-600 mb-1">{isEnglish ? 'Equity' : '자기자본비율'}</div>
-                              <div className="text-2xl font-bold text-green-600 mb-1">
-                                {자기자본비율26.toFixed(1)}%
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {isEnglish ? '(Annual)' : '(연간 기준)'}
-                              </div>
-                              <div className="text-xs text-gray-600 mt-2">
-                                {isEnglish ? `Stable profitability maintained at ${(총자본26 / 1000).toFixed(0)}M.` : `연기순이익 ${(총자본26 / 1000).toFixed(0)}M 안정적 수익성 유지`}
-                              </div>
+                            <div className="mt-2 text-xs text-slate-500">
+                              {isEnglish ? `2025 YE ${formatNumber(총자산25)}` : `2025년말 ${formatNumber(총자산25)}`}
                             </div>
                           </div>
-                          
-                          {/* 핵심 요약 */}
-                          <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
-                            <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                              <span>💡</span> {isEnglish ? 'Key:' : '핵심:'}
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              {isEnglish ? 'Debt Ratio' : '부채비율'}
                             </div>
-                            <ul className="text-xs text-gray-700 space-y-1">
-                              <li>{isEnglish ? `• Debt ratio ${부채비율26.toFixed(0)}%: ${Math.abs(부채비율26 - 부채비율25).toFixed(0)}%p ${부채비율26 < 부채비율25 ? 'improvement' : 'increase'} vs 2025 year-end.` : `• 부채비율 ${부채비율26.toFixed(0)}%: 2025년말 ${부채비율25.toFixed(0)}% 대비 ${Math.abs(부채비율26 - 부채비율25).toFixed(0)}%p ${부채비율26 < 부채비율25 ? '개선' : '증가'}, 재무 안정성 ${부채비율26 < 부채비율25 ? '크게 향상' : '관리 필요'}`}</li>
-                              <li>{isEnglish ? `• Current ratio ${유동비율26.toFixed(0)}%: short-term liquidity is ${유동비율26 > 100 ? 'healthy' : 'needs improvement'}.` : `• 유동비율 ${유동비율26.toFixed(0)}%: 단기 재무상황 ${유동비율26 > 100 ? '양호' : '개선 필요'}`}</li>
-                              <li>{isEnglish ? `• Equity ratio ${자기자본비율26.toFixed(1)}%: stable profitability base maintained.` : `• 자기자본비율 ${자기자본비율26.toFixed(1)}%: 안정적 수익성 기반 유지`}</li>
-                            </ul>
+                            <div className="mt-1.5 text-[25px] font-bold leading-none text-[#dd6b20]">
+                              {부채비율26.toFixed(1)}%
+                            </div>
+                            <div className="mt-2 text-xs text-slate-500">
+                              {isEnglish ? `2025 YE ${부채비율25.toFixed(1)}%` : `2025년말 ${부채비율25.toFixed(1)}%`}
+                            </div>
+                            <div className="mt-1 text-xs font-medium text-slate-600">
+                              {isEnglish ? `Ex TP ${부채비율제외TP26.toFixed(1)}%` : `TP채무 제외 ${부채비율제외TP26.toFixed(1)}%`}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              {isEnglish ? 'Current Ratio' : '유동비율'}
+                            </div>
+                            <div className="mt-1.5 text-[25px] font-bold leading-none text-[#0f766e]">
+                              {유동비율26.toFixed(1)}%
+                            </div>
+                            <div className="mt-2 text-xs text-slate-500">
+                              {isEnglish ? `2025 YE ${유동비율25.toFixed(1)}%` : `2025년말 ${유동비율25.toFixed(1)}%`}
+                            </div>
+                            <div className="mt-1 text-xs font-medium text-slate-600">
+                              {isEnglish ? 'Short-term liquidity check' : '단기 유동성 점검'}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              {isEnglish ? 'Equity Ratio' : '자기자본비율'}
+                            </div>
+                            <div className="mt-1.5 text-[25px] font-bold leading-none text-[#2563eb]">
+                              {자기자본비율26.toFixed(1)}%
+                            </div>
+                            <div className="mt-2 text-xs text-slate-500">
+                              {isEnglish ? `Equity ${formatNumber(총자본26)} / Liab. ${formatNumber(총부채26)}` : `자본 ${formatNumber(총자본26)} / 부채 ${formatNumber(총부채26)}`}
+                            </div>
                           </div>
                         </div>
                       );
                     })()}
                     
-                    <div className="flex items-center gap-2 mb-4">
-                      <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'Financial Position' : 'Financial Position'}</h2>
-                      <span className="text-sm text-gray-500">{smallUnitLabel}</span>
+                  </>
+                )}
+                {bsFinancialData && (
+                  <section className="rounded-[22px] border border-transparent bg-transparent p-0 shadow-none">
+                    <div className="mb-1 flex items-center gap-3">
+                      <div>
+                        <h2 className="text-[17px] font-bold tracking-tight text-slate-900">{isEnglish ? 'Financial Position (BS)' : '재무상태 (BS)'}</h2>
+                        <span className="text-xs font-medium text-slate-500">{smallUnitLabel}</span>
+                      </div>
                       <button
                         onClick={() => setBsFinancialCollapsed(!bsFinancialCollapsed)}
-                        className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
+                        className="ml-auto rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-white/90"
                       >
                         {toggleRowsLabel(bsFinancialCollapsed)}
                       </button>
@@ -1886,19 +1961,23 @@ export default function Home() {
                       allRowsCollapsed={bsFinancialCollapsed}
                       onAllRowsToggle={() => setBsFinancialCollapsed(!bsFinancialCollapsed)}
                       showRemarks={true}
+                      remarksWidth={240}
+                      compactLayout={true}
                       remarks={bsRemarks}
                       onRemarkChange={saveBSRemark}
                     />
-                  </>
+                  </section>
                 )}
                 {wcStatementDataForView && (
-                  <div className="mt-8 pt-6 border-t-2 border-gray-400">
-                    <div className="flex items-center gap-2 mb-4">
-                      <h2 className="text-lg font-bold text-gray-800">{isEnglish ? 'WC Stmt.' : '운전자본표'}</h2>
-                      <span className="text-sm text-gray-500">{smallUnitLabel}</span>
+                  <section className="mt-6 rounded-[22px] border border-transparent bg-transparent p-0 shadow-none">
+                    <div className="mb-1 flex items-center gap-3">
+                      <div>
+                        <h2 className="text-[17px] font-bold tracking-tight text-slate-900">{isEnglish ? 'Working Capital Statement' : '운전자본표'}</h2>
+                        <span className="text-xs font-medium text-slate-500">{smallUnitLabel}</span>
+                      </div>
                       <button
                         onClick={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
-                        className="px-4 py-2 text-sm font-medium rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors"
+                        className="ml-auto rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-white/90"
                       >
                         {toggleRowsLabel(wcStatementAllRowsCollapsed)}
                       </button>
@@ -1916,9 +1995,15 @@ export default function Home() {
                       allRowsCollapsed={wcStatementAllRowsCollapsed}
                       onAllRowsToggle={() => setWcStatementAllRowsCollapsed(!wcStatementAllRowsCollapsed)}
                       showRemarks={true}
+                      remarksWidth={240}
+                      compactLayout={true}
                       remarks={wcRemarks}
                       onRemarkChange={saveWCRemark}
                     />
+                  </section>
+                )}
+                {wcStatementDataForView && (
+                  <div className="mt-6">
                     {renderMonthlyWorkingCapitalSection()}
                   </div>
                 )}
@@ -1936,9 +2021,9 @@ export default function Home() {
             
             {/* C/F 화면 */}
             {(cfDataForView || wcStatementDataForView) && !loading && effectiveView === 'CF' && (
-              <div className="px-6 pt-6 pb-6">
+              <div className="px-4 pt-4 pb-6">
                 {workingCapitalMonthsCollapsed ? (
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-3">
                     <div className="flex-1 flex-shrink-0" style={{ minWidth: 0 }}>
                       {cfDataForView && (
                         <>
@@ -1958,6 +2043,8 @@ export default function Home() {
                             locale={locale}
                             showTotal
                             isCashFlow={true}
+                            compactLayout={true}
+                            remarksWidth={280}
                             monthsCollapsed={workingCapitalMonthsCollapsed}
                             onMonthsToggle={() => setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed)}
                             currentYear={wcYear}
@@ -1989,6 +2076,8 @@ export default function Home() {
                             showTotal
                             isCashFlow={true}
                             isWorkingCapital={true}
+                            compactLayout={true}
+                            remarksWidth={280}
                             monthsCollapsed={workingCapitalMonthsCollapsed}
                             onMonthsToggle={() => setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed)}
                             currentYear={wcYear}
@@ -2003,13 +2092,13 @@ export default function Home() {
                       )}
                     </div>
                     <div
-                      className="hidden md:block mx-1 w-1.5 rounded cursor-col-resize bg-gray-300 hover:bg-blue-400 transition-colors"
+                      className="hidden lg:block mx-0.5 w-1 rounded cursor-col-resize bg-slate-300/90 hover:bg-blue-400 transition-colors"
                       style={{ height: 'calc(100vh - 220px)' }}
                       onMouseDown={startAnalysisResize}
                     />
                     <aside
-                      className="rounded-lg border border-gray-200 bg-gray-50 p-5 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0"
-                      style={{ width: `${analysisPanelWidth}px`, minWidth: '200px' }}
+                      className="hidden lg:block rounded-lg border border-slate-200/80 bg-white/92 p-4 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0"
+                      style={{ width: `${analysisPanelWidth}px`, minWidth: '168px' }}
                     >
                       <EditableAnalysis
                         year={wcYear}
@@ -2045,6 +2134,8 @@ export default function Home() {
                           locale={locale}
                           showTotal
                           isCashFlow={true}
+                          compactLayout={true}
+                          remarksWidth={280}
                           monthsCollapsed={workingCapitalMonthsCollapsed}
                           onMonthsToggle={() => setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed)}
                           currentYear={wcYear}
@@ -2076,6 +2167,8 @@ export default function Home() {
                           showTotal
                           isCashFlow={true}
                           isWorkingCapital={true}
+                          compactLayout={true}
+                          remarksWidth={280}
                           monthsCollapsed={workingCapitalMonthsCollapsed}
                           onMonthsToggle={() => setWorkingCapitalMonthsCollapsed(!workingCapitalMonthsCollapsed)}
                           currentYear={wcYear}

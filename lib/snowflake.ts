@@ -9,13 +9,17 @@ function getRequiredEnv(name: string): string {
 }
 
 function createConnection() {
+  const privateKey = getRequiredEnv('SNOWFLAKE_PRIVATE_KEY').replace(/\\n/g, '\n');
+
   return snowflake.createConnection({
     account: getRequiredEnv('SNOWFLAKE_ACCOUNT'),
     username: getRequiredEnv('SNOWFLAKE_USERNAME'),
-    password: getRequiredEnv('SNOWFLAKE_PASSWORD'),
+    authenticator: 'SNOWFLAKE_JWT',
+    privateKey,
     warehouse: getRequiredEnv('SNOWFLAKE_WAREHOUSE'),
     database: getRequiredEnv('SNOWFLAKE_DATABASE'),
     schema: getRequiredEnv('SNOWFLAKE_SCHEMA'),
+    role: getRequiredEnv('SNOWFLAKE_ROLE'),
   });
 }
 

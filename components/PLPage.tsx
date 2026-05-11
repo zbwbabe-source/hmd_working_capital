@@ -217,7 +217,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     TW_Discovery: DEFAULT_BAD_PERCENT,
   });
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
-  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(3);
+  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(4);
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
   const [showMonthly, setShowMonthly] = useState<boolean>(false);
   const [showYTD, setShowYTD] = useState<boolean>(true);
