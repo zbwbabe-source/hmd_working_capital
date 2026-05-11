@@ -218,7 +218,12 @@ export default function FinancialTable({
     const normalized = value.replace(/\r\n/g, '\n').trimEnd();
     if (!normalized) return 1;
 
-    return Math.min(Math.max(normalized.split('\n').length, 1), 12);
+    const charsPerLine = Math.max(20, Math.floor((remarksWidth - 24) / 8));
+    const rows = normalized.split('\n').reduce((total, line) => {
+      return total + Math.max(1, Math.ceil(line.length / charsPerLine));
+    }, 0);
+
+    return Math.min(Math.max(rows, 1), 12);
   };
 
   
@@ -1837,8 +1842,7 @@ export default function FinancialTable({
                       }}
                       placeholder=""
                       rows={isSingleLine ? 1 : remarkRows}
-                      wrap="off"
-                      className={`block w-full resize-none whitespace-pre rounded bg-transparent px-2 text-left text-[12px] leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLine ? 'h-[32px] min-h-[32px] overflow-hidden py-1.5' : 'overflow-hidden py-1.5'}`}
+                      className={`block w-full resize-none whitespace-pre-wrap break-words rounded bg-transparent px-2 text-left text-[12px] leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLine ? 'h-[32px] min-h-[32px] overflow-hidden py-1.5' : 'overflow-hidden py-1.5'}`}
                       style={!isSingleLine ? { minHeight: `${remarkRows * 20 + 14}px` } : undefined}
                     />
                     </div>

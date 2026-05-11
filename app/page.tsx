@@ -159,7 +159,7 @@ export default function Home() {
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('PL');
   const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
   const [wcYear, setWcYear] = useState<number>(2026);
-  const [salesYoYRate, setSalesYoYRate] = useState<number>(119);
+  const [salesYoYRate, setSalesYoYRate] = useState<number>(122);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
   const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(320);
   const [isResizingAnalysis, setIsResizingAnalysis] = useState<boolean>(false);
