@@ -618,6 +618,8 @@ export default function FinancialTable({
     return 'bg-[#edf4ff]';
   };
 
+  const yoyMetricCellClass = 'bg-[#eef1f5] italic font-normal';
+
   const comparisonColumns = useMemo(() => {
     if (!showComparisons) return [];
     
@@ -1031,6 +1033,9 @@ export default function FinancialTable({
                 const isCfRollingMetricHeader =
                   isCashFlow &&
                   (col === '26년 롤링' || col === '26 Rolling' || col === '전년대비롤링' || col === 'Rolling Prev Gap' || col === '26년 롤링 YoY' || col === '26 Rolling YoY' || col === '전월계획대비' || col === 'vs Prev Plan' || col === '전월계획대비%' || col === 'vs Prev Plan%');
+                const isCfYoYMetricHeader =
+                  isCashFlow &&
+                  (col.includes('YoY') || col.includes('전년대비') || col === '전월계획대비%' || col === 'vs Prev Plan%');
                 const isBsPrevPlanHeader =
                   isBalanceSheet &&
                   (col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs Prev Plan' || col === 'vs Prev Plan%' || col === '전월계획대비' || col === '전월계획대비%');
@@ -1060,6 +1065,7 @@ export default function FinancialTable({
                       ${isMutedHeader ? 'bg-gray-800' : ''}
                       ${isCfPlanMetricHeader ? '!bg-slate-700' : ''}
                       ${isCfRollingMetricHeader ? '!bg-blue-600' : ''}
+                      ${isCfYoYMetricHeader ? '!bg-slate-500' : ''}
                       ${isBrandCol ? 'bg-gray-700' : ''}
                       ${isBsActualMonthHeader ? '!bg-[#0f766e]' : ''}
                       ${isBsPlanMonthHeader ? '!bg-[#28456f]' : ''}
@@ -1267,10 +1273,10 @@ export default function FinancialTable({
                         <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
                         </td>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
+                        <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planYoYAmount ?? null, row.format, true, false)}
                         </td>
-                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
+                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
                           {isNetCashStrict
                             ? netCashPlanYoYLabel
                             : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
@@ -1337,10 +1343,10 @@ export default function FinancialTable({
                         <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
                         </td>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
+                        <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planYoYAmount ?? null, row.format, true, false)}
                         </td>
-                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
+                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
                           {isNetCashStrict
                             ? netCashPlanYoYLabel
                             : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
@@ -1350,10 +1356,10 @@ export default function FinancialTable({
                     <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(rollingDisplayValue) ? 'text-red-600' : ''}`}>
                       {formatValue(rollingDisplayValue ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.rollingYoYAmount) ? 'text-red-600' : ''}`}>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.rollingYoYAmount) ? 'text-red-600' : ''}`}>
                       {formatValue(row.rollingYoYAmount ?? null, row.format, true, false)}
                     </td>
-                    <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
+                    <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
                       {isNetCashStrict
                         ? netCashRollingYoYLabel
                         : ((row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined
@@ -1363,7 +1369,7 @@ export default function FinancialTable({
                     <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDelta) ? 'text-red-600' : ''}`}>
                       {formatValue(row.planDelta ?? null, row.format, true, false)}
                     </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDeltaRate) ? 'text-red-600' : ''}`}>
+                    <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.planDeltaRate) ? 'text-red-600' : ''}`}>
                       {row.planDeltaRate !== null && row.planDeltaRate !== undefined ? formatPercent(row.planDeltaRate, false, false, 0) : '-'}
                     </td>
                   </>
@@ -1385,8 +1391,7 @@ export default function FinancialTable({
                       className={`
                         border border-gray-300 px-2 py-2 text-right
                         ${isNetCashStrict ? 'text-xs' : ''}
-                        ${getHighlightClass(row.isHighlight)}
-                        ${row.isBold ? 'font-semibold' : ''}
+                        ${yoyMetricCellClass}
                         ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(effectiveValues[yoyValueIndex]) ? 'text-red-600' : '')}
                       `}
                     >
