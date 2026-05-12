@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 import PLTable from '@/components/PLTable';
 import { calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
 import { buildScenarioTreeSet, type ScenarioFactorMap } from '@/PL/src/pl/scenario';
 import type { Node } from '@/PL/src/pl/tree';
 import type { MonthKey, Source, Year } from '@/PL/src/pl/types';
+import { translateFinanceLabel } from '@/lib/translate-finance-label';
 
 const DETAIL_SOURCES: Source[] = ['HK_MLB', 'HK_Discovery', 'TW_MLB', 'TW_Discovery'];
 const ALL_SOURCES: Source[] = ['Total', ...DETAIL_SOURCES];
@@ -193,6 +195,13 @@ function buildBaseMonthTree(nodes: Node[], monthKey: MonthKey): BaseMonthTreeNod
     })),
     children: node.children ? buildBaseMonthTree(node.children, monthKey) : undefined,
   }));
+}
+
+function flattenPlNodes(nodes: Node[], depth: number = 0): Array<Node & { depth: number }> {
+  return nodes.flatMap((node) => [
+    { ...node, depth },
+    ...(node.children ? flattenPlNodes(node.children, depth + 1) : []),
+  ]);
 }
 
 interface PLPageProps {
@@ -605,20 +614,111 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     downloadJson(baseMonthExportPayload, `pl_2026_base-month_m${baseMonthIndex}.json`);
   };
 
+  const buildPlExcelRows = useCallback((source: Source, prevTree: Node[], currTree: Node[]) => {
+    const prevMap = buildNodeMap(prevTree);
+    const currentRows = flattenPlNodes(currTree);
+    const goodMap =
+      source === 'Total'
+        ? buildNodeMap(annualScenarioTrees?.total.good ?? [])
+        : buildNodeMap(annualScenarioTrees?.detail[source as keyof ScenarioFactorMap]?.good ?? []);
+    const badMap =
+      source === 'Total'
+        ? buildNodeMap(annualScenarioTrees?.total.bad ?? [])
+        : buildNodeMap(annualScenarioTrees?.detail[source as keyof ScenarioFactorMap]?.bad ?? []);
+
+    const accountKey = isEnglish ? 'Account' : '계정과목';
+    const levelKey = isEnglish ? 'Level' : '레벨';
+    const prevTotalKey = isEnglish ? '25 Total' : '25년 합계';
+    const ytdKey = isEnglish ? `26 YTD ${baseMonthIndex}M` : `26년 ${baseMonthIndex}월 YTD`;
+    const rollingKey = isEnglish ? '26 Rolling' : '26년 롤링';
+    const yoyKey = isEnglish ? '26 Rolling YoY' : '26년 롤링 YoY';
+    const goodKey = isEnglish ? `Good ${goodScenarioPercent}%` : `Good ${goodScenarioPercent}%`;
+    const badKey = isEnglish ? `Bad ${badScenarioPercent}%` : `Bad ${badScenarioPercent}%`;
+    const typeKey = isEnglish ? 'Type' : '유형';
+    const monthHeaders = Array.from({ length: 12 }, (_, i) =>
+      isEnglish ? `${i + 1}M` : `${i + 1}월`
+    );
+
+    return currentRows.map((node) => {
+      const months = getNodeMonths(node);
+      const prevMonths = getNodeMonths(prevMap.get(node.key));
+      const goodMonths = getNodeMonths(goodMap.get(node.key));
+      const badMonths = getNodeMonths(badMap.get(node.key));
+      const currentTotal = sumMonthValues(months);
+      const previousTotal = sumMonthValues(prevMonths);
+      const row: Record<string, string | number | null> = {
+        [accountKey]: `${'  '.repeat(node.depth)}${isEnglish ? translateFinanceLabel(node.label, 'short') : node.label}`,
+        [levelKey]: node.level,
+        [typeKey]: node.hasRateRow ? (isEnglish ? 'Rate' : '비율') : (isEnglish ? 'Amount' : '금액'),
+        [prevTotalKey]: previousTotal,
+      };
+
+      monthHeaders.forEach((header, index) => {
+        row[header] = months[`m${index + 1}` as MonthKey] ?? 0;
+      });
+
+      row[ytdKey] = Array.from({ length: baseMonthIndex }, (_, i) => months[`m${i + 1}` as MonthKey] ?? 0)
+        .reduce((sum, value) => sum + value, 0);
+      row[rollingKey] = currentTotal;
+      row[yoyKey] = previousTotal ? `${Math.round((currentTotal / previousTotal) * 100)}%` : null;
+      row[goodKey] = sumMonthValues(goodMonths);
+      row[badKey] = sumMonthValues(badMonths);
+
+      return row;
+    });
+  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, goodScenarioPercent, isEnglish]);
+
+  const appendPlSheet = useCallback((workbook: XLSX.WorkBook, sheetName: string, rows: Record<string, unknown>[]) => {
+    if (rows.length === 0) return;
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = Object.keys(rows[0]).map((key) => ({
+      wch: key === '계정과목' || key === 'Account' ? 34 : 14,
+    }));
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
+  }, []);
+
+  const handleExportExcel = useCallback(() => {
+    const workbook = XLSX.utils.book_new();
+    const sourceConfig: Array<{ source: Source; label: string; prev: Node[]; curr: Node[] }> = [
+      { source: 'Total', label: isEnglish ? 'PL Total' : 'PL 전체', prev: trees2025.Total, curr: trees2026.Total },
+      { source: 'HK_MLB', label: isEnglish ? 'HK MLB' : '홍콩 MLB', prev: trees2025.HK_MLB, curr: trees2026.HK_MLB },
+      { source: 'HK_Discovery', label: isEnglish ? 'HK DX' : '홍콩 DX', prev: trees2025.HK_Discovery, curr: trees2026.HK_Discovery },
+      { source: 'TW_MLB', label: isEnglish ? 'TW MLB' : '대만 MLB', prev: trees2025.TW_MLB, curr: trees2026.TW_MLB },
+      { source: 'TW_Discovery', label: isEnglish ? 'TW DX' : '대만 DX', prev: trees2025.TW_Discovery, curr: trees2026.TW_Discovery },
+    ];
+
+    sourceConfig.forEach((config) => {
+      appendPlSheet(workbook, config.label, buildPlExcelRows(config.source, config.prev, config.curr));
+    });
+
+    if (workbook.SheetNames.length === 0) {
+      alert(isEnglish ? 'No P/L data to export.' : '내보낼 PL 데이터가 없습니다.');
+      return;
+    }
+
+    XLSX.writeFile(workbook, `fnf_dashboard_pl_2026_m${baseMonthIndex}.xlsx`);
+  }, [appendPlSheet, baseMonthIndex, buildPlExcelRows, isEnglish, trees2025, trees2026]);
+
+  useEffect(() => {
+    window.addEventListener('dashboard:export-pl-excel', handleExportExcel);
+    return () => window.removeEventListener('dashboard:export-pl-excel', handleExportExcel);
+  }, [handleExportExcel]);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-300 px-6 py-4">
+      <div className="border-b border-slate-200 bg-white/80 px-6 py-4 shadow-sm">
         <div className="flex items-center justify-between gap-6">
           <div className="flex items-center gap-6">
-            <div className="flex gap-2">
+            <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1 shadow-sm">
               {years.map((year) => (
                 <button
                   key={year}
                   onClick={() => setSelectedYear(year)}
-                  className={`px-4 py-2 rounded font-medium transition-colors ${
+                  className={`inline-flex h-10 min-w-[76px] items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors ${
                     selectedYear === year
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                      ? 'border border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                      : 'border border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-white'
                   }`}
                 >
                   {isEnglish ? year : `${year}년`}
@@ -626,12 +726,12 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">{isEnglish ? 'Base Month' : '기준월'}</label>
+            <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-100 px-3 py-1 shadow-sm">
+              <label className="text-sm font-semibold text-slate-700">{isEnglish ? 'Base Month' : '기준월'}</label>
               <select
                 value={baseMonthIndex}
                 onChange={(e) => setBaseMonthIndex(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-300 rounded bg-white text-sm"
+                className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition-colors hover:bg-slate-50"
               >
                 {months.map((month) => (
                   <option key={month} value={month}>
@@ -643,6 +743,12 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
           </div>
 
           <div className="flex gap-2">
+            <button
+              onClick={handleExportExcel}
+              className="px-4 py-2 rounded font-medium border border-blue-300 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              {isEnglish ? 'Excel' : '엑셀'}
+            </button>
             <button
               onClick={handleExportBaseMonthJson}
               className="px-4 py-2 rounded font-medium border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -659,25 +765,38 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         </div>
       </div>
 
-      <div className="bg-gray-100 border-b border-gray-300 px-6 py-3">
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="border-b border-slate-200 bg-slate-50/90 px-6 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white/80 p-1 shadow-sm">
           <button
             onClick={handleToggleAll}
-            className="px-4 py-2 bg-gray-700 text-white rounded text-sm font-medium hover:bg-gray-800 transition-colors"
+            className={`inline-flex h-10 min-w-[112px] items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors ${
+              !isExpandedAll
+                ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                : 'border-transparent bg-slate-700 text-white hover:bg-slate-800'
+            }`}
           >
             {isExpandedAll ? (isEnglish ? 'Collapse ▲' : '접기 ▲') : (isEnglish ? 'Expand ▼' : '펼치기 ▼')}
           </button>
 
           <button
             onClick={() => setShowMonthly((prev) => !prev)}
-            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-100 transition-colors"
+            className={`inline-flex h-10 min-w-[142px] items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors ${
+              showMonthly
+                ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
+            }`}
           >
             {isEnglish ? `Mo. ${showMonthly ? 'Hide ◀' : 'Show ▶'}` : `월별 데이터 ${showMonthly ? '접기 ◀' : '펼치기 ▶'}`}
           </button>
 
           <button
             onClick={() => setShowYTD((prev) => !prev)}
-            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-100 transition-colors"
+            className={`inline-flex h-10 min-w-[116px] items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors ${
+              showYTD
+                ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
+            }`}
           >
             {showYTD ? (isEnglish ? 'Hide YTD' : 'YTD 숨기기 (현재 전체보기)') : (isEnglish ? 'Show YTD' : 'YTD 보기 (현재 전체보기)')}
           </button>
@@ -692,10 +811,15 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
                 return next;
               })
             }
-            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-100 transition-colors"
+            className={`inline-flex h-10 min-w-[122px] items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors ${
+              showAnnualOnly
+                ? 'border-slate-300 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.12)]'
+                : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
+            }`}
           >
             {showAnnualOnly ? (isEnglish ? 'Show Full View' : '전체 보기') : (isEnglish ? 'Annual Only' : '연간만 보기')}
           </button>
+          </div>
 
           <a
             href="https://hmdstoretrend.vercel.app/"

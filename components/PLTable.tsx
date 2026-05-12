@@ -38,6 +38,23 @@ const DETAIL_COLUMNS: Array<{ source: DetailSource; label: string }> = [
   { source: 'TW_Discovery', label: '대만 DX' },
 ];
 
+function ChevronRightIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className={`h-4 w-4 flex-shrink-0 text-slate-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 5l5 5-5 5" />
+    </svg>
+  );
+}
+
 const PL_LABELS_EN: Record<string, string> = {
   매출: 'Sales',
   실판매출: 'Sell-out',
@@ -748,13 +765,16 @@ export default function PLTable({
                   <div className="flex items-center gap-2">
                     {hasChildren ? (
                       <button
+                        type="button"
+                        aria-label={isExpanded ? (isEnglish ? 'Collapse row' : '행 접기') : (isEnglish ? 'Expand row' : '행 펼치기')}
+                        aria-expanded={isExpanded}
                         onClick={() => onToggleNode(key)}
-                        className="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-gray-900"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-slate-900"
                       >
-                        {isExpanded ? '▼' : '▶'}
+                        <ChevronRightIcon open={isExpanded} />
                       </button>
                     ) : (
-                      <span className="w-5" />
+                      <span className="inline-block h-6 w-6" />
                     )}
                     <span className={depth <= 2 ? 'font-semibold' : ''}>{translatePlLabel(node.label, locale)}</span>
                   </div>

@@ -255,14 +255,55 @@ export default function Home() {
   const translateDashboardRemark = (value: string) => {
     if (!isEnglish || !value) return value;
     return value
+      .replace(
+        /계획비 재고입고 동일\(3\.1m\), 계획비 매출감소로 출고 △1\.1m/g,
+        'vs plan inventory inbound same (3.1m), vs plan sales decrease reduced outbound by △1.1m',
+      )
+      .replace(
+        /계획비 재고입고 △1\.9m\(전월계획비 \+4\.6m\), 계획비 매출증가로 출고 \+3\.1m/g,
+        'vs plan inventory inbound △1.9m (previous plan +4.6m), vs plan sales increase drove outbound +3.1m',
+      )
+      .replace(
+        /전월 당월 컷오프 1일로 동일/g,
+        'previous month and current month cutoff are both 1 day',
+      )
+      .replace(
+        /계획대비 매출 0\.3m 감소로 매출채권 감소/g,
+        'vs plan sales decreased by 0.3m, reducing accounts receivable',
+      )
+      .replace(
+        /계획비 입고동일\(3\.1m\), 당월 계획비 상환 \+1\.3m/g,
+        'vs plan inbound same (3.1m), current month vs plan repayment +1.3m',
+      )
+      .replace(
+        /계획비 입고감소로 채무 △1\.9m, 계획비 상환 \+1\.3m/g,
+        'vs plan inbound decrease reduced payables by △1.9m, vs plan repayment +1.3m',
+      )
+      .replace(/홍콩 매장 2개 오픈 \(리테일1, 아울렛1\)/g, 'Hong Kong 2 store openings (Retail 1, Outlet 1)')
+      .replace(/매출 수금증가/g, 'sales collection increase')
+      .replace(/연간매출/g, 'annual sales')
+      .replace(/계획대비/g, 'vs plan')
+      .replace(/입고동일/g, 'inbound same')
+      .replace(/입고감소/g, 'inbound decrease')
+      .replace(/8개월/g, '8 months')
+      .replace(/5개월/g, '5 months')
+      .replace(/1.5개월/g, '1.5 months')
+      .replace(/4개월/g, '4 months')
+      .replace(/연말/g, 'year-end')
+      .replace(/전체평균/g, 'average')
+      .replace(/리테일/g, 'Retail')
+      .replace(/아울렛/g, 'Outlet')
       .replace(/홍콩/g, 'Hong Kong')
       .replace(/대만/g, 'Taiwan')
-      .replace(/계획비/g, 'vs plan')
       .replace(/전월계획비/g, 'vs previous plan')
+      .replace(/계획비/g, 'vs plan')
       .replace(/전월/g, 'previous month')
       .replace(/당월/g, 'current month')
       .replace(/컷오프/g, 'cutoff')
       .replace(/동일/g, 'same')
+      .replace(/(\d+)일로/g, '$1-day ')
+      .replace(/감소로/g, 'decrease, ')
+      .replace(/증가로/g, 'increase, ')
       .replace(/입고감소/g, 'inbound decrease')
       .replace(/입고증가/g, 'inbound increase')
       .replace(/재고입고/g, 'inventory inbound')
@@ -1812,7 +1853,17 @@ export default function Home() {
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
   };
 
-  const exportDashboardExcel = (target: 'all' | 'bs' | 'cf' | 'wc' | 'monthlyWc') => {
+  const exportDashboardExcel = (target: 'all' | 'bs' | 'pl' | 'cf' | 'wc' | 'monthlyWc') => {
+    if (target === 'pl') {
+      setIsExportMenuOpen(false);
+      if (effectiveView !== 'PL') {
+        alert(isEnglish ? 'Open the Profit & Loss tab first, then export P/L.' : '손익(PL) 탭을 연 뒤 PL을 다운로드해주세요.');
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('dashboard:export-pl-excel'));
+      return;
+    }
+
     const workbook = XLSX.utils.book_new();
 
     if (target === 'all' || target === 'cf') {
@@ -1906,6 +1957,7 @@ export default function Home() {
                     { label: isEnglish ? 'All sheets' : '전체 항목', target: 'all' as const },
                     { label: isEnglish ? 'Cash Flow' : '현금흐름표', target: 'cf' as const },
                     { label: isEnglish ? 'Working Capital' : '운전자본표', target: 'wc' as const },
+                    { label: isEnglish ? 'Profit & Loss' : '손익(PL)', target: 'pl' as const },
                     { label: isEnglish ? 'Balance Sheet' : '재무상태(BS)', target: 'bs' as const },
                     { label: isEnglish ? 'Monthly WC' : '당월 운전자본', target: 'monthlyWc' as const },
                   ].map((item) => (
