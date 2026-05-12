@@ -145,7 +145,71 @@ export default function FinancialTable({
 
   const translateAccountLabel = (label: string) => {
     if (!isEnglish) return label;
-    return translateFinanceLabel(label, 'full');
+    const translated = translateFinanceLabel(label, 'full');
+    if (translated !== label) return translated;
+
+    const fallbackMap: Record<string, string> = {
+      영업활동: 'Operating Activities',
+      입금: 'Receipts',
+      매출수금: 'Sales Receipts',
+      지출: 'Outflows',
+      비용: 'Expenses',
+      기타: 'Other',
+      자산성지출: 'Capex',
+      순현금흐름: 'Net Cash Flow',
+      현금잔액: 'Cash Balance',
+      잔액: 'Balance',
+      기말잔액: 'Ending Balance',
+      홍콩마카오: 'Hong Kong & Macau',
+      대만: 'Taiwan',
+      물품대: 'Merchandise Payment',
+      매장임차료: 'Store Rent',
+      재고자산: 'Inventory',
+      매출채권: 'Accounts Receivable',
+      매입채무: 'Accounts Payable',
+      운전자본합계: 'Working Capital Total',
+      '운전자본 합계': 'Working Capital Total',
+      전월대비: 'MoM',
+      전년대비: 'YoY',
+    };
+
+    return fallbackMap[label] ?? label;
+  };
+
+  const translateRemarkText = (value: string) => {
+    if (!isEnglish || !value) return value;
+
+    return value
+      .replace(/입금증가/g, 'Receipts increase')
+      .replace(/지출증가/g, 'Outflows increase')
+      .replace(/물품대/g, 'Merchandise payment')
+      .replace(/추가상환/g, 'additional repayment')
+      .replace(/매장임차료/g, 'store rent')
+      .replace(/리뉴얼/g, 'renewal')
+      .replace(/홍콩/g, 'Hong Kong')
+      .replace(/대만/g, 'Taiwan')
+      .replace(/하반기/g, '2H')
+      .replace(/매장 오픈/g, 'store openings')
+      .replace(/개 반영/g, ' reflected')
+      .replace(/매출 수금증가/g, 'sales collection increase')
+      .replace(/연간매출/g, 'annual sales')
+      .replace(/신규점/g, 'new stores')
+      .replace(/영업활동/g, 'Operating Activities')
+      .replace(/상향조정/g, 'upward adjustment')
+      .replace(/감소/g, 'decrease')
+      .replace(/증가/g, 'increase')
+      .replace(/계획비/g, 'vs plan')
+      .replace(/전월계획비/g, 'vs previous plan')
+      .replace(/전월/g, 'previous month')
+      .replace(/당월/g, 'current month')
+      .replace(/합계/g, 'total')
+      .replace(/상환/g, 'repayment')
+      .replace(/입고/g, 'inbound')
+      .replace(/출고/g, 'outbound')
+      .replace(/매출/g, 'sales')
+      .replace(/재고/g, 'inventory')
+      .replace(/채무/g, 'payables')
+      .replace(/채권/g, 'receivables');
   };
 
   const translateColumnLabel = (label: string) => {
@@ -1410,23 +1474,26 @@ export default function FinancialTable({
                       // 컬럼명에 따라 적절한 values 인덱스 매핑
                       let valueIndex = -1;
                       const normalizedCol = col.replace(/\s+/g, '');
+                      const normalizedColLower = normalizedCol.toLowerCase();
 
-                      if (/^24년?\((기말|말)\)$/.test(normalizedCol) || normalizedCol === '24년기말' || normalizedCol === '24년말') {
+                      if (/^24년?\((기말|말)\)$/.test(normalizedCol) || normalizedCol === '24년기말' || normalizedCol === '24년말' || normalizedColLower === '24year-end') {
                         valueIndex = 0;
-                      } else if (/^25년?\((기말|말)\)$/.test(normalizedCol) || normalizedCol === '25년기말' || normalizedCol === '25년말') {
+                      } else if (/^25년?\((기말|말)\)$/.test(normalizedCol) || normalizedCol === '25년기말' || normalizedCol === '25년말' || normalizedColLower === '25year-end') {
                         valueIndex = 1;
                       } else {
                         const reportMonthMatch = normalizedCol.match(/^26년?\((\d+)월\)$/);
                         const monthOnlyMatch = normalizedCol.match(/^(\d+)월$/);
                         if (reportMonthMatch) {
                           valueIndex = parseInt(reportMonthMatch[1], 10) + 1;
-                        } else if (normalizedCol === '26년말전월계획' || normalizedCol === '26prevplan') {
+                        } else if (normalizedColLower === '26(apr)') {
+                          valueIndex = 5;
+                        } else if (normalizedCol === '26년말전월계획' || normalizedColLower === '26prevplan') {
                           valueIndex = 15;
-                        } else if (normalizedCol === '전월계획대비' || normalizedCol === 'vsprevplan') {
+                        } else if (normalizedCol === '전월계획대비' || normalizedColLower === 'vsprevplan') {
                           valueIndex = 16;
-                        } else if (normalizedCol === '전월계획대비%' || normalizedCol === 'vsprevplan%') {
+                        } else if (normalizedCol === '전월계획대비%' || normalizedColLower === 'vsprevplan%') {
                           valueIndex = 17;
-                        } else if (/^26년?(롤링|\((기말|말)\)|기말|말)$/.test(normalizedCol)) {
+                        } else if (/^26년?(롤링|\((기말|말)\)|기말|말)$/.test(normalizedCol) || normalizedColLower === '26rolling') {
                           valueIndex = 13;
                         } else if (normalizedCol === 'YoY' || /^YoY\(/.test(normalizedCol)) {
                           valueIndex = 14;
@@ -1822,7 +1889,8 @@ export default function FinancialTable({
                 {/* 비고 열 */}
                 {showRemarks && (() => {
                   const remarkValue = getRemarkValue(row.account, remarkKey);
-                  const remarkRows = getRemarkRows(remarkValue);
+                  const displayRemarkValue = translateRemarkText(remarkValue);
+                  const remarkRows = getRemarkRows(displayRemarkValue);
                   const isSingleLine = isSingleLineRemark(remarkValue) && remarkRows === 1;
 
                   return (
@@ -1832,7 +1900,7 @@ export default function FinancialTable({
                   >
                     <div className={`px-3 ${isSingleLine ? 'flex min-h-[72px] items-center' : 'py-2.5'}`}>
                     <textarea
-                      value={remarkValue}
+                      value={displayRemarkValue}
                       onChange={(e) =>
                         setDraftRemarks(prev => ({
                           ...prev,

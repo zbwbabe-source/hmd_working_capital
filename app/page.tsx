@@ -7,6 +7,7 @@ import FinancialTable from '@/components/FinancialTable';
 import EditableAnalysis from '@/components/EditableAnalysis';
 import PLPage from '@/components/PLPage';
 import InventoryPage from '@/components/InventoryPage';
+import * as XLSX from 'xlsx';
 import { TableRow, TabType } from '@/lib/types';
 import {
   analyzeCashFlowData,
@@ -163,6 +164,7 @@ export default function Home() {
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
   const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(320);
   const [isResizingAnalysis, setIsResizingAnalysis] = useState<boolean>(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
   const analysisResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [wcAllRowsCollapsed, setWcAllRowsCollapsed] = useState<boolean>(true);
   const [wcStatementAllRowsCollapsed, setWcStatementAllRowsCollapsed] = useState<boolean>(true);
@@ -210,6 +212,70 @@ export default function Home() {
   const toggleMonthlyLabel = (collapsed: boolean) => (collapsed ? (isEnglish ? 'Show Mo. ▶' : '월별 데이터 펼치기 ▶') : (isEnglish ? 'Hide Mo. ◀' : '월별 데이터 접기 ◀'));
   const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const formatDelta = (value: number) => `${value >= 0 ? '+' : '△'}${formatNumber(Math.abs(value))}`;
+  const translateMonthlyWcLabel = (label: string) => {
+    if (!isEnglish) return label;
+    const map: Record<string, string> = {
+      재고자산: 'Inventory',
+      매출채권: 'Accounts Receivable',
+      매입채무: 'Accounts Payable',
+      '운전자본 합계': 'Working Capital Total',
+      합계: 'Total',
+    };
+    return map[label] ?? label;
+  };
+  const translateExportAccount = (label: string) => {
+    if (!isEnglish) return label;
+    const map: Record<string, string> = {
+      영업활동: 'Operating Activities',
+      입금: 'Receipts',
+      매출수금: 'Sales Receipts',
+      지출: 'Outflows',
+      비용: 'Expenses',
+      기타: 'Other',
+      자산성지출: 'Capex',
+      순현금흐름: 'Net Cash Flow',
+      현금잔액: 'Cash Balance',
+      잔액: 'Balance',
+      기말잔액: 'Ending Balance',
+      홍콩마카오: 'Hong Kong & Macau',
+      대만: 'Taiwan',
+      물품대: 'Merchandise Payment',
+      매장임차료: 'Store Rent',
+      재고자산: 'Inventory',
+      매출채권: 'Accounts Receivable',
+      매입채무: 'Accounts Payable',
+      운전자본합계: 'Working Capital Total',
+      '운전자본 합계': 'Working Capital Total',
+      전월대비: 'MoM',
+      전년대비: 'YoY',
+      합계: 'Total',
+    };
+    return map[label] ?? translateMonthlyWcLabel(label);
+  };
+  const translateDashboardRemark = (value: string) => {
+    if (!isEnglish || !value) return value;
+    return value
+      .replace(/홍콩/g, 'Hong Kong')
+      .replace(/대만/g, 'Taiwan')
+      .replace(/계획비/g, 'vs plan')
+      .replace(/전월계획비/g, 'vs previous plan')
+      .replace(/전월/g, 'previous month')
+      .replace(/당월/g, 'current month')
+      .replace(/컷오프/g, 'cutoff')
+      .replace(/동일/g, 'same')
+      .replace(/입고감소/g, 'inbound decrease')
+      .replace(/입고증가/g, 'inbound increase')
+      .replace(/재고입고/g, 'inventory inbound')
+      .replace(/매출감소/g, 'sales decrease')
+      .replace(/매출증가/g, 'sales increase')
+      .replace(/매출채권/g, 'accounts receivable')
+      .replace(/감소/g, 'decrease')
+      .replace(/증가/g, 'increase')
+      .replace(/출고/g, 'outbound')
+      .replace(/채무/g, 'payables')
+      .replace(/상환/g, 'repayment')
+      .replace(/합계/g, 'total');
+  };
   const isPayableLabel = (label: string) => label === '매입채무';
   const formatMonthlyWcAmount = (label: string, value: number) =>
     isPayableLabel(label) ? `(${formatNumber(Math.abs(value))})` : formatNumber(value);
@@ -288,12 +354,12 @@ export default function Home() {
                     <div>{section.currencyLabel}</div>
                   </td>
                 )}
-                <td className="border border-gray-300 px-3 py-2 font-medium text-gray-800">{item.label}</td>
+                <td className="border border-gray-300 px-3 py-2 font-medium text-gray-800">{translateMonthlyWcLabel(item.label)}</td>
                 <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.previous)}</td>
                 <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.plan)}</td>
                 <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.current)}</td>
                 <td className={`border border-gray-300 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
-                <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
+                <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{translateDashboardRemark(item.remark)}</td>
               </tr>
             ))}
             <tr className="bg-[#f2f2f2] font-semibold text-gray-900">
@@ -349,12 +415,12 @@ export default function Home() {
             <tbody>
               {monthlyWcCombinedItems.map((item) => (
                 <tr key={`combined-${item.label}`} className="bg-[#d9edf9] text-gray-900">
-                  <td className="border border-gray-300 px-3 py-2 font-medium">{item.label}</td>
+                  <td className="border border-gray-300 px-3 py-2 font-medium">{translateMonthlyWcLabel(item.label)}</td>
                   <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.previous)}</td>
                   <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.plan)}</td>
                   <td className={`border border-gray-300 px-3 py-2 text-right ${getMonthlyWcAmountClass(item.label)}`}>{formatMonthlyWcAmount(item.label, item.current)}</td>
                   <td className={`border border-gray-300 px-3 py-2 text-right ${item.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(item.delta)}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{item.remark}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">{translateDashboardRemark(item.remark)}</td>
                 </tr>
               ))}
               <tr className="bg-[#fbf6dd] font-semibold text-gray-900">
@@ -364,7 +430,7 @@ export default function Home() {
                 <td className="border border-gray-300 px-3 py-2 text-right">{formatNumber(monthlyWcCombined.current)}</td>
                 <td className={`border border-gray-300 px-3 py-2 text-right ${monthlyWcCombined.delta >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatDelta(monthlyWcCombined.delta)}</td>
                 <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">
-                  홍콩 합계 {hkMonthlyWcTotal.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(hkMonthlyWcTotal.delta))} / 대만 합계 {twMonthlyWcTotal.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(twMonthlyWcTotal.delta))}
+                  {isEnglish ? 'Hong Kong total' : '홍콩 합계'} {hkMonthlyWcTotal.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(hkMonthlyWcTotal.delta))} / {isEnglish ? 'Taiwan total' : '대만 합계'} {twMonthlyWcTotal.delta >= 0 ? '+' : '△'}{formatNumber(Math.abs(twMonthlyWcTotal.delta))}
                 </td>
               </tr>
             </tbody>
@@ -1645,6 +1711,133 @@ export default function Home() {
     return { cfAnalysis, wcAnalysis, insights, cfoQA };
   }, [cfDataForView, wcStatementDataForView, wcYear]);
 
+  const buildMetricExportRows = (rows: TableRow[] | null, remarks: Map<string, string>) => {
+    if (!rows) return [];
+
+    return rows.map((row) => {
+      const previous = row.year2024Value ?? row.values[1] ?? null;
+      const plan = row.planValue ?? null;
+      const rolling = row.rollingValue ?? row.values[12] ?? null;
+      const accountKey = isEnglish ? 'Account' : '계정과목';
+      const previousKey = isEnglish ? '25 Total' : '25년';
+      const planKey = isEnglish ? '26 Prev Plan' : '26년 전월계획';
+      const planGapKey = isEnglish ? 'Prev Gap Plan' : '전년대비 전월계획';
+      const planYoYKey = isEnglish ? '26 Prev Plan YoY' : '26년 전월계획 YoY';
+      const rollingKey = isEnglish ? '26 Rolling' : '26년 롤링';
+      const rollingGapKey = isEnglish ? 'Prev Gap Rolling' : '전년대비 롤링';
+      const rollingYoYKey = isEnglish ? '26 Rolling YoY' : '26년 롤링 YoY';
+      const deltaKey = isEnglish ? 'vs Prev Plan' : '전월계획대비';
+      const deltaRateKey = isEnglish ? 'vs Prev Plan%' : '전월계획대비%';
+      const remarksKey = isEnglish ? 'Remarks' : '비고';
+
+      return {
+        [accountKey]: `${'  '.repeat(Math.max(0, row.level))}${translateExportAccount(row.account)}`,
+        [previousKey]: previous,
+        [planKey]: plan,
+        [planGapKey]: row.planYoYAmount ?? null,
+        [planYoYKey]: row.planYoY !== null && row.planYoY !== undefined ? `${Math.round(row.planYoY * 100)}%` : null,
+        [rollingKey]: rolling,
+        [rollingGapKey]: row.rollingYoYAmount ?? null,
+        [rollingYoYKey]: row.rollingYoY !== null && row.rollingYoY !== undefined ? `${Math.round(row.rollingYoY * 100)}%` : null,
+        [deltaKey]: row.planDelta ?? null,
+        [deltaRateKey]: row.planDeltaRate !== null && row.planDeltaRate !== undefined ? `${Math.round(row.planDeltaRate * 100)}%` : null,
+        [remarksKey]: translateDashboardRemark(remarks.get(row.account) ?? ''),
+      };
+    });
+  };
+
+  const buildMonthlyWcExportRows = () => {
+    const toRow = (section: string, item: MonthlyWcItem) => ({
+      [isEnglish ? 'Division' : '구분']: section,
+      [isEnglish ? 'Account' : '계정과목']: translateMonthlyWcLabel(item.label),
+      [isEnglish ? 'Prev.' : '전월']: getSignedMonthlyWcValue(item.label, item.previous),
+      [isEnglish ? 'Plan' : '계획']: getSignedMonthlyWcValue(item.label, item.plan),
+      [isEnglish ? 'Current' : '당월']: getSignedMonthlyWcValue(item.label, item.current),
+      [isEnglish ? 'vs Plan' : '계획비']: item.delta,
+      [isEnglish ? 'Remarks' : '비고']: translateDashboardRemark(item.remark),
+    });
+
+    const combinedRows = monthlyWcCombinedItems.map((item) => toRow(isEnglish ? 'Hong Kong + Taiwan' : '홍콩+대만', item));
+    const hkRows = MONTHLY_WC_SECTIONS.HK.items.map((item) => toRow('HKMC HKD', item));
+    const twRows = MONTHLY_WC_SECTIONS.TW.items.map((item) => toRow('TW HKD', item));
+    const divisionKey = isEnglish ? 'Division' : '구분';
+    const accountKey = isEnglish ? 'Account' : '계정과목';
+    const previousKey = isEnglish ? 'Prev.' : '전월';
+    const planKey = isEnglish ? 'Plan' : '계획';
+    const currentKey = isEnglish ? 'Current' : '당월';
+    const deltaKey = isEnglish ? 'vs Plan' : '계획비';
+    const remarksKey = isEnglish ? 'Remarks' : '비고';
+
+    return [
+      ...combinedRows,
+      {
+        [divisionKey]: isEnglish ? 'Hong Kong + Taiwan' : '홍콩+대만',
+        [accountKey]: isEnglish ? 'Working Capital Total' : '운전자본 합계',
+        [previousKey]: monthlyWcCombined.previous,
+        [planKey]: monthlyWcCombined.plan,
+        [currentKey]: monthlyWcCombined.current,
+        [deltaKey]: monthlyWcCombined.delta,
+        [remarksKey]: `${isEnglish ? 'Hong Kong total' : '홍콩 합계'} ${formatDelta(hkMonthlyWcTotal.delta)} / ${isEnglish ? 'Taiwan total' : '대만 합계'} ${formatDelta(twMonthlyWcTotal.delta)}`,
+      },
+      ...hkRows,
+      {
+        [divisionKey]: 'HKMC HKD',
+        [accountKey]: isEnglish ? 'Total' : '합계',
+        [previousKey]: hkMonthlyWcTotal.previous,
+        [planKey]: hkMonthlyWcTotal.plan,
+        [currentKey]: hkMonthlyWcTotal.current,
+        [deltaKey]: hkMonthlyWcTotal.delta,
+        [remarksKey]: '',
+      },
+      ...twRows,
+      {
+        [divisionKey]: 'TW HKD',
+        [accountKey]: isEnglish ? 'Total' : '합계',
+        [previousKey]: twMonthlyWcTotal.previous,
+        [planKey]: twMonthlyWcTotal.plan,
+        [currentKey]: twMonthlyWcTotal.current,
+        [deltaKey]: twMonthlyWcTotal.delta,
+        [remarksKey]: '',
+      },
+    ];
+  };
+
+  const appendJsonSheet = (workbook: XLSX.WorkBook, sheetName: string, rows: Record<string, unknown>[]) => {
+    if (rows.length === 0) return;
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = Object.keys(rows[0]).map((key) => ({
+      wch: key === '계정과목' || key === 'Account' ? 28 : key === '비고' || key === 'Remarks' ? 56 : 14,
+    }));
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
+  };
+
+  const exportDashboardExcel = (target: 'all' | 'bs' | 'cf' | 'wc' | 'monthlyWc') => {
+    const workbook = XLSX.utils.book_new();
+
+    if (target === 'all' || target === 'cf') {
+      appendJsonSheet(workbook, isEnglish ? 'Cash Flow' : '현금흐름표', buildMetricExportRows(withPlanMetrics.cf, cfRemarks));
+    }
+    if (target === 'all' || target === 'wc') {
+      appendJsonSheet(workbook, isEnglish ? 'Working Capital' : '운전자본표', buildMetricExportRows(withPlanMetrics.wc, wcRemarks));
+    }
+    if (target === 'all' || target === 'bs') {
+      appendJsonSheet(workbook, isEnglish ? 'Balance Sheet' : '재무상태', buildMetricExportRows(withPlanMetrics.bs, bsRemarks));
+    }
+    if (target === 'all' || target === 'monthlyWc') {
+      appendJsonSheet(workbook, isEnglish ? 'Monthly WC' : '당월운전자본', buildMonthlyWcExportRows());
+    }
+
+    if (workbook.SheetNames.length === 0) {
+      alert(isEnglish ? 'No data to export.' : '내보낼 데이터가 없습니다.');
+      return;
+    }
+
+    setIsExportMenuOpen(false);
+    const targetLabel = target === 'all' ? 'all' : target;
+    XLSX.writeFile(workbook, `fnf_dashboard_${targetLabel}_${wcYear}_${salesYoYRate}pct.xlsx`);
+  };
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f7f9fc_42%,#edf2f7_100%)]">
       {/* 상단 탭 */}
@@ -1698,6 +1891,35 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white/90">
               {basisLabel}
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/18"
+              >
+                Excel ▾
+              </button>
+              {isExportMenuOpen && (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-[70] w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-xl">
+                  {[
+                    { label: isEnglish ? 'All sheets' : '전체 항목', target: 'all' as const },
+                    { label: isEnglish ? 'Cash Flow' : '현금흐름표', target: 'cf' as const },
+                    { label: isEnglish ? 'Working Capital' : '운전자본표', target: 'wc' as const },
+                    { label: isEnglish ? 'Balance Sheet' : '재무상태(BS)', target: 'bs' as const },
+                    { label: isEnglish ? 'Monthly WC' : '당월 운전자본', target: 'monthlyWc' as const },
+                  ].map((item) => (
+                    <button
+                      key={item.target}
+                      type="button"
+                      onClick={() => exportDashboardExcel(item.target)}
+                      className="block w-full px-4 py-2 text-left font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               onClick={() => setReportMode('FUND_MONTHLY')}
