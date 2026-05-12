@@ -676,6 +676,18 @@ export default function FinancialTable({
     return '';
   };
 
+  const getPlanDeltaRateValue = (ratio: number | null | undefined) =>
+    ratio === null || ratio === undefined || isNaN(ratio) || !isFinite(ratio) ? null : ratio - 1;
+
+  const formatPlanDeltaRate = (ratio: number | null | undefined) => {
+    const deltaRate = getPlanDeltaRateValue(ratio);
+    if (deltaRate === null) return '-';
+    const absValue = Math.abs(deltaRate * 100).toFixed(1);
+    if (deltaRate > 0) return `+${absValue}%`;
+    if (deltaRate < 0) return `△${absValue}%`;
+    return '+0.0%';
+  };
+
   // 배경색 클래스
   const getHighlightClass = (highlight?: 'sky' | 'yellow' | 'gray' | 'darkGray' | 'none') => {
     if (highlight === 'sky') return 'bg-highlight-sky';
@@ -699,6 +711,24 @@ export default function FinancialTable({
     }
     if (normalized === '대차검증' || normalized === 'balancecheck') {
       return 'bg-[var(--bs-balance-check)]';
+    }
+    if (normalized === '영업활동' || normalized === 'operatingactivities') {
+      return '[&>td]:!bg-[#eaf5fb]';
+    }
+    if (normalized === '자산성지출' || normalized === 'capex') {
+      return '[&>td]:!bg-[#faeef4]';
+    }
+    if (normalized === 'from차입금' || normalized === '차입금' || normalized === 'borrowings') {
+      return '[&>td]:!bg-[#e6f8f1]';
+    }
+    if (normalized === '기타수익' || normalized === '기타' || normalized === 'otherincome' || normalized === 'other') {
+      return '[&>td]:!bg-[#fffdea]';
+    }
+    if (normalized === 'netcash' || normalized === '순현금흐름' || normalized === 'netcashflow') {
+      return '[&>td]:!bg-[#f1f3f6]';
+    }
+    if (normalized === '현금잔액' || normalized === 'cashbalance') {
+      return '[&>td]:!bg-[#eaf5fb]';
     }
 
     return '';
@@ -794,15 +824,13 @@ export default function FinancialTable({
         if (monthsCollapsed) {
           return [
             ...accountCol,
-            `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
-            `${currentYearShort}${isEnglish ? ' Prev Plan' : '년 전월계획'}`,
-            isEnglish ? 'Prev Gap Plan' : '전년대비 전월계획',
-            isEnglish ? `${currentYearShort} Prev Plan YoY` : `${currentYearShort}년 전월계획 YoY`,
-            `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(rollingLabel)}` : `년 ${rollingLabel}`}`,
-            isEnglish ? 'Rolling Prev Gap' : '전년대비롤링',
-            isEnglish ? `${currentYearShort} Rolling YoY` : `${currentYearShort}년 롤링 YoY`,
-            isEnglish ? 'vs Prev Plan' : '전월계획대비',
-            isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
+            `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년(${valueLabel})`}`,
+            `${currentYearShort}${isEnglish ? ' Plan (N-1)' : '년계획(N-1)'}`,
+            isEnglish ? 'Plan - Prev Year' : '계획-전년',
+            `${currentYear}${isEnglish ? ' Forecast Total' : '년합계'}`,
+            isEnglish ? 'vs Prev Year' : '전년비',
+            isEnglish ? 'vs Plan' : '계획 대비',
+            isEnglish ? 'vs Plan%' : '계획 대비%',
           ];
         }
 
@@ -1011,6 +1039,10 @@ export default function FinancialTable({
       return columns;
     }
   }, [columns, showComparisons, monthsCollapsed, comparisonColumns, isBalanceSheet, isCashFlow, shouldShowPlanMetrics, showBrandBreakdown, brandMonthCollapsed, brandYtdCollapsed, brandAnnualCollapsed, hideYtd, currentYear, isEnglish]);
+  const isCashFlowPlanMetricSummary = isCashFlow && shouldShowPlanMetrics && monthsCollapsed;
+  const denseBody = isCashFlowPlanMetricSummary;
+  const bodyCellClass = denseBody ? 'px-3 py-1.5' : 'px-4 py-2';
+  const bodyNarrowCellClass = denseBody ? 'px-2 py-1.5' : 'px-2 py-2';
 
   return (
     <div>
@@ -1066,6 +1098,65 @@ export default function FinancialTable({
           } : undefined}
         >
           <thead className="sticky top-0 z-30 bg-[var(--dashboard-navy)] text-white">
+            {isCashFlowPlanMetricSummary ? (
+              <>
+                <tr>
+                  <th
+                    rowSpan={2}
+                    className="sticky left-0 top-0 z-40 min-w-[220px] border border-gray-300 bg-navy px-5 py-4 text-left text-base font-extrabold text-white"
+                    style={compactLayout ? { width: '220px', minWidth: '220px' } : undefined}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isEnglish ? 'CF Stmt.' : '현금흐름표'}
+                      <ChevronRightIcon open={false} />
+                    </span>
+                  </th>
+                  <th
+                    rowSpan={2}
+                    className="border border-gray-300 bg-navy px-4 py-4 text-center text-base font-extrabold text-white"
+                  >
+                    {isEnglish ? '2025 Total' : '2025년(합계)'}
+                  </th>
+                  <th
+                    colSpan={2}
+                    className="border border-gray-300 bg-slate-500 px-4 py-3 text-center text-base font-extrabold text-white"
+                  >
+                    {isEnglish ? 'Prev Plan' : '전월계획'}
+                  </th>
+                  <th
+                    colSpan={4}
+                    className="border border-gray-300 bg-navy-light px-4 py-3 text-center text-base font-extrabold text-white"
+                  >
+                    {isEnglish ? '2026 Forecast' : '2026년(예상)'}
+                  </th>
+                  {showRemarks && (
+                    <th
+                      rowSpan={2}
+                      className="border border-gray-300 bg-navy px-4 py-3 text-center text-[13px] font-semibold text-white"
+                      style={{ width: remarksColumnWidth, minWidth: remarksColumnWidth, maxWidth: remarksColumnWidth }}
+                    >
+                      {uiText.remarks}
+                    </th>
+                  )}
+                </tr>
+                <tr>
+                  {displayColumns.slice(2).map((col, index) => {
+                    const isPrevPlanGroup = index < 2;
+                    const isRateCol = col.includes('%') || col.includes('비%');
+                    return (
+                      <th
+                        key={col}
+                        className={`border border-gray-300 px-4 py-3 text-center text-[13px] font-extrabold leading-tight text-white ${
+                          isPrevPlanGroup ? 'bg-slate-500' : isRateCol ? 'bg-slate-600' : 'bg-navy-light'
+                        }`}
+                      >
+                        {formatHeaderLabel(translateColumnLabel(col))}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </>
+            ) : (
             <tr>
               {displayColumns.map((col, index) => {
                 const isAccountCol = index === 0;
@@ -1207,6 +1298,7 @@ export default function FinancialTable({
                 </th>
               )}
             </tr>
+            )}
           </thead>
           <tbody>
             {visibleRows.map((row, rowIndex) => {
@@ -1265,7 +1357,7 @@ export default function FinancialTable({
                 {/* 계정과목 열 (고정) */}
                 <td
                   className={`
-                    border border-gray-300 px-4 py-2 sticky left-0 z-20
+                    border border-gray-300 ${bodyCellClass} sticky left-0 z-20
                     ${getHighlightClass(row.isHighlight)}
                     ${rowToneClass}
                     ${(!rowToneClass && (!row.isHighlight || row.isHighlight === 'none')) ? 'bg-white' : ''}
@@ -1315,7 +1407,7 @@ export default function FinancialTable({
                     {currentYear === 2025 && (
                       <td
                         className={`
-                          border border-gray-300 px-4 py-2 text-right
+                          border border-gray-300 ${bodyCellClass} text-right
                           ${getHighlightClass(row.isHighlight)}
                           ${row.isBold ? 'font-semibold' : ''}
                           ${isNegative(row.year2023Value ?? null) ? 'text-red-600' : ''}
@@ -1340,7 +1432,7 @@ export default function FinancialTable({
                         <>
                           <td
                             className={`
-                              border border-gray-300 px-4 py-2 text-right
+                              border border-gray-300 ${bodyCellClass} text-right
                               ${getHighlightClass(row.isHighlight)}
                               ${row.isBold ? 'font-semibold' : ''}
                               ${isNegative(previousTwoYearsValue) ? 'text-red-600' : ''}
@@ -1350,7 +1442,7 @@ export default function FinancialTable({
                           </td>
                           <td
                             className={`
-                              border border-gray-300 px-4 py-2 text-right
+                              border border-gray-300 ${bodyCellClass} text-right
                               ${getHighlightClass(row.isHighlight)}
                               ${row.isBold ? 'font-semibold' : ''}
                               ${isNegative(previousYearValue) ? 'text-red-600' : ''}
@@ -1363,7 +1455,7 @@ export default function FinancialTable({
                     ) : (
                       <td
                         className={`
-                          border border-gray-300 px-4 py-2 text-right
+                          border border-gray-300 ${bodyCellClass} text-right
                           ${getHighlightClass(row.isHighlight)}
                           ${row.isBold ? 'font-semibold' : ''}
                           ${isNegative(previousYearValue) ? 'text-red-600' : ''}
@@ -1374,13 +1466,13 @@ export default function FinancialTable({
                     )}
                     {!monthsCollapsed && shouldShowPlanMetrics && (
                       <>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
+                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
                         </td>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
+                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planYoYAmount ?? null, row.format, true, false)}
                         </td>
-                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
+                        <td className={`border border-gray-300 ${bodyNarrowCellClass} text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
                           {isNetCashStrict
                             ? netCashPlanYoYLabel
                             : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
@@ -1390,7 +1482,7 @@ export default function FinancialTable({
                     {/* 빈 컬럼 (2024년 뒤) */}
                     {monthsCollapsed && !shouldShowPlanMetrics && (
                       currentYear === 2026 ? (
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(effectiveValues[reportMonthValueIndex]) ? 'text-red-600' : ''}`}>
+                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(effectiveValues[reportMonthValueIndex]) ? 'text-red-600' : ''}`}>
                           {formatValue(effectiveValues[reportMonthValueIndex], row.format, isMomRow, !row.isCalculated)}
                         </td>
                       ) : (
@@ -1402,7 +1494,7 @@ export default function FinancialTable({
 
                 {/* 2026년 재무상태표: 월별 데이터 전에 25년기말 컬럼 먼저 렌더링 */}
                 {isBalanceSheet && currentYear === 2026 && !monthsCollapsed && row.comparisons && (
-                  <td className={`border border-gray-300 px-4 py-2 text-right ${isBalanceCheck ? (row.comparisons.prevYearAnnual === null || Math.abs(row.comparisons.prevYearAnnual) < 10 ? 'bg-green-100' : 'bg-red-100') : getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.prevYearAnnual) ? 'text-red-600' : ''}`}>
+                  <td className={`border border-gray-300 ${bodyCellClass} text-right ${isBalanceCheck ? (row.comparisons.prevYearAnnual === null || Math.abs(row.comparisons.prevYearAnnual) < 10 ? 'bg-green-100' : 'bg-red-100') : getHighlightClass(row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.comparisons.prevYearAnnual) ? 'text-red-600' : ''}`}>
                     {formatValue(row.comparisons.prevYearAnnual, row.format, false, true)}
                   </td>
                 )}
@@ -1426,7 +1518,7 @@ export default function FinancialTable({
                     <td
                       key={`month-${colIndex}`}
                       className={`
-                        border border-gray-300 px-4 py-2 text-right
+                        border border-gray-300 ${bodyCellClass} text-right
                         ${isBalanceCheck && isValueOk ? 'bg-green-100' : ''}
                         ${isBalanceCheck && !isValueOk ? 'bg-red-100' : ''}
                         ${!isBalanceCheck ? getHighlightClass(row.isHighlight) : ''}
@@ -1444,37 +1536,34 @@ export default function FinancialTable({
                   <>
                     {monthsCollapsed && (
                       <>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
+                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
                         </td>
-                        <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
+                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
                           {formatValue(row.planYoYAmount ?? null, row.format, true, false)}
-                        </td>
-                        <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
-                          {isNetCashStrict
-                            ? netCashPlanYoYLabel
-                            : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
                         </td>
                       </>
                     )}
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(rollingDisplayValue) ? 'text-red-600' : ''}`}>
+                    <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(rollingDisplayValue) ? 'text-red-600' : ''}`}>
                       {formatValue(rollingDisplayValue ?? null, row.format, isMomRow, !row.isCalculated)}
                     </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.rollingYoYAmount) ? 'text-red-600' : ''}`}>
+                    <td className={`border border-gray-300 ${bodyCellClass} text-right ${yoyMetricCellClass} ${isNegative(row.rollingYoYAmount) ? 'text-red-600' : ''}`}>
                       {formatValue(row.rollingYoYAmount ?? null, row.format, true, false)}
                     </td>
-                    <td className={`border border-gray-300 px-2 py-2 text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
-                      {isNetCashStrict
-                        ? netCashRollingYoYLabel
-                        : ((row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined
-                          ? formatPercent((row.rollingYoY ?? effectiveValues[13] ?? null) as number, false, false, 0)
-                          : '-')}
-                    </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDelta) ? 'text-red-600' : ''}`}>
+                    {!monthsCollapsed && (
+                      <td className={`border border-gray-300 ${bodyNarrowCellClass} text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(row.rollingYoY ?? effectiveValues[13] ?? null) ? 'text-red-600' : '')}`}>
+                        {isNetCashStrict
+                          ? netCashRollingYoYLabel
+                          : ((row.rollingYoY ?? effectiveValues[13] ?? null) !== null && (row.rollingYoY ?? effectiveValues[13] ?? null) !== undefined
+                            ? formatPercent((row.rollingYoY ?? effectiveValues[13] ?? null) as number, false, false, 0)
+                            : '-')}
+                      </td>
+                    )}
+                    <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planDelta) ? 'text-red-600' : ''}`}>
                       {formatValue(row.planDelta ?? null, row.format, true, false)}
                     </td>
-                    <td className={`border border-gray-300 px-4 py-2 text-right ${yoyMetricCellClass} ${isNegative(row.planDeltaRate) ? 'text-red-600' : ''}`}>
-                      {row.planDeltaRate !== null && row.planDeltaRate !== undefined ? formatPercent(row.planDeltaRate, false, false, 0) : '-'}
+                    <td className={`border border-gray-300 ${bodyCellClass} text-right ${yoyMetricCellClass} ${(getPlanDeltaRateValue(row.planDeltaRate) ?? 0) < 0 ? 'text-red-600' : ''}`}>
+                      {formatPlanDeltaRate(row.planDeltaRate)}
                     </td>
                   </>
                 )}
@@ -1482,7 +1571,7 @@ export default function FinancialTable({
                   <>
                     <td
                       className={`
-                        border border-gray-300 px-4 py-2 text-right
+                        border border-gray-300 ${bodyCellClass} text-right
                         ${getHighlightClass(row.isHighlight)}
                         ${row.isBold ? 'font-semibold' : ''}
                         ${isNegative(effectiveValues[aggregateValueIndex]) ? 'text-red-600' : ''}
@@ -1493,7 +1582,7 @@ export default function FinancialTable({
                     {/* CF: YoY 컬럼 (25년 - 24년) */}
                     <td
                       className={`
-                        border border-gray-300 px-2 py-2 text-right
+                        border border-gray-300 ${bodyNarrowCellClass} text-right
                         ${isNetCashStrict ? 'text-xs' : ''}
                         ${yoyMetricCellClass}
                         ${isNetCashStrict ? getNetCashYoYClass(netCashRollingYoYLabel) : (isNegative(effectiveValues[yoyValueIndex]) ? 'text-red-600' : '')}
@@ -1585,7 +1674,7 @@ export default function FinancialTable({
                             border border-gray-300 px-4 py-2 text-right
                             ${isBsPlanMetricCol ? 'bg-gray-50' : isBsCurrentMetricCol || is26년4월 ? 'bg-blue-50' : getHighlightClass(row.isHighlight)}
                             ${row.isBold ? 'font-semibold' : ''}
-                            ${isNegative(value) && !showCheckMark ? 'text-red-600' : ''}
+                            ${(isPlanRateCol ? (getPlanDeltaRateValue(value) ?? 0) < 0 : isNegative(value)) && !showCheckMark ? 'text-red-600' : ''}
                           `}
                         >
                           {showCheckMark ? (
@@ -1593,7 +1682,7 @@ export default function FinancialTable({
                           ) : isYoYCol && value !== null && value !== undefined ? (
                             `${value < 0 ? '△' : value > 0 ? '+' : ''}${formatValue(Math.abs(value), 'number', false, true)}`
                           ) : isPlanRateCol && value !== null && value !== undefined ? (
-                            formatPercent(value, false, false, 0)
+                            formatPlanDeltaRate(value)
                           ) : (
                             formatValue(value, row.format, false, true)
                           )}
@@ -1938,7 +2027,7 @@ export default function FinancialTable({
                     className={`border border-gray-300 px-0 py-0 ${isSingleLine ? 'align-middle' : 'align-top'} overflow-visible ${getHighlightClass(row.isHighlight)}`}
                     style={{ width: remarksColumnWidth, minWidth: remarksColumnWidth, maxWidth: remarksColumnWidth }}
                   >
-                    <div className={`px-3 ${isSingleLine ? 'flex min-h-[72px] items-center' : 'py-2.5'}`}>
+                    <div className={`${denseBody ? 'px-2' : 'px-3'} ${isSingleLine ? `flex ${denseBody ? 'min-h-[42px]' : 'min-h-[72px]'} items-center` : (denseBody ? 'py-1.5' : 'py-2.5')}`}>
                     <textarea
                       value={displayRemarkValue}
                       onChange={(e) =>
@@ -1955,8 +2044,8 @@ export default function FinancialTable({
                       }}
                       placeholder=""
                       rows={isSingleLine ? 1 : remarkRows}
-                      className={`block w-full resize-none whitespace-pre-wrap break-words rounded bg-transparent px-2 text-left text-[12px] leading-5 focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLine ? 'h-[32px] min-h-[32px] overflow-hidden py-1.5' : 'overflow-hidden py-1.5'}`}
-                      style={!isSingleLine ? { minHeight: `${remarkRows * 20 + 14}px` } : undefined}
+                      className={`block w-full resize-none whitespace-pre-wrap break-words rounded bg-transparent px-2 text-left text-[12px] ${denseBody ? 'leading-[17px]' : 'leading-5'} focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLine ? `${denseBody ? 'h-[24px] min-h-[24px] py-0.5' : 'h-[32px] min-h-[32px] py-1.5'} overflow-hidden` : 'overflow-hidden py-1.5'}`}
+                      style={!isSingleLine ? { minHeight: `${remarkRows * (denseBody ? 17 : 20) + (denseBody ? 8 : 14)}px` } : undefined}
                     />
                     </div>
                   </td>

@@ -95,6 +95,9 @@ const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
   },
 };
 
+const CF_DEFAULT_EXPANDED_ACCOUNTS = ['영업활동'];
+const BASE_SALES_YOY_RATE = 122;
+
 function NavIcon({ kind }: { kind: 'bs' | 'pl' | 'cf' | 'inventory' | 'fund' | 'perf' }) {
   const props = {
     width: 14,
@@ -160,7 +163,7 @@ export default function Home() {
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('PL');
   const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
   const [wcYear, setWcYear] = useState<number>(2026);
-  const [salesYoYRate, setSalesYoYRate] = useState<number>(122);
+  const [salesYoYRate, setSalesYoYRate] = useState<number>(BASE_SALES_YOY_RATE);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
   const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(320);
   const [isResizingAnalysis, setIsResizingAnalysis] = useState<boolean>(false);
@@ -863,7 +866,7 @@ export default function Home() {
   const adjustedCfData = useMemo(() => {
     if (!cfData || wcYear !== 2026) return cfData;
 
-    const delta = (salesYoYRate - 119) / 100;
+    const delta = (salesYoYRate - BASE_SALES_YOY_RATE) / 100;
     if (delta === 0) return cfData;
 
     const ACC_OPERATING = '\uC601\uC5C5\uD65C\uB3D9';
@@ -1122,7 +1125,7 @@ export default function Home() {
   const adjustedWcStatementData = useMemo(() => {
     if (!wcStatementData || wcYear !== 2026) return wcStatementData;
 
-    const delta = (salesYoYRate - 119) / 100;
+    const delta = (salesYoYRate - BASE_SALES_YOY_RATE) / 100;
 
     const AR_SENSITIVITY = 1 - 0.2; // 매출 증감률의 80%만 매출채권에 반영
     const COGS_RATE = 0.43; // 2025년 연간 매출원가율
@@ -1755,6 +1758,15 @@ export default function Home() {
   const buildMetricExportRows = (rows: TableRow[] | null, remarks: Map<string, string>) => {
     if (!rows) return [];
 
+    const formatPlanDeltaRateExport = (ratio: number | null | undefined) => {
+      if (ratio === null || ratio === undefined || isNaN(ratio) || !isFinite(ratio)) return null;
+      const deltaRate = ratio - 1;
+      const absValue = Math.abs(deltaRate * 100).toFixed(1);
+      if (deltaRate > 0) return `+${absValue}%`;
+      if (deltaRate < 0) return `△${absValue}%`;
+      return '+0.0%';
+    };
+
     return rows.map((row) => {
       const previous = row.year2024Value ?? row.values[1] ?? null;
       const plan = row.planValue ?? null;
@@ -1781,7 +1793,7 @@ export default function Home() {
         [rollingGapKey]: row.rollingYoYAmount ?? null,
         [rollingYoYKey]: row.rollingYoY !== null && row.rollingYoY !== undefined ? `${Math.round(row.rollingYoY * 100)}%` : null,
         [deltaKey]: row.planDelta ?? null,
-        [deltaRateKey]: row.planDeltaRate !== null && row.planDeltaRate !== undefined ? `${Math.round(row.planDeltaRate * 100)}%` : null,
+        [deltaRateKey]: formatPlanDeltaRateExport(row.planDeltaRate),
         [remarksKey]: translateDashboardRemark(remarks.get(row.account) ?? ''),
       };
     });
@@ -2324,7 +2336,7 @@ export default function Home() {
                             currentYear={wcYear}
                             allRowsCollapsed={wcAllRowsCollapsed}
                             onAllRowsToggle={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
-                            defaultExpandedAccounts={['영업활동']}
+                            defaultExpandedAccounts={CF_DEFAULT_EXPANDED_ACCOUNTS}
                             showRemarks={true}
                             remarks={cfRemarks}
                             onRemarkChange={saveCFRemark}
@@ -2417,7 +2429,7 @@ export default function Home() {
                           currentYear={wcYear}
                           allRowsCollapsed={wcAllRowsCollapsed}
                           onAllRowsToggle={() => setWcAllRowsCollapsed(!wcAllRowsCollapsed)}
-                          defaultExpandedAccounts={['영업활동']}
+                          defaultExpandedAccounts={CF_DEFAULT_EXPANDED_ACCOUNTS}
                           showRemarks={true}
                           remarks={cfRemarks}
                           onRemarkChange={saveCFRemark}
