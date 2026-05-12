@@ -14,10 +14,11 @@ interface EditableAnalysisProps {
     actionItems: string[];
   } | null;
   onSave?: () => void;
+  preferGeneratedContent?: boolean;
   disabled?: boolean; // PL 뷰에서 비활성화용
 }
 
-export default function EditableAnalysis({ year, locale = 'ko', initialContent, onSave, disabled = false }: EditableAnalysisProps) {
+export default function EditableAnalysis({ year, locale = 'ko', initialContent, onSave, disabled = false, preferGeneratedContent = false }: EditableAnalysisProps) {
   const isEnglish = locale === 'en';
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState<string>('');
@@ -138,7 +139,7 @@ export default function EditableAnalysis({ year, locale = 'ko', initialContent, 
 
   // 편집 모드 시작
   const handleEdit = () => {
-    if (savedCustomContent) {
+    if (savedCustomContent && !preferGeneratedContent) {
       setEditedContent(savedCustomContent);
     } else if (initialContent) {
       // 기본 분석 내용을 텍스트로 변환
@@ -270,9 +271,12 @@ export default function EditableAnalysis({ year, locale = 'ko', initialContent, 
   };
 
   // 렌더링할 내용 결정
-  const displayContent = isEnglish
-    ? (initialContent ? generateDefaultText(initialContent) : translateNarrative(savedCustomContent || ''))
-    : (savedCustomContent || (initialContent ? generateDefaultText(initialContent) : ''));
+  const generatedContent = initialContent ? generateDefaultText(initialContent) : '';
+  const displayContent = preferGeneratedContent
+    ? generatedContent
+    : isEnglish
+      ? (generatedContent || translateNarrative(savedCustomContent || ''))
+      : (savedCustomContent || generatedContent);
 
   if (isEditing) {
     return (

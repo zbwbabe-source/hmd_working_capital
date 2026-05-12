@@ -2101,9 +2101,11 @@ export default function Home() {
                       style={{ width: `${analysisPanelWidth}px`, minWidth: '168px' }}
                     >
                       <EditableAnalysis
+                        key={`cf-analysis-${salesYoYRate}-${locale}`}
                         year={wcYear}
                         locale={locale}
                         disabled={false}
+                        preferGeneratedContent
                         initialContent={analysisResults ? {
                           keyInsights: analysisResults.insights.keyInsights,
                           cfAnalysis: analysisResults.cfAnalysis,
