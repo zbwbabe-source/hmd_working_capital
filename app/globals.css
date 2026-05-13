@@ -28,7 +28,7 @@ body {
 body {
   background: var(--dashboard-surface);
   color: #172033;
-  font-family: 'Segoe UI Variable', 'Segoe UI', 'Trebuchet MS', sans-serif;
+  font-family: 'Pretendard Variable', Pretendard, Inter, 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
 }
 
 /* 스크롤바 스타일링 */

@@ -22,6 +22,8 @@ type ScenarioFactor = {
   id: ScenarioFactorId;
   titleKo: string;
   titleEn: string;
+  subtitleKo?: string;
+  subtitleEn?: string;
   positiveLabelKo: string;
   positiveLabelEn: string;
   negativeLabelKo: string;
@@ -39,20 +41,20 @@ const PL_SCENARIO_FACTORS: ScenarioFactor[] = [
     id: 'typhoon',
     titleKo: '태풍 빈도',
     titleEn: 'Typhoon frequency',
-    positiveLabelKo: '평년대비 태풍 빈도수 감소',
+    positiveLabelKo: '태풍빈도 감소',
     positiveLabelEn: 'Lower typhoon frequency vs normal',
-    negativeLabelKo: '평년대비 태풍 빈도수 증가',
+    negativeLabelKo: '태풍빈도 증가',
     negativeLabelEn: 'Higher typhoon frequency vs normal',
     impactPercent: 10,
     months: ['m7', 'm8', 'm9', 'm10'],
   },
   {
     id: 'rain',
-    titleKo: '폭우',
+    titleKo: '폭우 빈도',
     titleEn: 'Heavy rainfall',
-    positiveLabelKo: '폭우 감소',
+    positiveLabelKo: '폭우 빈도 감소',
     positiveLabelEn: 'Lower heavy rainfall',
-    negativeLabelKo: '폭우 증가',
+    negativeLabelKo: '폭우 빈도 증가',
     negativeLabelEn: 'Higher heavy rainfall',
     impactPercent: 5,
     months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
@@ -84,10 +86,12 @@ const PL_SCENARIO_FACTORS: ScenarioFactor[] = [
     id: 'fx',
     titleKo: '환율효과',
     titleEn: 'FX effect',
-    positiveLabelKo: '환율 우호',
-    positiveLabelEn: 'Favorable FX',
-    negativeLabelKo: '환율 비우호',
-    negativeLabelEn: 'Unfavorable FX',
+    subtitleKo: 'CNY 대비 HKD',
+    subtitleEn: 'HKD vs CNY',
+    positiveLabelKo: 'HKD 약세',
+    positiveLabelEn: 'HKD weakens',
+    negativeLabelKo: 'HKD 강세',
+    negativeLabelEn: 'HKD strengthens',
     impactPercent: 3,
     months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
     sources: HKMC_SOURCES,
@@ -101,7 +105,7 @@ const PL_SCENARIO_FACTORS: ScenarioFactor[] = [
     negativeLabelKo: '중국관광객 둔화',
     negativeLabelEn: 'Chinese tourist slowdown',
     impactPercent: 5,
-    months: ['m7', 'm8', 'm9', 'm10', 'm11', 'm12'],
+    months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
     sources: HKMC_SOURCES,
   },
   {
@@ -130,6 +134,31 @@ const PL_SCENARIO_FACTORS: ScenarioFactor[] = [
 ];
 
 const ACTIVE_PL_SCENARIO_FACTORS = PL_SCENARIO_FACTORS.filter((factor) => factor.id !== 'new_stores');
+const SCENARIO_FACTOR_GROUPS: Array<{
+  titleKo: string;
+  titleEn: string;
+  ids: ScenarioFactorId[];
+  className: string;
+}> = [
+  {
+    titleKo: '날씨 영향',
+    titleEn: 'Weather impact',
+    ids: ['typhoon', 'rain'],
+    className: 'border-sky-100 bg-sky-50/45',
+  },
+  {
+    titleKo: '판매 수요',
+    titleEn: 'Sales demand',
+    ids: ['fw', 'china_economy', 'tourism'],
+    className: 'border-emerald-100 bg-emerald-50/40',
+  },
+  {
+    titleKo: '외부 변수',
+    titleEn: 'External factors',
+    ids: ['fx', 'taiwan_politics'],
+    className: 'border-violet-100 bg-violet-50/35',
+  },
+];
 
 type TreeMap = Record<Source, Node[]>;
 
@@ -412,8 +441,16 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
       setIsScenarioPanelOpen(false);
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsScenarioPanelOpen(false);
+    };
+
     document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isScenarioPanelOpen]);
 
   const handleToggleNode = (nodeKey: string) => {
@@ -693,7 +730,6 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
 
     return payload;
   }, [annualScenarioTrees, baseMonthIndex, baseMonthKey, baseMonthResultSummary, currentSellOutYoYPercent, scenarioDirections, scenarioKey, scenarioMonthlyFactors, scenarioSellOutYoYPercent, selectedYear, trees2026]);
-  const isScenarioAdjusted = Object.values(scenarioDirections).some((direction) => direction !== 'none');
   const resetScenarioDirections = () => {
     setScenarioDirections({
       typhoon: 'none',
@@ -941,31 +977,28 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
           </a>
 
           <div ref={scenarioPanelRef} className="relative ml-auto flex flex-wrap items-center gap-2 text-sm text-gray-700">
-            <div className="flex items-center gap-2">
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
-                {isEnglish ? 'Click to simulate scenarios' : '클릭하여 시나리오 시뮬레이션'}
-              </span>
+            <div className="flex items-center">
               <button
                 type="button"
                 onClick={() => setIsScenarioPanelOpen((prev) => !prev)}
                 aria-haspopup="dialog"
                 aria-expanded={isScenarioPanelOpen}
-                className={`inline-flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 font-semibold shadow-[0_2px_0_rgba(15,23,42,0.12),0_6px_14px_rgba(15,23,42,0.10)] transition-all hover:-translate-y-0.5 hover:shadow-[0_3px_0_rgba(15,23,42,0.14),0_10px_18px_rgba(15,23,42,0.12)] active:translate-y-0 active:shadow-sm ${
+                className={`group relative inline-flex min-h-[50px] min-w-[300px] items-center justify-center gap-3 overflow-hidden rounded-xl border px-5 py-2.5 text-[15px] font-medium leading-none shadow-[0_1px_2px_rgba(15,23,42,0.08),0_10px_26px_rgba(37,99,235,0.14)] ring-1 ring-white/70 transition-all duration-200 before:absolute before:inset-0 before:bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.72)_46%,transparent_62%)] before:opacity-0 before:transition-opacity before:duration-200 hover:-translate-y-0.5 hover:shadow-[0_3px_8px_rgba(15,23,42,0.10),0_16px_34px_rgba(37,99,235,0.18)] hover:before:opacity-100 active:translate-y-0 active:scale-[0.99] active:shadow-sm ${
                   scenarioTone === 'good'
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+                    ? 'border-emerald-300 bg-[linear-gradient(180deg,#ffffff_0%,#ecfdf5_48%,#d1fae5_100%)] text-emerald-900 hover:border-emerald-400'
                     : scenarioTone === 'bad'
-                      ? 'border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100'
-                      : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50'
+                      ? 'border-rose-300 bg-[linear-gradient(180deg,#ffffff_0%,#fff1f2_48%,#ffe4e6_100%)] text-rose-900 hover:border-rose-400'
+                      : 'border-sky-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_45%,#eaf3ff_100%)] text-slate-800 hover:border-sky-300'
                 }`}
               >
-                <span>{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
-                <span className="text-[15px] font-extrabold leading-none">
+                <span className="relative z-10">{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
+                <span className="relative z-10 rounded-full bg-white/72 px-2.5 py-1 text-[16px] font-semibold leading-none text-slate-950 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.22)] transition-colors group-hover:bg-white">
                   {scenarioSellOutYoYPercent === null ? '-' : `${scenarioSellOutYoYPercent.toFixed(1)}%`}
                 </span>
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 20 20"
-                  className={`h-4 w-4 transition-transform duration-200 ${isScenarioPanelOpen ? 'rotate-180' : ''}`}
+                  className={`relative z-10 h-4 w-4 text-slate-600 transition-transform duration-200 group-hover:text-slate-900 ${isScenarioPanelOpen ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -977,83 +1010,99 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
               </button>
             </div>
 
-            {isScenarioAdjusted && (
-              <button
-                type="button"
-                className="inline-flex h-8 items-center justify-center rounded border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                onClick={resetScenarioDirections}
-              >
-                {isEnglish ? 'Reset' : '되돌리기'}
-              </button>
-            )}
-
             {isScenarioPanelOpen && (
               <div className="absolute right-[calc(100%+12px)] top-0 z-30 w-[640px] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
                 <div className="mb-3 flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-bold text-slate-900">{isEnglish ? 'Scenario Switches' : '시나리오 스위치'}</div>
-                    <div className="mt-1 text-xs text-slate-500">{scenarioMonthlyImpactLabel}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-bold text-slate-900">{isEnglish ? 'Scenario Switches' : '시나리오 스위치'}</div>
+                      <button
+                        type="button"
+                        onClick={resetScenarioDirections}
+                        className="inline-flex h-6 items-center rounded-md border border-slate-200 bg-white px-2 text-[11px] font-bold text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                      >
+                        {isEnglish ? 'Reset' : '되돌리기'}
+                      </button>
+                    </div>
+                    <div className="mt-1 w-[480px] overflow-visible whitespace-nowrap text-xs text-slate-500">{scenarioMonthlyImpactLabel}</div>
                   </div>
-                  <div className="text-right text-xs text-slate-500">
-                    <div>{isEnglish ? 'Current YoY' : '현재 YoY'} {currentSellOutYoYPercent === null ? '-' : `${currentSellOutYoYPercent.toFixed(1)}%`}</div>
+                  <div className="min-w-[122px] whitespace-nowrap text-right text-xs text-slate-500">
                     <div>{isEnglish ? 'Scenario YoY' : '시나리오 YoY'} {scenarioSellOutYoYPercent === null ? '-' : `${scenarioSellOutYoYPercent.toFixed(1)}%`}</div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  {ACTIVE_PL_SCENARIO_FACTORS.map((factor) => {
-                    const activeDirection = scenarioDirections[factor.id];
-                    const monthRange = `${factor.months[0].replace('m', '')}~${factor.months[factor.months.length - 1].replace('m', '')}${isEnglish ? 'M' : '월'}`;
-                    const options: Array<{ direction: ScenarioDirection; label: string; tone: string }> = [
-                      {
-                        direction: 'positive',
-                        label: `${isEnglish ? factor.positiveLabelEn : factor.positiveLabelKo} (+${factor.impactPercent}%)`,
-                        tone: 'emerald',
-                      },
-                      {
-                        direction: 'none',
-                        label: isEnglish ? 'No effect' : '선택안함',
-                        tone: 'slate',
-                      },
-                      {
-                        direction: 'negative',
-                        label: `${isEnglish ? factor.negativeLabelEn : factor.negativeLabelKo} (△${factor.impactPercent}%)`,
-                        tone: 'rose',
-                      },
-                    ];
+                  {SCENARIO_FACTOR_GROUPS.map((group) => {
+                    const factors = group.ids
+                      .map((id) => ACTIVE_PL_SCENARIO_FACTORS.find((factor) => factor.id === id))
+                      .filter((factor): factor is ScenarioFactor => Boolean(factor));
 
                     return (
-                      <div key={factor.id} className="grid grid-cols-[110px_1fr] items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2">
-                        <div>
-                          <div className="font-bold text-slate-800">{isEnglish ? factor.titleEn : factor.titleKo}</div>
-                          <div className="text-xs text-slate-500">{monthRange}</div>
+                      <div key={group.titleEn} className={`rounded-2xl border p-2.5 ${group.className}`}>
+                        <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                          {isEnglish ? group.titleEn : group.titleKo}
                         </div>
-                        <div className="grid h-11 grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-inner">
-                          {options.map((option) => {
-                            const active = activeDirection === option.direction;
-                            const activeClass =
-                              option.tone === 'emerald'
-                                ? 'border-emerald-500 bg-emerald-500 text-white'
-                                : option.tone === 'rose'
-                                  ? 'border-rose-500 bg-rose-500 text-white'
-                                  : 'border-slate-700 bg-slate-700 text-white';
+                        <div className="space-y-2">
+                          {factors.map((factor) => {
+                            const activeDirection = scenarioDirections[factor.id];
+                            const monthRange = `${factor.months[0].replace('m', '')}~${factor.months[factor.months.length - 1].replace('m', '')}${isEnglish ? 'M' : '월'}`;
+                            const options: Array<{ direction: ScenarioDirection; label: string; tone: string }> = [
+                              {
+                                direction: 'positive',
+                                label: `${isEnglish ? factor.positiveLabelEn : factor.positiveLabelKo} (+${factor.impactPercent}%)`,
+                                tone: 'emerald',
+                              },
+                              {
+                                direction: 'none',
+                                label: isEnglish ? 'No effect' : '선택안함',
+                                tone: 'slate',
+                              },
+                              {
+                                direction: 'negative',
+                                label: `${isEnglish ? factor.negativeLabelEn : factor.negativeLabelKo} (△${factor.impactPercent}%)`,
+                                tone: 'rose',
+                              },
+                            ];
 
                             return (
-                              <button
-                                key={option.direction}
-                                type="button"
-                                onClick={() =>
-                                  setScenarioDirections((prev) => ({
-                                    ...prev,
-                                    [factor.id]: option.direction,
-                                  }))
-                                }
-                                className={`box-border flex h-9 min-w-0 items-center justify-center rounded-lg border px-2 text-center text-xs font-bold leading-tight transition-colors ${
-                                  active ? activeClass : 'border-transparent bg-transparent text-slate-600 hover:border-transparent hover:bg-slate-100'
-                                }`}
-                              >
-                                <span className="block w-full truncate">{option.label}</span>
-                              </button>
+                              <div key={factor.id} className="grid grid-cols-[110px_1fr] items-center gap-3 rounded-xl border border-white/70 bg-white/72 p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                                <div>
+                                  <div className="font-bold text-slate-800">{isEnglish ? factor.titleEn : factor.titleKo}</div>
+                                  {Boolean(isEnglish ? factor.subtitleEn : factor.subtitleKo) && (
+                                    <div className="text-xs font-semibold text-slate-500">{isEnglish ? factor.subtitleEn : factor.subtitleKo}</div>
+                                  )}
+                                  <div className="text-xs text-slate-500">{monthRange}</div>
+                                </div>
+                                <div className="grid h-11 grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-inner">
+                                  {options.map((option) => {
+                                    const active = activeDirection === option.direction;
+                                    const activeClass =
+                                      option.tone === 'emerald'
+                                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                                        : option.tone === 'rose'
+                                          ? 'border-rose-500 bg-rose-500 text-white'
+                                          : 'border-slate-700 bg-slate-700 text-white';
+
+                                    return (
+                                      <button
+                                        key={option.direction}
+                                        type="button"
+                                        onClick={() =>
+                                          setScenarioDirections((prev) => ({
+                                            ...prev,
+                                            [factor.id]: option.direction,
+                                          }))
+                                        }
+                                        className={`box-border flex h-9 min-w-0 items-center justify-center rounded-lg border px-2 text-center text-xs font-bold leading-tight transition-colors ${
+                                          active ? activeClass : 'border-transparent bg-transparent text-slate-600 hover:border-transparent hover:bg-slate-100'
+                                        }`}
+                                      >
+                                        <span className="block w-full truncate">{option.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             );
                           })}
                         </div>
