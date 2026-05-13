@@ -160,6 +160,46 @@ const SCENARIO_FACTOR_GROUPS: Array<{
   },
 ];
 
+const SCENARIO_SWITCH_LABELS: Record<ScenarioFactorId, Record<Exclude<ScenarioDirection, 'none'>, { ko: string; en: string }>> = {
+  typhoon: {
+    positive: { ko: '감소', en: 'Lower' },
+    negative: { ko: '증가', en: 'Stronger' },
+  },
+  rain: {
+    positive: { ko: '감소', en: 'Lower' },
+    negative: { ko: '증가', en: 'Heavier' },
+  },
+  fw: {
+    positive: { ko: '호조', en: 'Strong' },
+    negative: { ko: '저조', en: 'Weak' },
+  },
+  china_economy: {
+    positive: { ko: '호황', en: 'Boom' },
+    negative: { ko: '불황', en: 'Slowdown' },
+  },
+  fx: {
+    positive: { ko: 'HKD 약세', en: 'HKD weak' },
+    negative: { ko: 'HKD 강세', en: 'HKD strong' },
+  },
+  tourism: {
+    positive: { ko: '회복', en: 'Recovery' },
+    negative: { ko: '둔화', en: 'Slowdown' },
+  },
+  taiwan_politics: {
+    positive: { ko: '안정', en: 'Stable' },
+    negative: { ko: '불안', en: 'Unstable' },
+  },
+  new_stores: {
+    positive: { ko: '상회', en: 'Outperform' },
+    negative: { ko: '부진', en: 'Underperform' },
+  },
+};
+
+function getScenarioSwitchLabel(id: ScenarioFactorId, direction: Exclude<ScenarioDirection, 'none'>, isEnglish: boolean) {
+  const label = SCENARIO_SWITCH_LABELS[id][direction];
+  return isEnglish ? label.en : label.ko;
+}
+
 type TreeMap = Record<Source, Node[]>;
 
 const EMPTY_TREE_MAP: TreeMap = {
@@ -983,22 +1023,22 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
                 onClick={() => setIsScenarioPanelOpen((prev) => !prev)}
                 aria-haspopup="dialog"
                 aria-expanded={isScenarioPanelOpen}
-                className={`group relative inline-flex min-h-[50px] min-w-[300px] items-center justify-center gap-3 overflow-hidden rounded-xl border px-5 py-2.5 text-[15px] font-medium leading-none shadow-[0_1px_2px_rgba(15,23,42,0.08),0_10px_26px_rgba(37,99,235,0.14)] ring-1 ring-white/70 transition-all duration-200 before:absolute before:inset-0 before:bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.72)_46%,transparent_62%)] before:opacity-0 before:transition-opacity before:duration-200 hover:-translate-y-0.5 hover:shadow-[0_3px_8px_rgba(15,23,42,0.10),0_16px_34px_rgba(37,99,235,0.18)] hover:before:opacity-100 active:translate-y-0 active:scale-[0.99] active:shadow-sm ${
+                className={`group relative inline-flex min-h-[50px] min-w-[300px] items-center justify-center gap-3 overflow-hidden rounded-xl border px-5 py-2.5 text-[15px] font-semibold leading-none shadow-[0_2px_6px_rgba(15,23,42,0.14),0_14px_30px_rgba(37,99,235,0.24)] ring-1 ring-white/60 transition-all duration-200 before:absolute before:inset-0 before:bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.55)_45%,transparent_62%)] before:opacity-0 before:transition-opacity before:duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(15,23,42,0.16),0_18px_38px_rgba(37,99,235,0.28)] hover:before:opacity-100 active:translate-y-0 active:scale-[0.99] active:shadow-sm ${
                   scenarioTone === 'good'
-                    ? 'border-emerald-300 bg-[linear-gradient(180deg,#ffffff_0%,#ecfdf5_48%,#d1fae5_100%)] text-emerald-900 hover:border-emerald-400'
+                    ? 'border-emerald-500 bg-[linear-gradient(135deg,#10b981_0%,#059669_55%,#047857_100%)] text-white hover:border-emerald-400'
                     : scenarioTone === 'bad'
-                      ? 'border-rose-300 bg-[linear-gradient(180deg,#ffffff_0%,#fff1f2_48%,#ffe4e6_100%)] text-rose-900 hover:border-rose-400'
-                      : 'border-sky-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_45%,#eaf3ff_100%)] text-slate-800 hover:border-sky-300'
+                      ? 'border-rose-500 bg-[linear-gradient(135deg,#f43f5e_0%,#e11d48_55%,#be123c_100%)] text-white hover:border-rose-400'
+                      : 'border-blue-500 bg-[linear-gradient(135deg,#2563eb_0%,#1d4ed8_52%,#4338ca_100%)] text-white hover:border-blue-400'
                 }`}
               >
                 <span className="relative z-10">{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
-                <span className="relative z-10 rounded-full bg-white/72 px-2.5 py-1 text-[16px] font-semibold leading-none text-slate-950 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.22)] transition-colors group-hover:bg-white">
+                <span className="relative z-10 rounded-full bg-amber-300 px-2.5 py-1 text-[16px] font-bold leading-none text-slate-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34),0_2px_8px_rgba(251,191,36,0.32)] transition-colors group-hover:bg-yellow-300">
                   {scenarioSellOutYoYPercent === null ? '-' : `${scenarioSellOutYoYPercent.toFixed(1)}%`}
                 </span>
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 20 20"
-                  className={`relative z-10 h-4 w-4 text-slate-600 transition-transform duration-200 group-hover:text-slate-900 ${isScenarioPanelOpen ? 'rotate-180' : ''}`}
+                  className={`relative z-10 h-4 w-4 text-white/90 transition-transform duration-200 group-hover:text-white ${isScenarioPanelOpen ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -1049,7 +1089,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
                             const options: Array<{ direction: ScenarioDirection; label: string; tone: string }> = [
                               {
                                 direction: 'positive',
-                                label: `${isEnglish ? factor.positiveLabelEn : factor.positiveLabelKo} (+${factor.impactPercent}%)`,
+                                label: `${getScenarioSwitchLabel(factor.id, 'positive', isEnglish)} (+${factor.impactPercent}%)`,
                                 tone: 'emerald',
                               },
                               {
@@ -1059,7 +1099,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
                               },
                               {
                                 direction: 'negative',
-                                label: `${isEnglish ? factor.negativeLabelEn : factor.negativeLabelKo} (△${factor.impactPercent}%)`,
+                                label: `${getScenarioSwitchLabel(factor.id, 'negative', isEnglish)} (△${factor.impactPercent}%)`,
                                 tone: 'rose',
                               },
                             ];
