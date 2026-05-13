@@ -203,8 +203,8 @@ export default function Home() {
   const smallUnitLabel = isEnglish ? '(Unit: 1k HKD)' : '(단위: 1k HKD)';
   const currentClosingMonth = 4;
   const headerTitle = isEnglish
-    ? `FNF Financial Report (${String(wcYear).slice(-2)}.${currentClosingMonth})`
-    : `FNF 재무실적보고 (${String(wcYear).slice(-2)}. ${currentClosingMonth}월)`;
+    ? `FNF HK Financial Report (${String(wcYear).slice(-2)}.${currentClosingMonth})`
+    : `FNF HK 재무실적보고 (${String(wcYear).slice(-2)}. ${currentClosingMonth}월)`;
   const headerSubtitle = isEnglish
     ? 'F&F finance simulation dashboard'
     : 'F&F 재무 시뮬레이션 · 롤링/계획 기준';
