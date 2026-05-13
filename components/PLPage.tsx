@@ -1,18 +1,135 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import PLTable from '@/components/PLTable';
 import { calcRateColsFromNumerDenom, type Months } from '@/PL/src/pl/calc';
-import { buildScenarioTreeSet, type ScenarioFactorMap } from '@/PL/src/pl/scenario';
+import { buildScenarioTreeSet, type ScenarioFactorMap, type ScenarioMonthlyFactorMap } from '@/PL/src/pl/scenario';
 import type { Node } from '@/PL/src/pl/tree';
 import type { MonthKey, Source, Year } from '@/PL/src/pl/types';
 import { translateFinanceLabel } from '@/lib/translate-finance-label';
 
-const DETAIL_SOURCES: Source[] = ['HK_MLB', 'HK_Discovery', 'TW_MLB', 'TW_Discovery'];
+type DetailSource = Exclude<Source, 'Total'>;
+
+const DETAIL_SOURCES: DetailSource[] = ['HK_MLB', 'HK_Discovery', 'TW_MLB', 'TW_Discovery'];
 const ALL_SOURCES: Source[] = ['Total', ...DETAIL_SOURCES];
-const DEFAULT_GOOD_PERCENT = 120;
-const DEFAULT_BAD_PERCENT = 80;
+const MONTH_KEYS: MonthKey[] = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'];
+
+type ScenarioFactorId = 'typhoon' | 'rain' | 'fw' | 'china_economy' | 'fx' | 'tourism' | 'taiwan_politics' | 'new_stores';
+type ScenarioDirection = 'positive' | 'negative' | 'none';
+
+type ScenarioFactor = {
+  id: ScenarioFactorId;
+  titleKo: string;
+  titleEn: string;
+  positiveLabelKo: string;
+  positiveLabelEn: string;
+  negativeLabelKo: string;
+  negativeLabelEn: string;
+  impactPercent: number;
+  months: MonthKey[];
+  sources?: DetailSource[];
+};
+
+const HKMC_SOURCES: DetailSource[] = ['HK_MLB', 'HK_Discovery'];
+const TAIWAN_SOURCES: DetailSource[] = ['TW_MLB', 'TW_Discovery'];
+
+const PL_SCENARIO_FACTORS: ScenarioFactor[] = [
+  {
+    id: 'typhoon',
+    titleKo: '태풍 빈도',
+    titleEn: 'Typhoon frequency',
+    positiveLabelKo: '평년대비 태풍 빈도수 감소',
+    positiveLabelEn: 'Lower typhoon frequency vs normal',
+    negativeLabelKo: '평년대비 태풍 빈도수 증가',
+    negativeLabelEn: 'Higher typhoon frequency vs normal',
+    impactPercent: 10,
+    months: ['m7', 'm8', 'm9', 'm10'],
+  },
+  {
+    id: 'rain',
+    titleKo: '폭우',
+    titleEn: 'Heavy rainfall',
+    positiveLabelKo: '폭우 감소',
+    positiveLabelEn: 'Lower heavy rainfall',
+    negativeLabelKo: '폭우 증가',
+    negativeLabelEn: 'Higher heavy rainfall',
+    impactPercent: 5,
+    months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
+  },
+  {
+    id: 'fw',
+    titleKo: '26FW 판매',
+    titleEn: '26FW sales',
+    positiveLabelKo: '26FW 판매 호조',
+    positiveLabelEn: '26FW strong sales',
+    negativeLabelKo: '26FW 판매 저조',
+    negativeLabelEn: '26FW weak sales',
+    impactPercent: 10,
+    months: ['m8', 'm9', 'm10', 'm11', 'm12'],
+  },
+  {
+    id: 'china_economy',
+    titleKo: '중국경기',
+    titleEn: 'China economy',
+    positiveLabelKo: '중국경기 호황',
+    positiveLabelEn: 'China economy boom',
+    negativeLabelKo: '중국경기 불황',
+    negativeLabelEn: 'China economy slowdown',
+    impactPercent: 5,
+    months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
+    sources: HKMC_SOURCES,
+  },
+  {
+    id: 'fx',
+    titleKo: '환율효과',
+    titleEn: 'FX effect',
+    positiveLabelKo: '환율 우호',
+    positiveLabelEn: 'Favorable FX',
+    negativeLabelKo: '환율 비우호',
+    negativeLabelEn: 'Unfavorable FX',
+    impactPercent: 3,
+    months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
+    sources: HKMC_SOURCES,
+  },
+  {
+    id: 'tourism',
+    titleKo: '중국관광객',
+    titleEn: 'Chinese tourists',
+    positiveLabelKo: '중국관광객 회복',
+    positiveLabelEn: 'Chinese tourist recovery',
+    negativeLabelKo: '중국관광객 둔화',
+    negativeLabelEn: 'Chinese tourist slowdown',
+    impactPercent: 5,
+    months: ['m7', 'm8', 'm9', 'm10', 'm11', 'm12'],
+    sources: HKMC_SOURCES,
+  },
+  {
+    id: 'taiwan_politics',
+    titleKo: '대만정세',
+    titleEn: 'Taiwan politics',
+    positiveLabelKo: '대만정세 안정',
+    positiveLabelEn: 'Taiwan situation stabilizes',
+    negativeLabelKo: '대만정세 불안',
+    negativeLabelEn: 'Taiwan situation worsens',
+    impactPercent: 5,
+    months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
+    sources: TAIWAN_SOURCES,
+  },
+  {
+    id: 'new_stores',
+    titleKo: '신규매장',
+    titleEn: 'New stores',
+    positiveLabelKo: '신규매장 효과 상회',
+    positiveLabelEn: 'New stores outperform',
+    negativeLabelKo: '신규매장 효과 부진',
+    negativeLabelEn: 'New stores underperform',
+    impactPercent: 10,
+    months: ['m6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'],
+  },
+];
+
+const ACTIVE_PL_SCENARIO_FACTORS = PL_SCENARIO_FACTORS.filter((factor) => factor.id !== 'new_stores');
 
 type TreeMap = Record<Source, Node[]>;
 
@@ -211,20 +328,18 @@ interface PLPageProps {
 export default function PLPage({ locale = 'ko' }: PLPageProps) {
   const isEnglish = locale === 'en';
   const monthNamesEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const [goodScenarioPercent, setGoodScenarioPercent] = useState<number>(DEFAULT_GOOD_PERCENT);
-  const [badScenarioPercent, setBadScenarioPercent] = useState<number>(DEFAULT_BAD_PERCENT);
-  const [detailGoodScenarioPercent, setDetailGoodScenarioPercent] = useState<ScenarioFactorMap>({
-    HK_MLB: DEFAULT_GOOD_PERCENT,
-    HK_Discovery: DEFAULT_GOOD_PERCENT,
-    TW_MLB: DEFAULT_GOOD_PERCENT,
-    TW_Discovery: DEFAULT_GOOD_PERCENT,
+  const [scenarioDirections, setScenarioDirections] = useState<Record<ScenarioFactorId, ScenarioDirection>>({
+    typhoon: 'none',
+    rain: 'none',
+    fw: 'none',
+    china_economy: 'none',
+    fx: 'none',
+    tourism: 'none',
+    taiwan_politics: 'none',
+    new_stores: 'none',
   });
-  const [detailBadScenarioPercent, setDetailBadScenarioPercent] = useState<ScenarioFactorMap>({
-    HK_MLB: DEFAULT_BAD_PERCENT,
-    HK_Discovery: DEFAULT_BAD_PERCENT,
-    TW_MLB: DEFAULT_BAD_PERCENT,
-    TW_Discovery: DEFAULT_BAD_PERCENT,
-  });
+  const [isScenarioPanelOpen, setIsScenarioPanelOpen] = useState<boolean>(false);
+  const scenarioPanelRef = useRef<HTMLDivElement | null>(null);
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
   const [baseMonthIndex, setBaseMonthIndex] = useState<number>(4);
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
@@ -287,6 +402,20 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isScenarioPanelOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!scenarioPanelRef.current) return;
+      const target = event.target;
+      if (target instanceof globalThis.Node && scenarioPanelRef.current.contains(target)) return;
+      setIsScenarioPanelOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [isScenarioPanelOpen]);
+
   const handleToggleNode = (nodeKey: string) => {
     setExpandedNodes((prev) => {
       const next = new Set(prev);
@@ -305,6 +434,42 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const displayPrevTree = selectedYear === 2026 ? trees2025.Total : [];
   const displayCurrTree = selectedYear === 2026 ? trees2026.Total : [];
+  const scenarioMonthlyFactors = useMemo<ScenarioMonthlyFactorMap>(() => {
+    const buildSourceFactors = (source: DetailSource) => Object.fromEntries(
+      MONTH_KEYS.map((monthKey) => {
+        const totalImpact = ACTIVE_PL_SCENARIO_FACTORS
+          .filter((factor) => factor.months.includes(monthKey) && (!factor.sources || factor.sources.includes(source)))
+          .reduce((sum, factor) => {
+            const direction = scenarioDirections[factor.id];
+            if (direction === 'positive') return sum + factor.impactPercent;
+            if (direction === 'negative') return sum - factor.impactPercent;
+            return sum;
+          }, 0);
+
+        return [monthKey, Math.max(0, 1 + totalImpact / 100)];
+      })
+    ) as Record<MonthKey, number>;
+
+    return {
+      HK_MLB: buildSourceFactors('HK_MLB'),
+      HK_Discovery: buildSourceFactors('HK_Discovery'),
+      TW_MLB: buildSourceFactors('TW_MLB'),
+      TW_Discovery: buildSourceFactors('TW_Discovery'),
+    };
+  }, [scenarioDirections]);
+  const scenarioMonthlyImpactLabel = useMemo(() => {
+    const activeMonths = MONTH_KEYS
+      .map((monthKey, index) => {
+        const factor = scenarioMonthlyFactors.HK_MLB[monthKey] ?? 1;
+        if (factor === 1) return null;
+        const pct = Math.round((factor - 1) * 1000) / 10;
+        const monthLabel = isEnglish ? monthNamesEn[index] : `${index + 1}월`;
+        return `${monthLabel} ${pct >= 0 ? '+' : '△'}${Math.abs(pct).toFixed(1)}%`;
+      })
+      .filter(Boolean);
+
+    return activeMonths.length > 0 ? activeMonths.join(' · ') : (isEnglish ? 'No adjustment' : '변동 없음');
+  }, [isEnglish, monthNamesEn, scenarioMonthlyFactors]);
   const annualScenarioTrees = useMemo(
     () =>
       selectedYear === 2026
@@ -314,21 +479,38 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             TW_MLB: trees2026.TW_MLB,
             TW_Discovery: trees2026.TW_Discovery,
           },
-          {
-            HK_MLB: detailGoodScenarioPercent.HK_MLB / 100,
-            HK_Discovery: detailGoodScenarioPercent.HK_Discovery / 100,
-            TW_MLB: detailGoodScenarioPercent.TW_MLB / 100,
-            TW_Discovery: detailGoodScenarioPercent.TW_Discovery / 100,
-          },
-          {
-            HK_MLB: detailBadScenarioPercent.HK_MLB / 100,
-            HK_Discovery: detailBadScenarioPercent.HK_Discovery / 100,
-            TW_MLB: detailBadScenarioPercent.TW_MLB / 100,
-            TW_Discovery: detailBadScenarioPercent.TW_Discovery / 100,
-          })
+          scenarioMonthlyFactors,
+          scenarioMonthlyFactors)
         : null,
-    [detailBadScenarioPercent, detailGoodScenarioPercent, selectedYear, trees2026]
+    [scenarioMonthlyFactors, selectedYear, trees2026]
   );
+  const currentSellOutYoYPercent = useMemo(() => {
+    const ratio = buildPlResultSnapshot(trees2026.Total, trees2025.Total).sellOut.yoyRatioVs2025;
+    return ratio === null ? null : ratio * 100;
+  }, [trees2025.Total, trees2026.Total]);
+  const scenarioSellOutYoYPercent = useMemo(() => {
+    if (!annualScenarioTrees) return currentSellOutYoYPercent;
+    const ratio = buildPlResultSnapshot(annualScenarioTrees.total.good, trees2025.Total).sellOut.yoyRatioVs2025;
+    return ratio === null ? null : ratio * 100;
+  }, [annualScenarioTrees, currentSellOutYoYPercent, trees2025.Total]);
+  const scenarioTone: 'good' | 'bad' | 'neutral' =
+    currentSellOutYoYPercent === null || scenarioSellOutYoYPercent === null
+      ? 'neutral'
+      : scenarioSellOutYoYPercent > currentSellOutYoYPercent + 0.05
+        ? 'good'
+        : scenarioSellOutYoYPercent < currentSellOutYoYPercent - 0.05
+          ? 'bad'
+          : 'neutral';
+  const scenarioKey = `scenario_${scenarioSellOutYoYPercent === null ? 'base' : scenarioSellOutYoYPercent.toFixed(1)}pct`;
+  const goodScenarioPercent = Math.round(scenarioSellOutYoYPercent ?? currentSellOutYoYPercent ?? 100);
+  const badScenarioPercent = goodScenarioPercent;
+  const detailGoodScenarioPercent: ScenarioFactorMap = {
+    HK_MLB: goodScenarioPercent,
+    HK_Discovery: goodScenarioPercent,
+    TW_MLB: goodScenarioPercent,
+    TW_Discovery: goodScenarioPercent,
+  };
+  const detailBadScenarioPercent = detailGoodScenarioPercent;
   const baseMonthKey = `m${baseMonthIndex}` as MonthKey;
   const annualResultSummary = useMemo(() => {
     if (selectedYear !== 2026 || !annualScenarioTrees) return null;
@@ -343,23 +525,16 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         TW_Discovery: buildPlResultSnapshot(trees2026.TW_Discovery, trees2025.TW_Discovery),
       },
       scenarios: {
-        [`good_${goodScenarioPercent}pct_of_current`]: {
+        [scenarioKey]: {
           Total: buildPlResultSnapshot(annualScenarioTrees.total.good, trees2025.Total),
           HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.good, trees2025.HK_MLB),
           HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.good, trees2025.HK_Discovery),
           TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.good, trees2025.TW_MLB),
           TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.good, trees2025.TW_Discovery),
         },
-        [`bad_${badScenarioPercent}pct_of_current`]: {
-          Total: buildPlResultSnapshot(annualScenarioTrees.total.bad, trees2025.Total),
-          HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.bad, trees2025.HK_MLB),
-          HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.bad, trees2025.HK_Discovery),
-          TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.bad, trees2025.TW_MLB),
-          TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.bad, trees2025.TW_Discovery),
-        },
       },
     };
-  }, [annualScenarioTrees, badScenarioPercent, goodScenarioPercent, selectedYear, trees2025, trees2026]);
+  }, [annualScenarioTrees, scenarioKey, selectedYear, trees2025, trees2026]);
 
   const baseMonthResultSummary = useMemo(() => {
     if (selectedYear !== 2026 || !annualScenarioTrees) return null;
@@ -375,23 +550,16 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         TW_Discovery: buildPlResultSnapshot(trees2026.TW_Discovery, trees2025.TW_Discovery, baseMonthKey),
       },
       scenarios: {
-        [`good_${goodScenarioPercent}pct_of_current`]: {
+        [scenarioKey]: {
           Total: buildPlResultSnapshot(annualScenarioTrees.total.good, trees2025.Total, baseMonthKey),
           HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.good, trees2025.HK_MLB, baseMonthKey),
           HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.good, trees2025.HK_Discovery, baseMonthKey),
           TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.good, trees2025.TW_MLB, baseMonthKey),
           TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.good, trees2025.TW_Discovery, baseMonthKey),
         },
-        [`bad_${badScenarioPercent}pct_of_current`]: {
-          Total: buildPlResultSnapshot(annualScenarioTrees.total.bad, trees2025.Total, baseMonthKey),
-          HK_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.HK_MLB.bad, trees2025.HK_MLB, baseMonthKey),
-          HK_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.HK_Discovery.bad, trees2025.HK_Discovery, baseMonthKey),
-          TW_MLB: buildPlResultSnapshot(annualScenarioTrees.detail.TW_MLB.bad, trees2025.TW_MLB, baseMonthKey),
-          TW_Discovery: buildPlResultSnapshot(annualScenarioTrees.detail.TW_Discovery.bad, trees2025.TW_Discovery, baseMonthKey),
-        },
       },
     };
-  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, baseMonthKey, goodScenarioPercent, selectedYear, trees2025, trees2026]);
+  }, [annualScenarioTrees, baseMonthIndex, baseMonthKey, scenarioKey, selectedYear, trees2025, trees2026]);
 
   const exportPayload = useMemo(() => {
     if (selectedYear !== 2026 || !annualScenarioTrees) {
@@ -423,19 +591,12 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         TW_Discovery: trees2026.TW_Discovery,
       },
       scenarios: {
-        [`good_${goodScenarioPercent}pct_of_current`]: {
+        [scenarioKey]: {
           Total: annualScenarioTrees.total.good,
           HK_MLB: annualScenarioTrees.detail.HK_MLB.good,
           HK_Discovery: annualScenarioTrees.detail.HK_Discovery.good,
           TW_MLB: annualScenarioTrees.detail.TW_MLB.good,
           TW_Discovery: annualScenarioTrees.detail.TW_Discovery.good,
-        },
-        [`bad_${badScenarioPercent}pct_of_current`]: {
-          Total: annualScenarioTrees.total.bad,
-          HK_MLB: annualScenarioTrees.detail.HK_MLB.bad,
-          HK_Discovery: annualScenarioTrees.detail.HK_Discovery.bad,
-          TW_MLB: annualScenarioTrees.detail.TW_MLB.bad,
-          TW_Discovery: annualScenarioTrees.detail.TW_Discovery.bad,
         },
       },
       derivedMetrics: {
@@ -447,32 +608,24 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             TW_MLB: getOperatingMarginSnapshot(trees2026.TW_MLB),
             TW_Discovery: getOperatingMarginSnapshot(trees2026.TW_Discovery),
           },
-          [`good_${goodScenarioPercent}pct_of_current`]: {
+          [scenarioKey]: {
             Total: getOperatingMarginSnapshot(annualScenarioTrees.total.good),
             HK_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_MLB.good),
             HK_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_Discovery.good),
             TW_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_MLB.good),
             TW_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_Discovery.good),
           },
-          [`bad_${badScenarioPercent}pct_of_current`]: {
-            Total: getOperatingMarginSnapshot(annualScenarioTrees.total.bad),
-            HK_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_MLB.bad),
-            HK_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_Discovery.bad),
-            TW_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_MLB.bad),
-            TW_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_Discovery.bad),
-          },
         },
       },
       scenarioControls: {
-        goodPercentOfCurrent: goodScenarioPercent,
-        badPercentOfCurrent: badScenarioPercent,
-        detailGoodPercentOfCurrent: detailGoodScenarioPercent,
-        detailBadPercentOfCurrent: detailBadScenarioPercent,
-        stepPercent: 10,
+        scenarioDirections,
+        scenarioMonthlyFactors,
+        currentSellOutYoYPercent,
+        scenarioSellOutYoYPercent,
       },
       resultSummary: annualResultSummary,
     };
-  }, [annualResultSummary, annualScenarioTrees, badScenarioPercent, baseMonthIndex, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
+  }, [annualResultSummary, annualScenarioTrees, baseMonthIndex, currentSellOutYoYPercent, scenarioDirections, scenarioKey, scenarioMonthlyFactors, scenarioSellOutYoYPercent, selectedYear, trees2026]);
   const baseMonthExportPayload = useMemo(() => {
     const actual = {
       Total: buildBaseMonthTree(trees2026.Total, baseMonthKey),
@@ -503,19 +656,12 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
 
     if (selectedYear === 2026 && annualScenarioTrees) {
       payload.scenarios = {
-        [`good_${goodScenarioPercent}pct_of_current`]: {
+        [scenarioKey]: {
           Total: buildBaseMonthTree(annualScenarioTrees.total.good, baseMonthKey),
           HK_MLB: buildBaseMonthTree(annualScenarioTrees.detail.HK_MLB.good, baseMonthKey),
           HK_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.HK_Discovery.good, baseMonthKey),
           TW_MLB: buildBaseMonthTree(annualScenarioTrees.detail.TW_MLB.good, baseMonthKey),
           TW_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.TW_Discovery.good, baseMonthKey),
-        },
-        [`bad_${badScenarioPercent}pct_of_current`]: {
-          Total: buildBaseMonthTree(annualScenarioTrees.total.bad, baseMonthKey),
-          HK_MLB: buildBaseMonthTree(annualScenarioTrees.detail.HK_MLB.bad, baseMonthKey),
-          HK_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.HK_Discovery.bad, baseMonthKey),
-          TW_MLB: buildBaseMonthTree(annualScenarioTrees.detail.TW_MLB.bad, baseMonthKey),
-          TW_Discovery: buildBaseMonthTree(annualScenarioTrees.detail.TW_Discovery.bad, baseMonthKey),
         },
       };
       payload.derivedMetrics = {
@@ -527,69 +673,38 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             TW_MLB: getOperatingMarginSnapshot(trees2026.TW_MLB).monthly[baseMonthKey] ?? 0,
             TW_Discovery: getOperatingMarginSnapshot(trees2026.TW_Discovery).monthly[baseMonthKey] ?? 0,
           },
-          [`good_${goodScenarioPercent}pct_of_current`]: {
+          [scenarioKey]: {
             Total: getOperatingMarginSnapshot(annualScenarioTrees.total.good).monthly[baseMonthKey] ?? 0,
             HK_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_MLB.good).monthly[baseMonthKey] ?? 0,
             HK_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_Discovery.good).monthly[baseMonthKey] ?? 0,
             TW_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_MLB.good).monthly[baseMonthKey] ?? 0,
             TW_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_Discovery.good).monthly[baseMonthKey] ?? 0,
           },
-          [`bad_${badScenarioPercent}pct_of_current`]: {
-            Total: getOperatingMarginSnapshot(annualScenarioTrees.total.bad).monthly[baseMonthKey] ?? 0,
-            HK_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_MLB.bad).monthly[baseMonthKey] ?? 0,
-            HK_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.HK_Discovery.bad).monthly[baseMonthKey] ?? 0,
-            TW_MLB: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_MLB.bad).monthly[baseMonthKey] ?? 0,
-            TW_Discovery: getOperatingMarginSnapshot(annualScenarioTrees.detail.TW_Discovery.bad).monthly[baseMonthKey] ?? 0,
-          },
         },
       };
       payload.scenarioControls = {
-        goodPercentOfCurrent: goodScenarioPercent,
-        badPercentOfCurrent: badScenarioPercent,
-        detailGoodPercentOfCurrent: detailGoodScenarioPercent,
-        detailBadPercentOfCurrent: detailBadScenarioPercent,
-        stepPercent: 10,
+        scenarioDirections,
+        scenarioMonthlyFactors,
+        currentSellOutYoYPercent,
+        scenarioSellOutYoYPercent,
       };
       payload.resultSummary = baseMonthResultSummary;
     }
 
     return payload;
-  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, baseMonthKey, baseMonthResultSummary, detailBadScenarioPercent, detailGoodScenarioPercent, goodScenarioPercent, selectedYear, trees2026]);
-  const isScenarioAdjusted =
-    goodScenarioPercent !== DEFAULT_GOOD_PERCENT || badScenarioPercent !== DEFAULT_BAD_PERCENT;
-
-  const handleGoodScenarioChange = (next: number) => {
-    setGoodScenarioPercent(next);
-    setDetailGoodScenarioPercent({
-      HK_MLB: next,
-      HK_Discovery: next,
-      TW_MLB: next,
-      TW_Discovery: next,
+  }, [annualScenarioTrees, baseMonthIndex, baseMonthKey, baseMonthResultSummary, currentSellOutYoYPercent, scenarioDirections, scenarioKey, scenarioMonthlyFactors, scenarioSellOutYoYPercent, selectedYear, trees2026]);
+  const isScenarioAdjusted = Object.values(scenarioDirections).some((direction) => direction !== 'none');
+  const resetScenarioDirections = () => {
+    setScenarioDirections({
+      typhoon: 'none',
+      rain: 'none',
+      fw: 'none',
+      china_economy: 'none',
+      fx: 'none',
+      tourism: 'none',
+      taiwan_politics: 'none',
+      new_stores: 'none',
     });
-  };
-
-  const handleBadScenarioChange = (next: number) => {
-    setBadScenarioPercent(next);
-    setDetailBadScenarioPercent({
-      HK_MLB: next,
-      HK_Discovery: next,
-      TW_MLB: next,
-      TW_Discovery: next,
-    });
-  };
-
-  const handleDetailGoodScenarioChange = (source: keyof ScenarioFactorMap, next: number) => {
-    setDetailGoodScenarioPercent((prev) => ({
-      ...prev,
-      [source]: next,
-    }));
-  };
-
-  const handleDetailBadScenarioChange = (source: keyof ScenarioFactorMap, next: number) => {
-    setDetailBadScenarioPercent((prev) => ({
-      ...prev,
-      [source]: next,
-    }));
   };
 
   const downloadJson = (payload: unknown, fileName: string) => {
@@ -621,10 +736,6 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
       source === 'Total'
         ? buildNodeMap(annualScenarioTrees?.total.good ?? [])
         : buildNodeMap(annualScenarioTrees?.detail[source as keyof ScenarioFactorMap]?.good ?? []);
-    const badMap =
-      source === 'Total'
-        ? buildNodeMap(annualScenarioTrees?.total.bad ?? [])
-        : buildNodeMap(annualScenarioTrees?.detail[source as keyof ScenarioFactorMap]?.bad ?? []);
 
     const accountKey = isEnglish ? 'Account' : '계정과목';
     const levelKey = isEnglish ? 'Level' : '레벨';
@@ -632,8 +743,9 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     const ytdKey = isEnglish ? `26 YTD ${baseMonthIndex}M` : `26년 ${baseMonthIndex}월 YTD`;
     const rollingKey = isEnglish ? '26 Rolling' : '26년 롤링';
     const yoyKey = isEnglish ? '26 Rolling YoY' : '26년 롤링 YoY';
-    const goodKey = isEnglish ? `Good ${goodScenarioPercent}%` : `Good ${goodScenarioPercent}%`;
-    const badKey = isEnglish ? `Bad ${badScenarioPercent}%` : `Bad ${badScenarioPercent}%`;
+    const scenarioColumnKey = isEnglish
+      ? `Scenario ${scenarioSellOutYoYPercent === null ? '-' : scenarioSellOutYoYPercent.toFixed(1)}%`
+      : `시나리오 ${scenarioSellOutYoYPercent === null ? '-' : scenarioSellOutYoYPercent.toFixed(1)}%`;
     const typeKey = isEnglish ? 'Type' : '유형';
     const monthHeaders = Array.from({ length: 12 }, (_, i) =>
       isEnglish ? `${i + 1}M` : `${i + 1}월`
@@ -642,8 +754,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     return currentRows.map((node) => {
       const months = getNodeMonths(node);
       const prevMonths = getNodeMonths(prevMap.get(node.key));
-      const goodMonths = getNodeMonths(goodMap.get(node.key));
-      const badMonths = getNodeMonths(badMap.get(node.key));
+      const scenarioMonths = getNodeMonths(goodMap.get(node.key));
       const currentTotal = sumMonthValues(months);
       const previousTotal = sumMonthValues(prevMonths);
       const row: Record<string, string | number | null> = {
@@ -661,12 +772,11 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         .reduce((sum, value) => sum + value, 0);
       row[rollingKey] = currentTotal;
       row[yoyKey] = previousTotal ? `${Math.round((currentTotal / previousTotal) * 100)}%` : null;
-      row[goodKey] = sumMonthValues(goodMonths);
-      row[badKey] = sumMonthValues(badMonths);
+      row[scenarioColumnKey] = sumMonthValues(scenarioMonths);
 
       return row;
     });
-  }, [annualScenarioTrees, badScenarioPercent, baseMonthIndex, goodScenarioPercent, isEnglish]);
+  }, [annualScenarioTrees, baseMonthIndex, isEnglish, scenarioSellOutYoYPercent]);
 
   const appendPlSheet = useCallback((workbook: XLSX.WorkBook, sheetName: string, rows: Record<string, unknown>[]) => {
     if (rows.length === 0) return;
@@ -830,71 +940,129 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             {isEnglish ? '2026 Store Trend View' : '2026년 매장별 추세보기'}
           </a>
 
-          <div className="ml-auto flex flex-wrap items-center gap-3 text-sm text-gray-700">
-            <span className="font-medium text-gray-600">{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
-
-            <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-900">
-              <span className="text-sm font-semibold">{isEnglish ? 'Upside' : '상향'}</span>
-              <span className="min-w-[42px] text-center text-[15px] font-bold leading-none">{goodScenarioPercent}%</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-300 bg-transparent text-[12px] font-bold text-emerald-800 hover:bg-white/80 disabled:opacity-40"
-                  onClick={() => handleGoodScenarioChange(Math.max(110, goodScenarioPercent - 10))}
-                  disabled={goodScenarioPercent <= 110}
+          <div ref={scenarioPanelRef} className="relative ml-auto flex flex-wrap items-center gap-2 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
+                {isEnglish ? 'Click to simulate scenarios' : '클릭하여 시나리오 시뮬레이션'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsScenarioPanelOpen((prev) => !prev)}
+                aria-haspopup="dialog"
+                aria-expanded={isScenarioPanelOpen}
+                className={`inline-flex items-center gap-2 rounded-xl border-2 px-3 py-1.5 font-semibold shadow-[0_2px_0_rgba(15,23,42,0.12),0_6px_14px_rgba(15,23,42,0.10)] transition-all hover:-translate-y-0.5 hover:shadow-[0_3px_0_rgba(15,23,42,0.14),0_10px_18px_rgba(15,23,42,0.12)] active:translate-y-0 active:shadow-sm ${
+                  scenarioTone === 'good'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+                    : scenarioTone === 'bad'
+                      ? 'border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100'
+                      : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50'
+                }`}
+              >
+                <span>{isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}</span>
+                <span className="text-[15px] font-extrabold leading-none">
+                  {scenarioSellOutYoYPercent === null ? '-' : `${scenarioSellOutYoYPercent.toFixed(1)}%`}
+                </span>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className={`h-4 w-4 transition-transform duration-200 ${isScenarioPanelOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  -
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-300 bg-transparent text-[12px] font-bold text-emerald-800 hover:bg-white/80 disabled:opacity-40"
-                  onClick={() => handleGoodScenarioChange(Math.min(150, goodScenarioPercent + 10))}
-                  disabled={goodScenarioPercent >= 150}
-                >
-                  +
-                </button>
-              </div>
+                  <path d="M5 7l5 5 5-5" />
+                </svg>
+              </button>
             </div>
 
-            <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-900">
-              <span className="text-sm font-semibold">{isEnglish ? 'Downside' : '하향'}</span>
-              <span className="min-w-[42px] text-center text-[15px] font-bold leading-none">{badScenarioPercent}%</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-transparent text-[12px] font-bold text-amber-800 hover:bg-white/80 disabled:opacity-40"
-                  onClick={() => handleBadScenarioChange(Math.max(70, badScenarioPercent - 10))}
-                  disabled={badScenarioPercent <= 70}
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-transparent text-[12px] font-bold text-amber-800 hover:bg-white/80 disabled:opacity-40"
-                  onClick={() => handleBadScenarioChange(Math.min(90, badScenarioPercent + 10))}
-                  disabled={badScenarioPercent >= 90}
-                >
-                  +
-                </button>
-              </div>
-            </div>
+            {isScenarioAdjusted && (
+              <button
+                type="button"
+                className="inline-flex h-8 items-center justify-center rounded border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                onClick={resetScenarioDirections}
+              >
+                {isEnglish ? 'Reset' : '되돌리기'}
+              </button>
+            )}
 
-            <button
-              type="button"
-              className={`inline-flex h-8 items-center justify-center rounded border px-3 text-sm font-medium transition-colors ${
-                isScenarioAdjusted
-                  ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                  : 'border-transparent bg-transparent text-transparent pointer-events-none'
-              }`}
-              onClick={() => {
-                handleGoodScenarioChange(DEFAULT_GOOD_PERCENT);
-                handleBadScenarioChange(DEFAULT_BAD_PERCENT);
-              }}
-              aria-hidden={!isScenarioAdjusted}
-              tabIndex={isScenarioAdjusted ? 0 : -1}
-            >
-              {isEnglish ? 'Reset' : '되돌리기'}
-            </button>
+            {isScenarioPanelOpen && (
+              <div className="absolute right-[calc(100%+12px)] top-0 z-30 w-[640px] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                <div className="mb-3 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-bold text-slate-900">{isEnglish ? 'Scenario Switches' : '시나리오 스위치'}</div>
+                    <div className="mt-1 text-xs text-slate-500">{scenarioMonthlyImpactLabel}</div>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    <div>{isEnglish ? 'Current YoY' : '현재 YoY'} {currentSellOutYoYPercent === null ? '-' : `${currentSellOutYoYPercent.toFixed(1)}%`}</div>
+                    <div>{isEnglish ? 'Scenario YoY' : '시나리오 YoY'} {scenarioSellOutYoYPercent === null ? '-' : `${scenarioSellOutYoYPercent.toFixed(1)}%`}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {ACTIVE_PL_SCENARIO_FACTORS.map((factor) => {
+                    const activeDirection = scenarioDirections[factor.id];
+                    const monthRange = `${factor.months[0].replace('m', '')}~${factor.months[factor.months.length - 1].replace('m', '')}${isEnglish ? 'M' : '월'}`;
+                    const options: Array<{ direction: ScenarioDirection; label: string; tone: string }> = [
+                      {
+                        direction: 'positive',
+                        label: `${isEnglish ? factor.positiveLabelEn : factor.positiveLabelKo} (+${factor.impactPercent}%)`,
+                        tone: 'emerald',
+                      },
+                      {
+                        direction: 'none',
+                        label: isEnglish ? 'No effect' : '선택안함',
+                        tone: 'slate',
+                      },
+                      {
+                        direction: 'negative',
+                        label: `${isEnglish ? factor.negativeLabelEn : factor.negativeLabelKo} (△${factor.impactPercent}%)`,
+                        tone: 'rose',
+                      },
+                    ];
+
+                    return (
+                      <div key={factor.id} className="grid grid-cols-[110px_1fr] items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2">
+                        <div>
+                          <div className="font-bold text-slate-800">{isEnglish ? factor.titleEn : factor.titleKo}</div>
+                          <div className="text-xs text-slate-500">{monthRange}</div>
+                        </div>
+                        <div className="grid h-11 grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-inner">
+                          {options.map((option) => {
+                            const active = activeDirection === option.direction;
+                            const activeClass =
+                              option.tone === 'emerald'
+                                ? 'border-emerald-500 bg-emerald-500 text-white'
+                                : option.tone === 'rose'
+                                  ? 'border-rose-500 bg-rose-500 text-white'
+                                  : 'border-slate-700 bg-slate-700 text-white';
+
+                            return (
+                              <button
+                                key={option.direction}
+                                type="button"
+                                onClick={() =>
+                                  setScenarioDirections((prev) => ({
+                                    ...prev,
+                                    [factor.id]: option.direction,
+                                  }))
+                                }
+                                className={`box-border flex h-9 min-w-0 items-center justify-center rounded-lg border px-2 text-center text-xs font-bold leading-tight transition-colors ${
+                                  active ? activeClass : 'border-transparent bg-transparent text-slate-600 hover:border-transparent hover:bg-slate-100'
+                                }`}
+                              >
+                                <span className="block w-full truncate">{option.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -926,12 +1094,9 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             showMonthly={showMonthly}
             showYTD={showYTD}
             annualOnly={showAnnualOnly}
-            detailGoodScenarioPercent={detailGoodScenarioPercent}
-            detailBadScenarioPercent={detailBadScenarioPercent}
-            defaultGoodScenarioPercent={DEFAULT_GOOD_PERCENT}
-            defaultBadScenarioPercent={DEFAULT_BAD_PERCENT}
-            onDetailGoodScenarioChange={handleDetailGoodScenarioChange}
-            onDetailBadScenarioChange={handleDetailBadScenarioChange}
+            currentYoYPercent={currentSellOutYoYPercent}
+            scenarioYoYPercent={scenarioSellOutYoYPercent}
+            scenarioTone={scenarioTone}
             isExpandedAll={isExpandedAll}
             onToggleNode={handleToggleNode}
             expandedNodes={expandedNodes}

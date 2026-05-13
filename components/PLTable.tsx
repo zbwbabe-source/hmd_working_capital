@@ -20,12 +20,9 @@ type PLTableProps = {
   showMonthly: boolean;
   showYTD: boolean;
   annualOnly: boolean;
-  detailGoodScenarioPercent: ScenarioFactorMap;
-  detailBadScenarioPercent: ScenarioFactorMap;
-  defaultGoodScenarioPercent: number;
-  defaultBadScenarioPercent: number;
-  onDetailGoodScenarioChange: (source: keyof ScenarioFactorMap, next: number) => void;
-  onDetailBadScenarioChange: (source: keyof ScenarioFactorMap, next: number) => void;
+  currentYoYPercent: number | null;
+  scenarioYoYPercent: number | null;
+  scenarioTone: 'good' | 'bad' | 'neutral';
   isExpandedAll: boolean;
   onToggleNode: (nodeKey: string) => void;
   expandedNodes: Set<string>;
@@ -319,12 +316,9 @@ export default function PLTable({
   showMonthly,
   showYTD,
   annualOnly,
-  detailGoodScenarioPercent,
-  detailBadScenarioPercent,
-  defaultGoodScenarioPercent,
-  defaultBadScenarioPercent,
-  onDetailGoodScenarioChange,
-  onDetailBadScenarioChange,
+  currentYoYPercent,
+  scenarioYoYPercent,
+  scenarioTone,
   isExpandedAll,
   onToggleNode,
   expandedNodes,
@@ -334,8 +328,22 @@ export default function PLTable({
   const [showMonthDetails, setShowMonthDetails] = useState<boolean>(false);
   const [showYtdDetails, setShowYtdDetails] = useState<boolean>(false);
   const [showAnnualDetails, setShowAnnualDetails] = useState<boolean>(false);
-  const [showGoodDetails, setShowGoodDetails] = useState<boolean>(false);
-  const [showBadDetails, setShowBadDetails] = useState<boolean>(false);
+  const [showScenarioDetails, setShowScenarioDetails] = useState<boolean>(false);
+  const showGoodDetails = showScenarioDetails;
+  const setShowGoodDetails = setShowScenarioDetails;
+  const showBadDetails = false;
+  const setShowBadDetails: React.Dispatch<React.SetStateAction<boolean>> = () => {};
+  const detailGoodScenarioPercent = {
+    HK_MLB: scenarioYoYPercent ?? 0,
+    HK_Discovery: scenarioYoYPercent ?? 0,
+    TW_MLB: scenarioYoYPercent ?? 0,
+    TW_Discovery: scenarioYoYPercent ?? 0,
+  };
+  const detailBadScenarioPercent = detailGoodScenarioPercent;
+  const defaultGoodScenarioPercent = scenarioYoYPercent ?? 0;
+  const defaultBadScenarioPercent = scenarioYoYPercent ?? 0;
+  const onDetailGoodScenarioChange = (_source: keyof ScenarioFactorMap, _next: number) => {};
+  const onDetailBadScenarioChange = (_source: keyof ScenarioFactorMap, _next: number) => {};
 
   const baseWindowLabel = isEnglish ? monthNamesEn[Math.max(baseMonthIndex - 1, 0)] : (baseMonthIndex <= 1 ? '1월' : `${baseMonthIndex}월`);
   const ytdMonthLabel = isEnglish ? monthNamesEn[Math.max(baseMonthIndex - 1, 0)] : `${baseMonthIndex}월`;
@@ -382,14 +390,12 @@ export default function PLTable({
 
   const totalPrevMap = useMemo(() => buildNodeMap(prevTree), [prevTree]);
   const totalCurrMap = useMemo(() => buildNodeMap(currTree), [currTree]);
-  const totalGoodMap = useMemo(
+  const totalScenarioMap = useMemo(
     () => buildNodeMap(annualScenarioTrees?.total.good ?? []),
     [annualScenarioTrees]
   );
-  const totalBadMap = useMemo(
-    () => buildNodeMap(annualScenarioTrees?.total.bad ?? []),
-    [annualScenarioTrees]
-  );
+  const totalGoodMap = totalScenarioMap;
+  const totalBadMap = totalScenarioMap;
 
   const detailCurrMaps = useMemo(
     () => ({
@@ -400,7 +406,7 @@ export default function PLTable({
     }),
     [detailCurrTrees]
   );
-  const detailGoodMaps = useMemo(
+  const detailScenarioMaps = useMemo(
     () => ({
       HK_MLB: buildNodeMap(annualScenarioTrees?.detail.HK_MLB.good ?? []),
       HK_Discovery: buildNodeMap(annualScenarioTrees?.detail.HK_Discovery.good ?? []),
@@ -409,15 +415,8 @@ export default function PLTable({
     }),
     [annualScenarioTrees]
   );
-  const detailBadMaps = useMemo(
-    () => ({
-      HK_MLB: buildNodeMap(annualScenarioTrees?.detail.HK_MLB.bad ?? []),
-      HK_Discovery: buildNodeMap(annualScenarioTrees?.detail.HK_Discovery.bad ?? []),
-      TW_MLB: buildNodeMap(annualScenarioTrees?.detail.TW_MLB.bad ?? []),
-      TW_Discovery: buildNodeMap(annualScenarioTrees?.detail.TW_Discovery.bad ?? []),
-    }),
-    [annualScenarioTrees]
-  );
+  const detailGoodMaps = detailScenarioMaps;
+  const detailBadMaps = detailScenarioMaps;
 
   const monthHeaders = Array.from({ length: 12 }, (_, i) =>
     i < baseMonthIndex ? (isEnglish ? `${monthNamesEn[i]} (Act)` : `${i + 1}월(실적)`) : (isEnglish ? `${monthNamesEn[i]} (Plan)` : `${i + 1}월(계획)`)
@@ -429,12 +428,32 @@ export default function PLTable({
     2 +
     (showAnnualDetails ? detailColumns.length : 0) +
     1 +
-    (showGoodDetails ? detailColumns.length : 0) +
-    1 +
-    (showBadDetails ? detailColumns.length : 0);
+    (showScenarioDetails ? detailColumns.length : 0);
+  const scenarioToneClasses =
+    scenarioTone === 'good'
+      ? {
+          header: 'bg-emerald-700',
+          detailHeader: 'bg-emerald-800',
+          cell: 'bg-emerald-50',
+          label: isEnglish ? 'Good Scenario' : 'Good 시나리오',
+        }
+      : scenarioTone === 'bad'
+        ? {
+            header: 'bg-rose-700',
+            detailHeader: 'bg-rose-800',
+            cell: 'bg-rose-50',
+            label: isEnglish ? 'Bad Scenario' : 'Bad 시나리오',
+          }
+        : {
+            header: 'bg-blue-700',
+            detailHeader: 'bg-blue-800',
+            cell: 'bg-blue-50',
+            label: isEnglish ? 'Base Scenario' : '기준 시나리오',
+          };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
       <table className="w-full table-fixed border-collapse text-sm">
         <colgroup>
           <col className="w-[260px]" />
@@ -486,7 +505,7 @@ export default function PLTable({
             </th>
             <th
               className="border border-white/30 px-4 py-2 text-center font-semibold bg-blue-800"
-              colSpan={2 + (showGoodDetails ? detailColumns.length : 0) + (showBadDetails ? detailColumns.length : 0)}
+              colSpan={1 + (showScenarioDetails ? detailColumns.length : 0)}
             >
               {isEnglish ? 'Operating Scenario' : '영업상황 Scenario'}
             </th>
@@ -561,16 +580,21 @@ export default function PLTable({
             <th
               className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px]"
             >
-              <span className="inline-flex items-center gap-2">
-                {isEnglish ? '26 Annual' : '26년 연간'}
-                <button
-                  type="button"
-                  className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
-                  onClick={() => setShowAnnualDetails((prev) => !prev)}
-                >
-                  {showAnnualDetails ? '▼' : '▶'}
-                </button>
-              </span>
+              <div className="flex min-h-[92px] flex-col items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-2">
+                  {isEnglish ? '26 Annual' : '26년 연간'}
+                  <button
+                    type="button"
+                    className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
+                    onClick={() => setShowAnnualDetails((prev) => !prev)}
+                  >
+                    {showAnnualDetails ? '▼' : '▶'}
+                  </button>
+                </span>
+                <span className="rounded-full bg-white/15 px-2 py-1 text-[12px] font-bold text-white/95">
+                  {isEnglish ? 'Base' : '기준'} {currentYoYPercent === null ? '-' : `${currentYoYPercent.toFixed(1)}%`}
+                </span>
+              </div>
             </th>
             {showAnnualDetails &&
               detailColumns.map((detail) => (
@@ -579,11 +603,11 @@ export default function PLTable({
                 </th>
               ))}
             <th
-              className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-emerald-700"
+              className={`border border-white/30 px-4 py-3 text-center font-semibold w-[140px] min-w-[140px] ${scenarioToneClasses.header}`}
             >
               <div className="flex min-h-[92px] flex-col items-center justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span>{isEnglish ? '26 Upside Total' : '26년 상향 합계'}</span>
+                  <span>{scenarioToneClasses.label}</span>
                   <button
                     type="button"
                     className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
@@ -592,30 +616,25 @@ export default function PLTable({
                     {showGoodDetails ? '▼' : '▶'}
                   </button>
                 </div>
+                <span className="rounded-full bg-white/15 px-2 py-1 text-[12px] font-bold text-white/95">
+                  {isEnglish ? 'Scenario' : '시나리오'} {scenarioYoYPercent === null ? '-' : `${scenarioYoYPercent.toFixed(1)}%`}
+                </span>
               </div>
             </th>
             {showGoodDetails &&
               detailColumns.map((detail) => (
-                <th key={`annual-detail-good-${detail.source}`} className="border border-white/30 px-3 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-emerald-800">
+                <th key={`annual-detail-good-${detail.source}`} className={`border border-white/30 px-3 py-3 text-center font-semibold w-[120px] min-w-[120px] ${scenarioToneClasses.detailHeader}`}>
                   <div className="flex min-h-[92px] flex-col items-center justify-between">
-                    <div>{isEnglish ? `${detail.label} Upside` : `${detail.label} 상향`}</div>
-                    <div className="text-[14px] font-bold leading-none text-white">{detailGoodScenarioPercent[detail.source]}%</div>
-                    {renderScenarioControl(
-                      detailGoodScenarioPercent[detail.source],
-                      defaultGoodScenarioPercent,
-                      (next) => onDetailGoodScenarioChange(detail.source, next),
-                      'good',
-                      { min: 70, max: 150 }
-                    )}
+                    <div>{`${detail.label} ${isEnglish ? 'Scenario' : '시나리오'}`}</div>
                   </div>
                 </th>
               ))}
             <th
-              className="border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-700"
+              className="hidden border border-white/30 px-4 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-700"
             >
               <div className="flex min-h-[92px] flex-col items-center justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span>{isEnglish ? '26 Downside Total' : '26년 하향 합계'}</span>
+                  <span>{scenarioToneClasses.label}</span>
                   <button
                     type="button"
                     className="inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-white/20 px-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-white/30"
@@ -630,7 +649,7 @@ export default function PLTable({
               detailColumns.map((detail) => (
                 <th key={`annual-detail-bad-${detail.source}`} className="border border-white/30 px-3 py-3 text-center font-semibold w-[120px] min-w-[120px] bg-amber-800">
                   <div className="flex min-h-[92px] flex-col items-center justify-between">
-                    <div>{isEnglish ? `${detail.label} Downside` : `${detail.label} 하향`}</div>
+                    <div>{`${detail.label} ${isEnglish ? 'Scenario' : '시나리오'}`}</div>
                     <div className="text-[14px] font-bold leading-none text-white">{detailBadScenarioPercent[detail.source]}%</div>
                     {renderScenarioControl(
                       detailBadScenarioPercent[detail.source],
@@ -740,7 +759,7 @@ export default function PLTable({
 
                 if (scope === 'annualGood') {
                   return [
-                    <td key={`${scope}-${detail.source}-${key}`} className="border border-gray-200 px-2 py-2 text-right bg-emerald-50">
+                    <td key={`${scope}-${detail.source}-${key}`} className={`border border-gray-200 px-2 py-2 text-right ${scenarioToneClasses.cell}`}>
                       <div className={`font-semibold ${detailGoodValue !== null && detailGoodValue < 0 ? 'text-red-600' : ''}`}>
                         {renderValue(detailGoodValue, isRate)}
                       </div>
@@ -750,7 +769,7 @@ export default function PLTable({
                 }
 
                 return [
-                  <td key={`${scope}-${detail.source}-${key}`} className="border border-gray-200 px-2 py-2 text-right bg-amber-50">
+                    <td key={`${scope}-${detail.source}-${key}`} className="hidden border border-gray-200 px-2 py-2 text-right bg-amber-50">
                     <div className={`font-semibold ${detailBadValue !== null && detailBadValue < 0 ? 'text-red-600' : ''}`}>
                       {renderValue(detailBadValue, isRate)}
                     </div>
@@ -843,14 +862,14 @@ export default function PLTable({
                   {formatChange(yearResult.currYearTotal, yearResult.prevYearTotal, isRate, locale)}
                 </td>
                 {showAnnualDetails && detailCells('annual')}
-                <td className="border border-gray-200 px-2 py-2 text-right bg-emerald-50">
+                <td className={`border border-gray-200 px-2 py-2 text-right ${scenarioToneClasses.cell}`}>
                   <div className={`font-semibold ${totalGoodValue !== null && totalGoodValue < 0 ? 'text-red-600' : ''}`}>
                     {renderValue(totalGoodValue, isRate)}
                   </div>
                   {formatChange(totalGoodValue, yearResult.prevYearTotal, isRate, locale)}
                 </td>
                 {showGoodDetails && detailCells('annualGood')}
-                <td className="border border-gray-200 px-2 py-2 text-right bg-amber-50">
+                <td className="hidden border border-gray-200 px-2 py-2 text-right bg-amber-50">
                   <div className={`font-semibold ${totalBadValue !== null && totalBadValue < 0 ? 'text-red-600' : ''}`}>
                     {renderValue(totalBadValue, isRate)}
                   </div>
@@ -899,7 +918,7 @@ export default function PLTable({
                 } else if (scope === 'annualGood') {
                   value = goodRate?.currYearTotal ?? null;
                   compare = prevYearRate?.currYearTotal ?? null;
-                  cellBg = 'bg-emerald-50';
+                  cellBg = scenarioToneClasses.cell;
                 } else {
                   value = badRate?.currYearTotal ?? null;
                   compare = prevYearRate?.currYearTotal ?? null;
@@ -965,12 +984,12 @@ export default function PLTable({
                   {formatChange(opMarginYearCurr?.currYearTotal ?? null, opMarginYearPrev?.currYearTotal ?? null, true, locale)}
                 </td>
                 {showAnnualDetails && opMarginDetailCells('annual')}
-                <td className="border border-gray-200 px-2 py-2 text-right bg-emerald-50">
+                <td className={`border border-gray-200 px-2 py-2 text-right ${scenarioToneClasses.cell}`}>
                   <div className="font-semibold">{renderValue(opMarginGood?.currYearTotal ?? null, true)}</div>
                   {formatChange(opMarginGood?.currYearTotal ?? null, opMarginYearPrev?.currYearTotal ?? null, true, locale)}
                 </td>
                 {showGoodDetails && opMarginDetailCells('annualGood')}
-                <td className="border border-gray-200 px-2 py-2 text-right bg-amber-50">
+                <td className="hidden border border-gray-200 px-2 py-2 text-right bg-amber-50">
                   <div className="font-semibold">{renderValue(opMarginBad?.currYearTotal ?? null, true)}</div>
                   {formatChange(opMarginBad?.currYearTotal ?? null, opMarginYearPrev?.currYearTotal ?? null, true, locale)}
                 </td>
@@ -987,6 +1006,7 @@ export default function PLTable({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

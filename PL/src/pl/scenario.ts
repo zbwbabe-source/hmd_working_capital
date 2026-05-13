@@ -10,6 +10,9 @@ export type ScenarioTreeSet = {
 };
 
 export type ScenarioFactorMap = Record<DetailSource, number>;
+export type ScenarioMonthlyFactorMap = Record<DetailSource, Record<MonthKey, number>>;
+type ScenarioFactor = number | Record<MonthKey, number>;
+type ScenarioFactorInputMap = Record<DetailSource, ScenarioFactor>;
 
 const DETAIL_SOURCES: DetailSource[] = ['HK_MLB', 'HK_Discovery', 'TW_MLB', 'TW_Discovery'];
 const MONTH_KEYS: MonthKey[] = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12'];
@@ -48,9 +51,14 @@ function sumMonths(rows: Row[], predicate: (row: Row) => boolean): Record<MonthK
   return totals;
 }
 
-function applyFactor(row: Row, factor: number) {
+function getMonthFactor(factor: ScenarioFactor, monthKey: MonthKey): number {
+  if (typeof factor === 'number') return factor;
+  return factor[monthKey] ?? 1;
+}
+
+function applyFactor(row: Row, factor: ScenarioFactor) {
   MONTH_KEYS.forEach((monthKey) => {
-    row.months[monthKey] = (row.months[monthKey] || 0) * factor;
+    row.months[monthKey] = (row.months[monthKey] || 0) * getMonthFactor(factor, monthKey);
   });
 }
 
@@ -73,7 +81,7 @@ function findSingleRow(rows: Row[], lvl1: string, lvl2: string): Row | undefined
   return rows.find((row) => row.lvl1 === lvl1 && row.lvl2 === lvl2);
 }
 
-function buildScenarioRows(rows: Row[], factor: number): Row[] {
+function buildScenarioRows(rows: Row[], factor: ScenarioFactor): Row[] {
   const cloned = rows.map((row) => ({
     ...row,
     months: { ...row.months },
@@ -86,7 +94,10 @@ function buildScenarioRows(rows: Row[], factor: number): Row[] {
       return;
     }
 
-    if (row.lvl1 === '온라인 직접비' && row.lvl2 === '지급수수료') {
+    if (
+      (row.lvl1 === '오프라인 직접비' && row.lvl2 === '물류비(Tag대비)') ||
+      (row.lvl1 === '온라인 직접비' && row.lvl2 === '지급수수료')
+    ) {
       applyFactor(row, factor);
     }
   });
@@ -149,8 +160,8 @@ function buildScenarioRows(rows: Row[], factor: number): Row[] {
 
 export function buildScenarioTreeSet(
   detailTrees: Record<DetailSource, Node[]>,
-  goodFactors: ScenarioFactorMap,
-  badFactors: ScenarioFactorMap
+  goodFactors: ScenarioFactorInputMap,
+  badFactors: ScenarioFactorInputMap
 ): ScenarioTreeSet {
   const detailRowsBySource = Object.fromEntries(
     DETAIL_SOURCES.map((source) => [source, cloneRows(detailTrees[source])])
