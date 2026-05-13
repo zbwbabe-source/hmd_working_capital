@@ -111,7 +111,7 @@ const PL_SCENARIO_FACTORS: ScenarioFactor[] = [
   {
     id: 'taiwan_politics',
     titleKo: '대만정세',
-    titleEn: 'Taiwan',
+    titleEn: 'Taiwan Politics',
     positiveLabelKo: '대만정세 안정',
     positiveLabelEn: 'Stable',
     negativeLabelKo: '대만정세 불안',
