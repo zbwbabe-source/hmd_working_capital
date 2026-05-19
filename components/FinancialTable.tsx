@@ -272,8 +272,10 @@ export default function FinancialTable({
       .replace(/기말/g, 'Year-end')
       .replace(/합계/g, 'Total')
       .replace(/롤링/g, 'Rolling')
-      .replace(/전월계획대비%/g, 'vs Prev Plan %')
-      .replace(/전월계획대비/g, 'vs Prev Plan')
+      .replace(/RF2603 대비%/g, 'vs RF2603 %')
+      .replace(/RF2603 대비/g, 'vs RF2603')
+      .replace(/전월계획대비%/g, 'vs RF2603 %')
+      .replace(/전월계획대비/g, 'vs RF2603')
       .replace(/전월계획/g, 'Prev Plan')
       .replace(/연간/g, 'Annual')
       .replace(/월/g, 'M');
@@ -285,15 +287,15 @@ export default function FinancialTable({
       '전년대비 전월계획': '전년대비\n전월계획',
       '26년 전월계획 YoY': '26년 전월계획\nYoY',
       '26년 연간 YoY': '26년 연간\nYoY',
-      '전월계획대비': '전월계획\n대비',
-      '전월계획대비%': '전월계획\n대비%',
+      'RF2603 대비': 'RF2603\n대비',
+      'RF2603 대비%': 'RF2603\n대비%',
       '전년대비연간': '전년대비\n연간',
       '26 Prev Plan': '26\nPrev Plan',
       'Prev Gap Plan': 'Prev Gap\nPlan',
       '26 Prev Plan YoY': '26 Prev Plan\nYoY',
       '26 Annual YoY': '26 Annual\nYoY',
-      'vs Prev Plan': 'vs\nPrev Plan',
-      'vs Prev Plan %': 'vs Prev Plan\n%',
+      'vs RF2603': 'vs\nRF2603',
+      'vs RF2603 %': 'vs RF2603\n%',
       'Annual Prev Gap': 'Prev Gap\nAnnual',
     };
 
@@ -831,7 +833,6 @@ export default function FinancialTable({
             ...accountCol,
             `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년(${valueLabel})`}`,
             'RF2603',
-            isEnglish ? 'Plan - Prev Year' : '계획-전년',
             `${currentYearShort}${isEnglish ? ' Annual' : '년 연간'}`,
             isEnglish ? 'vs Prev Year' : '전년비',
             isEnglish ? 'vs Plan' : '계획 대비',
@@ -843,15 +844,13 @@ export default function FinancialTable({
         return [
           ...accountCol,
           `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
-          `${currentYearShort}${isEnglish ? ' Prev Plan' : '년 전월계획'}`,
-          isEnglish ? 'Prev Gap Plan' : '전년대비 전월계획',
-          isEnglish ? `${currentYearShort} Prev Plan YoY` : `${currentYearShort}년 전월계획 YoY`,
+          'RF2603',
           ...monthCols,
           `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(annualLabel)}` : `년 ${annualLabel}`}`,
           isEnglish ? 'Annual Prev Gap' : '전년대비연간',
           isEnglish ? `${currentYearShort} Annual YoY` : `${currentYearShort}년 연간 YoY`,
-          isEnglish ? 'vs Prev Plan' : '전월계획대비',
-          isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
+          isEnglish ? 'vs RF2603' : 'RF2603 대비',
+          isEnglish ? 'vs RF2603%' : 'RF2603 대비%',
         ];
       }
       if (monthsCollapsed) {
@@ -896,8 +895,8 @@ export default function FinancialTable({
             'RF2603',
             isEnglish ? '26 Annual' : '26년 연간',
             'YoY',
-            isEnglish ? 'vs Prev Plan' : '전월계획대비',
-            isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
+            isEnglish ? 'vs RF2603' : 'RF2603 대비',
+            isEnglish ? 'vs RF2603%' : 'RF2603 대비%',
           ];
         }
 
@@ -909,8 +908,8 @@ export default function FinancialTable({
           'RF2603',
           isEnglish ? '26 Annual' : '26년 연간',
           'YoY',
-          isEnglish ? 'vs Prev Plan' : '전월계획대비',
-          isEnglish ? 'vs Prev Plan%' : '전월계획대비%',
+          isEnglish ? 'vs RF2603' : 'RF2603 대비',
+          isEnglish ? 'vs RF2603%' : 'RF2603 대비%',
         ];
       }
       // B/S 전용: 24년말, 25년말, 2601~2612
@@ -1123,10 +1122,10 @@ export default function FinancialTable({
                     {isEnglish ? '2025 Total' : '2025년(합계)'}
                   </th>
                   <th
-                    colSpan={2}
+                    colSpan={1}
                     className="border border-gray-300 bg-slate-500 px-4 py-3 text-center text-base font-extrabold text-white"
                   >
-                    {isEnglish ? 'Prev Plan' : '전월계획'}
+                    RF2603
                   </th>
                   <th
                     colSpan={4}
@@ -1146,7 +1145,7 @@ export default function FinancialTable({
                 </tr>
                 <tr>
                   {displayColumns.slice(2).map((col, index) => {
-                    const isPrevPlanGroup = index < 2;
+                    const isPrevPlanGroup = index < 1;
                     const isRateCol = col.includes('%') || col.includes('비%');
                     return (
                       <th
@@ -1221,24 +1220,24 @@ export default function FinancialTable({
                 
                 const translatedCol = translateColumnLabel(col);
                 const headerLabel = formatHeaderLabel(translatedCol);
-                const isPrevPlanHeader = isCashFlow && col.includes('전월계획');
+                const isPrevPlanHeader = isCashFlow && (col === 'RF2603' || col.includes('전월계획'));
                 const isPrevPlanYoYHeader =
                   isCashFlow &&
                   col === 'YoY' &&
-                  (displayColumns[index - 1]?.includes('전월계획') ?? false);
+                  (displayColumns[index - 1] === 'RF2603' || (displayColumns[index - 1]?.includes('전월계획') ?? false));
                 const isMutedHeader = isPrevPlanHeader || isPrevPlanYoYHeader;
                 const isCfPlanMetricHeader =
                   isCashFlow &&
-                  (col === '26년 전월계획' || col === '26 Prev Plan' || col === '전년대비 전월계획' || col === 'Prev Gap Plan' || col === '26년 전월계획 YoY' || col === '26 Prev Plan YoY');
+                  (col === 'RF2603' || col === '26년 전월계획' || col === '26 Prev Plan');
                 const isCfRollingMetricHeader =
                   isCashFlow &&
-                  (col === '26년 연간' || col === '26 Annual' || col === '전년대비연간' || col === 'Annual Prev Gap' || col === '26년 연간 YoY' || col === '26 Annual YoY' || col === '전월계획대비' || col === 'vs Prev Plan' || col === '전월계획대비%' || col === 'vs Prev Plan%');
+                  (col === '26년 연간' || col === '26 Annual' || col === '전년대비연간' || col === 'Annual Prev Gap' || col === '26년 연간 YoY' || col === '26 Annual YoY' || col === 'RF2603 대비' || col === 'vs RF2603' || col === 'RF2603 대비%' || col === 'vs RF2603%');
                 const isCfYoYMetricHeader =
                   isCashFlow &&
-                  (col.includes('YoY') || col.includes('전년대비') || col === '전월계획대비%' || col === 'vs Prev Plan%');
+                  (col.includes('YoY') || col.includes('전년대비') || col === 'RF2603 대비%' || col === 'vs RF2603%');
                 const isBsPrevPlanHeader =
                   isBalanceSheet &&
-                  (col === 'RF2603' || col === 'RF03' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs Prev Plan' || col === 'vs Prev Plan%' || col === '전월계획대비' || col === '전월계획대비%');
+                  (col === 'RF2603' || col === 'RF03' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs RF2603' || col === 'vs RF2603%' || col === 'RF2603 대비' || col === 'RF2603 대비%');
                 const isBsYoYHeader = isBalanceSheet && col === 'YoY';
                 const isBsCurrentHeader =
                   isBalanceSheet &&
@@ -1345,7 +1344,6 @@ export default function FinancialTable({
               const previousTwoYearsValue = row.year2023Value ?? effectiveValues[0] ?? null;
               const previousYearValue = row.year2024Value ?? effectiveValues[1] ?? null;
               const rollingDisplayValue = row.rollingValue ?? effectiveValues[aggregateValueIndex];
-              const netCashPlanYoYLabel = isNetCashStrict ? formatNetCashYoY(row.planValue ?? null, row.year2024Value ?? null) : '';
               const netCashRollingYoYLabel = isNetCashStrict ? formatNetCashYoY(rollingDisplayValue ?? null, row.year2024Value ?? null) : '';
               const rowToneClass = getStructuralRowTone(row.account);
               
@@ -1470,19 +1468,9 @@ export default function FinancialTable({
                       </td>
                     )}
                     {!monthsCollapsed && shouldShowPlanMetrics && (
-                      <>
-                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
-                          {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
-                        </td>
-                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
-                          {formatValue(row.planYoYAmount ?? null, row.format, true, false)}
-                        </td>
-                        <td className={`border border-gray-300 ${bodyNarrowCellClass} text-right ${isNetCashStrict ? 'text-xs' : ''} ${yoyMetricCellClass} ${isNetCashStrict ? getNetCashYoYClass(netCashPlanYoYLabel) : (isNegative(row.planYoY) ? 'text-red-600' : '')}`}>
-                          {isNetCashStrict
-                            ? netCashPlanYoYLabel
-                            : (row.planYoY !== null && row.planYoY !== undefined ? formatPercent(row.planYoY, false, false, 0) : '-')}
-                        </td>
-                      </>
+                      <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
+                        {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
+                      </td>
                     )}
                     {/* 빈 컬럼 (2024년 뒤) */}
                     {monthsCollapsed && !shouldShowPlanMetrics && (
@@ -1540,14 +1528,9 @@ export default function FinancialTable({
                 {isCashFlow && shouldShowPlanMetrics && (
                   <>
                     {monthsCollapsed && (
-                      <>
-                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
-                          {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
-                        </td>
-                        <td className={`border border-gray-300 ${bodyCellClass} text-right ${yoyMetricCellClass} ${isNegative(row.planYoYAmount) ? 'text-red-600' : ''}`}>
-                          {formatValue(row.planYoYAmount ?? null, row.format, true, false)}
-                        </td>
-                      </>
+                      <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('plan', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(row.planValue) ? 'text-red-600' : ''}`}>
+                        {formatValue(row.planValue ?? null, row.format, isMomRow, !row.isCalculated)}
+                      </td>
                     )}
                     <td className={`border border-gray-300 ${bodyCellClass} text-right ${getMetricGroupCellClass('rolling', row.isHighlight)} ${row.isBold ? 'font-semibold' : ''} ${isNegative(rollingDisplayValue) ? 'text-red-600' : ''}`}>
                       {formatValue(rollingDisplayValue ?? null, row.format, isMomRow, !row.isCalculated)}
@@ -1623,9 +1606,9 @@ export default function FinancialTable({
                           valueIndex = 5;
                         } else if (normalizedCol === 'RF2603' || normalizedCol === 'RF03' || normalizedCol === '26년말전월계획' || normalizedColLower === '26prevplan') {
                           valueIndex = 15;
-                        } else if (normalizedCol === '전월계획대비' || normalizedColLower === 'vsprevplan') {
+                        } else if (normalizedCol === 'RF2603대비' || normalizedCol === '전월계획대비' || normalizedColLower === 'vsrf2603' || normalizedColLower === 'vsprevplan') {
                           valueIndex = 16;
-                        } else if (normalizedCol === '전월계획대비%' || normalizedColLower === 'vsprevplan%') {
+                        } else if (normalizedCol === 'RF2603대비%' || normalizedCol === '전월계획대비%' || normalizedColLower === 'vsrf2603%' || normalizedColLower === 'vsprevplan%') {
                           valueIndex = 17;
                         } else if (/^26년?(연간|\((기말|말)\)|기말|말)$/.test(normalizedCol) || normalizedColLower === '26annual') {
                           valueIndex = 13;
@@ -1660,11 +1643,11 @@ export default function FinancialTable({
                       const value = row.values[valueIndex];
                       const isBsPlanMetricCol =
                         isBalanceSheet &&
-                        (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === 'RF2603' || col === 'RF03' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === '전월계획대비' || col === '전월계획대비%' || col === 'vs Prev Plan' || col === 'vs Prev Plan%');
+                        (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === 'RF2603' || col === 'RF03' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'RF2603 대비' || col === 'RF2603 대비%' || col === 'vs RF2603' || col === 'vs RF2603%');
                       const isBsCurrentMetricCol =
                         isBalanceSheet &&
                         (col === '26년(4월)' || col === '26 (Apr)' || col === '26년 연간' || col === '26 Annual');
-                      const isPlanRateCol = valueIndex === 17 || col === '전월계획대비%' || col === 'vs Prev Plan%';
+                      const isPlanRateCol = valueIndex === 17 || col === 'RF2603 대비%' || col === 'vs RF2603%';
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
                       const is26년4월 = col.startsWith('26년4월'); // 당월 강조
                       

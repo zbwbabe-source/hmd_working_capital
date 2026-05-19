@@ -816,17 +816,12 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     const accountKey = isEnglish ? 'Account' : '계정과목';
     const levelKey = isEnglish ? 'Level' : '레벨';
     const prevTotalKey = isEnglish ? '25 Total' : '25년 합계';
-    const ytdKey = isEnglish ? `26 YTD ${baseMonthIndex}M` : `26년 ${baseMonthIndex}월 YTD`;
     const rollingKey = isEnglish ? '26 Annual' : '26년 연간';
     const yoyKey = isEnglish ? '26 Annual YoY' : '26년 연간 YoY';
     const scenarioColumnKey = isEnglish
       ? `Scenario ${scenarioSellOutYoYPercent === null ? '-' : scenarioSellOutYoYPercent.toFixed(1)}%`
       : `시나리오 ${scenarioSellOutYoYPercent === null ? '-' : scenarioSellOutYoYPercent.toFixed(1)}%`;
     const typeKey = isEnglish ? 'Type' : '유형';
-    const monthHeaders = Array.from({ length: 12 }, (_, i) =>
-      isEnglish ? `${i + 1}M` : `${i + 1}월`
-    );
-
     return currentRows.map((node) => {
       const months = getNodeMonths(node);
       const prevMonths = getNodeMonths(prevMap.get(node.key));
@@ -839,13 +834,6 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
         [typeKey]: node.hasRateRow ? (isEnglish ? 'Rate' : '비율') : (isEnglish ? 'Amount' : '금액'),
         [prevTotalKey]: previousTotal,
       };
-
-      monthHeaders.forEach((header, index) => {
-        row[header] = months[`m${index + 1}` as MonthKey] ?? 0;
-      });
-
-      row[ytdKey] = Array.from({ length: baseMonthIndex }, (_, i) => months[`m${i + 1}` as MonthKey] ?? 0)
-        .reduce((sum, value) => sum + value, 0);
       row[rollingKey] = currentTotal;
       row[yoyKey] = previousTotal ? `${Math.round((currentTotal / previousTotal) * 100)}%` : null;
       row[scenarioColumnKey] = sumMonthValues(scenarioMonths);

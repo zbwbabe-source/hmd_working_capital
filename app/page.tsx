@@ -1773,22 +1773,18 @@ export default function Home() {
       const rolling = row.rollingValue ?? row.values[12] ?? null;
       const accountKey = isEnglish ? 'Account' : '계정과목';
       const previousKey = isEnglish ? '25 Total' : '25년';
-      const planKey = isEnglish ? '26 Prev Plan' : '26년 전월계획';
-      const planGapKey = isEnglish ? 'Prev Gap Plan' : '전년대비 전월계획';
-      const planYoYKey = isEnglish ? '26 Prev Plan YoY' : '26년 전월계획 YoY';
+      const planKey = 'RF2603';
       const rollingKey = isEnglish ? '26 Annual' : '26년 연간';
       const rollingGapKey = isEnglish ? 'Prev Gap Annual' : '전년대비 연간';
       const rollingYoYKey = isEnglish ? '26 Annual YoY' : '26년 연간 YoY';
-      const deltaKey = isEnglish ? 'vs Prev Plan' : '전월계획대비';
-      const deltaRateKey = isEnglish ? 'vs Prev Plan%' : '전월계획대비%';
+      const deltaKey = isEnglish ? 'vs RF2603' : 'RF2603 대비';
+      const deltaRateKey = isEnglish ? 'vs RF2603%' : 'RF2603 대비%';
       const remarksKey = isEnglish ? 'Remarks' : '비고';
 
       return {
         [accountKey]: `${'  '.repeat(Math.max(0, row.level))}${translateExportAccount(row.account)}`,
         [previousKey]: previous,
         [planKey]: plan,
-        [planGapKey]: row.planYoYAmount ?? null,
-        [planYoYKey]: row.planYoY !== null && row.planYoY !== undefined ? `${Math.round(row.planYoY * 100)}%` : null,
         [rollingKey]: rolling,
         [rollingGapKey]: row.rollingYoYAmount ?? null,
         [rollingYoYKey]: row.rollingYoY !== null && row.rollingYoY !== undefined ? `${Math.round(row.rollingYoY * 100)}%` : null,

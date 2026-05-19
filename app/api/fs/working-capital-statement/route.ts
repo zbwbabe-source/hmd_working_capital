@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { readWorkingCapitalStatementCSV } from '@/lib/csv';
 import { calculateWorkingCapitalStatementTable } from '@/lib/fs-mapping';
+import { maskRf2603AnnualOnly } from '@/lib/rf2603';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -177,12 +178,15 @@ export async function GET(request: NextRequest) {
     }
 
     const tableRows = calculateWorkingCapitalStatementTable(data, previousYearTotals, year2023Totals, twoYearsAgoTotals);
+    const rows = mode === 'plan' && year === 2026
+      ? maskRf2603AnnualOnly(tableRows, 12)
+      : tableRows;
 
     return NextResponse.json({
       year,
       mode,
       type: 'WORKING_CAPITAL_STATEMENT',
-      rows: tableRows,
+      rows,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '운전자본표 데이터를 불러오는데 실패했습니다.';

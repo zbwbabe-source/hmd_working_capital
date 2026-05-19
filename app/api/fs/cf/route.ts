@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateCF } from '@/lib/fs-mapping';
+import { maskRf2603AnnualOnly } from '@/lib/rf2603';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,12 +22,15 @@ export async function GET(request: NextRequest) {
 
     // buildTree 기반 calculateCF 사용
     const tableRows = await calculateCF(year, mode);
+    const rows = mode === 'plan' && year === 2026
+      ? maskRf2603AnnualOnly(tableRows, 12)
+      : tableRows;
 
     return NextResponse.json({
       year,
       mode,
       type: 'CF',
-      rows: tableRows,
+      rows,
     });
   } catch (error) {
     console.error('CF API 에러:', error);

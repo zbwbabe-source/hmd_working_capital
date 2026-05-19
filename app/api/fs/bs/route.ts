@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readBSCSV } from '@/lib/bs-parser';
+import { maskRf2603AnnualOnly } from '@/lib/rf2603';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,13 +19,14 @@ export async function GET(request: NextRequest) {
 
     // B/S 데이터 로드
     const { financialPosition, workingCapital } = await readBSCSV(year, mode);
+    const isRf2603 = mode === 'plan' && year === 2026;
 
     return NextResponse.json({
       year,
       mode,
       type: 'BS',
-      financialPosition,
-      workingCapital,
+      financialPosition: isRf2603 ? maskRf2603AnnualOnly(financialPosition, 13) : financialPosition,
+      workingCapital: isRf2603 ? maskRf2603AnnualOnly(workingCapital, 13) : workingCapital,
     });
   } catch (error) {
     console.error('B/S API 에러:', error);
