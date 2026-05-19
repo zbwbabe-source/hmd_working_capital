@@ -1776,9 +1776,9 @@ export default function Home() {
       const planKey = isEnglish ? '26 Prev Plan' : '26년 전월계획';
       const planGapKey = isEnglish ? 'Prev Gap Plan' : '전년대비 전월계획';
       const planYoYKey = isEnglish ? '26 Prev Plan YoY' : '26년 전월계획 YoY';
-      const rollingKey = isEnglish ? '26 Rolling' : '26년 롤링';
-      const rollingGapKey = isEnglish ? 'Prev Gap Rolling' : '전년대비 롤링';
-      const rollingYoYKey = isEnglish ? '26 Rolling YoY' : '26년 롤링 YoY';
+      const rollingKey = isEnglish ? '26 Annual' : '26년 연간';
+      const rollingGapKey = isEnglish ? 'Prev Gap Annual' : '전년대비 연간';
+      const rollingYoYKey = isEnglish ? '26 Annual YoY' : '26년 연간 YoY';
       const deltaKey = isEnglish ? 'vs Prev Plan' : '전월계획대비';
       const deltaRateKey = isEnglish ? 'vs Prev Plan%' : '전월계획대비%';
       const remarksKey = isEnglish ? 'Remarks' : '비고';
@@ -2325,7 +2325,7 @@ export default function Home() {
                           </div>
                           <FinancialTable 
                             data={withPlanMetrics.cf ?? cfDataForView} 
-                            columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Total)` : `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
+                            columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} Annual` : `${String(wcYear).slice(-2)}년 연간`, 'YoY']} 
                             locale={locale}
                             showTotal
                             isCashFlow={true}
@@ -2418,7 +2418,7 @@ export default function Home() {
                         </div>
                         <FinancialTable 
                           data={withPlanMetrics.cf ?? cfDataForView} 
-                          columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Total)` : `${String(wcYear).slice(-2)}년(합계)`, 'YoY']} 
+                          columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} Annual` : `${String(wcYear).slice(-2)}년 연간`, 'YoY']} 
                           locale={locale}
                           showTotal
                           isCashFlow={true}

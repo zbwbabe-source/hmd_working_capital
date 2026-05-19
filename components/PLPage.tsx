@@ -817,8 +817,8 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
     const levelKey = isEnglish ? 'Level' : '레벨';
     const prevTotalKey = isEnglish ? '25 Total' : '25년 합계';
     const ytdKey = isEnglish ? `26 YTD ${baseMonthIndex}M` : `26년 ${baseMonthIndex}월 YTD`;
-    const rollingKey = isEnglish ? '26 Rolling' : '26년 롤링';
-    const yoyKey = isEnglish ? '26 Rolling YoY' : '26년 롤링 YoY';
+    const rollingKey = isEnglish ? '26 Annual' : '26년 연간';
+    const yoyKey = isEnglish ? '26 Annual YoY' : '26년 연간 YoY';
     const scenarioColumnKey = isEnglish
       ? `Scenario ${scenarioSellOutYoYPercent === null ? '-' : scenarioSellOutYoYPercent.toFixed(1)}%`
       : `시나리오 ${scenarioSellOutYoYPercent === null ? '-' : scenarioSellOutYoYPercent.toFixed(1)}%`;
@@ -1051,7 +1051,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             </div>
 
             {isScenarioPanelOpen && (
-              <div className="absolute right-[calc(100%+12px)] top-0 z-30 w-[640px] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+              <div className="absolute right-[calc(100%+12px)] top-0 z-30 w-[640px] rounded-xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur-sm">
                 <div className="mb-3 flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -1078,8 +1078,8 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
                       .filter((factor): factor is ScenarioFactor => Boolean(factor));
 
                     return (
-                      <div key={group.titleEn} className={`rounded-2xl border p-2.5 ${group.className}`}>
-                        <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      <div key={group.titleEn} className={`rounded-2xl border p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ${group.className}`}>
+                        <div className="mb-2 inline-flex items-center rounded-full border border-white/70 bg-white/70 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-700 shadow-sm">
                           {isEnglish ? group.titleEn : group.titleKo}
                         </div>
                         <div className="space-y-2">
@@ -1105,9 +1105,9 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
                             ];
 
                             return (
-                              <div key={factor.id} className="grid grid-cols-[110px_1fr] items-center gap-3 rounded-xl border border-white/70 bg-white/72 p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                                <div>
-                                  <div className="font-bold text-slate-800">{isEnglish ? factor.titleEn : factor.titleKo}</div>
+                              <div key={factor.id} className="grid grid-cols-[110px_1fr] items-center gap-3 rounded-xl border border-white/80 bg-white/78 p-2 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+                                <div className="border-l-[3px] border-slate-400 pl-2">
+                                  <div className="text-[13px] font-extrabold leading-tight text-slate-950">{isEnglish ? factor.titleEn : factor.titleKo}</div>
                                   {Boolean(isEnglish ? factor.subtitleEn : factor.subtitleKo) && (
                                     <div className="text-xs font-semibold text-slate-500">{isEnglish ? factor.subtitleEn : factor.subtitleKo}</div>
                                   )}

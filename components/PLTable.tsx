@@ -501,7 +501,7 @@ export default function PLTable({
               className="border border-white/30 px-4 py-2 text-center font-semibold"
               colSpan={2 + (showAnnualDetails ? detailColumns.length : 0)}
             >
-              {isEnglish ? 'Annual Rolling' : '연간 Rolling'}
+              {isEnglish ? 'Annual' : '연간'}
             </th>
             <th
               className="border border-white/30 px-4 py-2 text-center font-semibold bg-blue-800"
