@@ -272,10 +272,10 @@ export default function FinancialTable({
       .replace(/기말/g, 'Year-end')
       .replace(/합계/g, 'Total')
       .replace(/롤링/g, 'Rolling')
-      .replace(/RF2603 대비%/g, 'vs RF2603 %')
-      .replace(/RF2603 대비/g, 'vs RF2603')
-      .replace(/전월계획대비%/g, 'vs RF2603 %')
-      .replace(/전월계획대비/g, 'vs RF2603')
+      .replace(/RF2604 대비%/g, 'vs RF2604 %')
+      .replace(/RF2604 대비/g, 'vs RF2604')
+      .replace(/전월계획대비%/g, 'vs RF2604 %')
+      .replace(/전월계획대비/g, 'vs RF2604')
       .replace(/전월계획/g, 'Prev Plan')
       .replace(/연간/g, 'Annual')
       .replace(/월/g, 'M');
@@ -287,15 +287,15 @@ export default function FinancialTable({
       '전년대비 전월계획': '전년대비\n전월계획',
       '26년 전월계획 YoY': '26년 전월계획\nYoY',
       '26년 연간 YoY': '26년 연간\nYoY',
-      'RF2603 대비': 'RF2603\n대비',
-      'RF2603 대비%': 'RF2603\n대비%',
+      'RF2604 대비': 'RF2604\n대비',
+      'RF2604 대비%': 'RF2604\n대비%',
       '전년대비연간': '전년대비\n연간',
       '26 Prev Plan': '26\nPrev Plan',
       'Prev Gap Plan': 'Prev Gap\nPlan',
       '26 Prev Plan YoY': '26 Prev Plan\nYoY',
       '26 Annual YoY': '26 Annual\nYoY',
-      'vs RF2603': 'vs\nRF2603',
-      'vs RF2603 %': 'vs RF2603\n%',
+      'vs RF2604': 'vs\nRF2604',
+      'vs RF2604 %': 'vs RF2604\n%',
       'Annual Prev Gap': 'Prev Gap\nAnnual',
     };
 
@@ -315,21 +315,29 @@ export default function FinancialTable({
     onRemarkChange(remarkKey ?? account, getRemarkValue(account, remarkKey));
   };
 
-  const isSingleLineRemark = (value: string) => {
-    const normalized = value.replace(/\r\n/g, '\n');
-    return !normalized.includes('\n');
+  // 비고 textarea를 내용 높이에 정확히 맞춘다 — 1줄이면 1줄, 길면 그만큼만 늘어남(추정 안 함).
+  const autoSizeRemark = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
   };
 
   const getRemarkRows = (value: string) => {
     const normalized = value.replace(/\r\n/g, '\n').trimEnd();
     if (!normalized) return 1;
 
-    const charsPerLine = Math.max(20, Math.floor((remarksWidth - 24) / 8));
+    // 한글/한자 등 전각 문자는 ≈12px, 그 외(영문·숫자·기호)는 ≈6.8px로 픽셀 폭을 추정해 줄 수 계산.
+    // (기존엔 한글을 8px로 과소평가해 긴 한글 비고가 1줄로 잘렸음) — 잘림 방지를 위해 여백을 보수적으로(≈44px) 둔다.
+    const usableWidth = Math.max(80, remarksWidth - 44);
+    const isWide = (ch: string) =>
+      /[ᄀ-ᇿ⺀-꓏가-힣豈-﫿＀-￯]/.test(ch);
     const rows = normalized.split('\n').reduce((total, line) => {
-      return total + Math.max(1, Math.ceil(line.length / charsPerLine));
+      let width = 0;
+      for (const ch of line) width += isWide(ch) ? 12 : 6.8;
+      return total + Math.max(1, Math.ceil(width / usableWidth));
     }, 0);
 
-    return Math.min(Math.max(rows, 1), 12);
+    return Math.min(Math.max(rows, 1), 16);
   };
 
   
@@ -374,7 +382,16 @@ export default function FinancialTable({
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [activeRemarkResize, remarkSizes]);
-  
+
+  // 비고 textarea들을 내용 높이에 맞춰 일괄 조정 (비고가 비동기 로드/번역/편집될 때 재실행).
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll<HTMLTextAreaElement>('textarea[data-remark]').forEach((el) => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    });
+  }, [remarks, draftRemarks, remarksWidth, isEnglish, showRemarks]);
+
   // 외부에서 monthsCollapsed를 제어하는 경우와 내부에서 제어하는 경우 모두 지원
   const monthsCollapsed = externalMonthsCollapsed !== undefined ? externalMonthsCollapsed : internalMonthsCollapsed;
   const toggleMonths = onMonthsToggle || (() => setInternalMonthsCollapsed(!internalMonthsCollapsed));
@@ -832,7 +849,7 @@ export default function FinancialTable({
           return [
             ...accountCol,
             `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년(${valueLabel})`}`,
-            'RF2603',
+            'RF2604',
             `${currentYearShort}${isEnglish ? ' Annual' : '년 연간'}`,
             isEnglish ? 'vs Prev Year' : '전년비',
             isEnglish ? 'vs Plan' : '계획 대비',
@@ -844,13 +861,13 @@ export default function FinancialTable({
         return [
           ...accountCol,
           `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
-          'RF2603',
+          'RF2604',
           ...monthCols,
           `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(annualLabel)}` : `년 ${annualLabel}`}`,
           isEnglish ? 'Annual Prev Gap' : '전년대비연간',
           isEnglish ? `${currentYearShort} Annual YoY` : `${currentYearShort}년 연간 YoY`,
-          isEnglish ? 'vs RF2603' : 'RF2603 대비',
-          isEnglish ? 'vs RF2603%' : 'RF2603 대비%',
+          isEnglish ? 'vs RF2604' : 'RF2604 대비',
+          isEnglish ? 'vs RF2604%' : 'RF2604 대비%',
         ];
       }
       if (monthsCollapsed) {
@@ -892,11 +909,11 @@ export default function FinancialTable({
             isEnglish ? '24 Year-end' : '24년(기말)',
             isEnglish ? '25 Year-end' : '25년(기말)',
             isEnglish ? '26 (Apr)' : '26년(4월)',
-            'RF2603',
+            'RF2604',
             isEnglish ? '26 Annual' : '26년 연간',
             'YoY',
-            isEnglish ? 'vs RF2603' : 'RF2603 대비',
-            isEnglish ? 'vs RF2603%' : 'RF2603 대비%',
+            isEnglish ? 'vs RF2604' : 'RF2604 대비',
+            isEnglish ? 'vs RF2604%' : 'RF2604 대비%',
           ];
         }
 
@@ -905,11 +922,11 @@ export default function FinancialTable({
           isEnglish ? '24 Year-end' : '24년(기말)',
           isEnglish ? '25 Year-end' : '25년(기말)',
           ...columns.slice(1, 13),
-          'RF2603',
+          'RF2604',
           isEnglish ? '26 Annual' : '26년 연간',
           'YoY',
-          isEnglish ? 'vs RF2603' : 'RF2603 대비',
-          isEnglish ? 'vs RF2603%' : 'RF2603 대비%',
+          isEnglish ? 'vs RF2604' : 'RF2604 대비',
+          isEnglish ? 'vs RF2604%' : 'RF2604 대비%',
         ];
       }
       // B/S 전용: 24년말, 25년말, 2601~2612
@@ -1125,7 +1142,7 @@ export default function FinancialTable({
                     colSpan={1}
                     className="border border-gray-300 bg-slate-500 px-4 py-3 text-center text-base font-extrabold text-white"
                   >
-                    RF2603
+                    RF2604
                   </th>
                   <th
                     colSpan={4}
@@ -1220,24 +1237,24 @@ export default function FinancialTable({
                 
                 const translatedCol = translateColumnLabel(col);
                 const headerLabel = formatHeaderLabel(translatedCol);
-                const isPrevPlanHeader = isCashFlow && (col === 'RF2603' || col.includes('전월계획'));
+                const isPrevPlanHeader = isCashFlow && (col === 'RF2604' || col.includes('전월계획'));
                 const isPrevPlanYoYHeader =
                   isCashFlow &&
                   col === 'YoY' &&
-                  (displayColumns[index - 1] === 'RF2603' || (displayColumns[index - 1]?.includes('전월계획') ?? false));
+                  (displayColumns[index - 1] === 'RF2604' || (displayColumns[index - 1]?.includes('전월계획') ?? false));
                 const isMutedHeader = isPrevPlanHeader || isPrevPlanYoYHeader;
                 const isCfPlanMetricHeader =
                   isCashFlow &&
-                  (col === 'RF2603' || col === '26년 전월계획' || col === '26 Prev Plan');
+                  (col === 'RF2604' || col === '26년 전월계획' || col === '26 Prev Plan');
                 const isCfRollingMetricHeader =
                   isCashFlow &&
-                  (col === '26년 연간' || col === '26 Annual' || col === '전년대비연간' || col === 'Annual Prev Gap' || col === '26년 연간 YoY' || col === '26 Annual YoY' || col === 'RF2603 대비' || col === 'vs RF2603' || col === 'RF2603 대비%' || col === 'vs RF2603%');
+                  (col === '26년 연간' || col === '26 Annual' || col === '전년대비연간' || col === 'Annual Prev Gap' || col === '26년 연간 YoY' || col === '26 Annual YoY' || col === 'RF2604 대비' || col === 'vs RF2604' || col === 'RF2604 대비%' || col === 'vs RF2604%');
                 const isCfYoYMetricHeader =
                   isCashFlow &&
-                  (col.includes('YoY') || col.includes('전년대비') || col === 'RF2603 대비%' || col === 'vs RF2603%');
+                  (col.includes('YoY') || col.includes('전년대비') || col === 'RF2604 대비%' || col === 'vs RF2604%');
                 const isBsPrevPlanHeader =
                   isBalanceSheet &&
-                  (col === 'RF2603' || col === 'RF03' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs RF2603' || col === 'vs RF2603%' || col === 'RF2603 대비' || col === 'RF2603 대비%');
+                  (col === 'RF2604' || col === 'RF04' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs RF2604' || col === 'vs RF2604%' || col === 'RF2604 대비' || col === 'RF2604 대비%');
                 const isBsYoYHeader = isBalanceSheet && col === 'YoY';
                 const isBsCurrentHeader =
                   isBalanceSheet &&
@@ -1604,11 +1621,11 @@ export default function FinancialTable({
                           valueIndex = parseInt(reportMonthMatch[1], 10) + 1;
                         } else if (normalizedColLower === '26(apr)') {
                           valueIndex = 5;
-                        } else if (normalizedCol === 'RF2603' || normalizedCol === 'RF03' || normalizedCol === '26년말전월계획' || normalizedColLower === '26prevplan') {
+                        } else if (normalizedCol === 'RF2604' || normalizedCol === 'RF04' || normalizedCol === '26년말전월계획' || normalizedColLower === '26prevplan') {
                           valueIndex = 15;
-                        } else if (normalizedCol === 'RF2603대비' || normalizedCol === '전월계획대비' || normalizedColLower === 'vsrf2603' || normalizedColLower === 'vsprevplan') {
+                        } else if (normalizedCol === 'RF2604대비' || normalizedCol === '전월계획대비' || normalizedColLower === 'vsrf2603' || normalizedColLower === 'vsprevplan') {
                           valueIndex = 16;
-                        } else if (normalizedCol === 'RF2603대비%' || normalizedCol === '전월계획대비%' || normalizedColLower === 'vsrf2603%' || normalizedColLower === 'vsprevplan%') {
+                        } else if (normalizedCol === 'RF2604대비%' || normalizedCol === '전월계획대비%' || normalizedColLower === 'vsrf2603%' || normalizedColLower === 'vsprevplan%') {
                           valueIndex = 17;
                         } else if (/^26년?(연간|\((기말|말)\)|기말|말)$/.test(normalizedCol) || normalizedColLower === '26annual') {
                           valueIndex = 13;
@@ -1643,11 +1660,11 @@ export default function FinancialTable({
                       const value = row.values[valueIndex];
                       const isBsPlanMetricCol =
                         isBalanceSheet &&
-                        (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === 'RF2603' || col === 'RF03' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'RF2603 대비' || col === 'RF2603 대비%' || col === 'vs RF2603' || col === 'vs RF2603%');
+                        (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === 'RF2604' || col === 'RF04' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'RF2604 대비' || col === 'RF2604 대비%' || col === 'vs RF2604' || col === 'vs RF2604%');
                       const isBsCurrentMetricCol =
                         isBalanceSheet &&
                         (col === '26년(4월)' || col === '26 (Apr)' || col === '26년 연간' || col === '26 Annual');
-                      const isPlanRateCol = valueIndex === 17 || col === 'RF2603 대비%' || col === 'vs RF2603%';
+                      const isPlanRateCol = valueIndex === 17 || col === 'RF2604 대비%' || col === 'vs RF2604%';
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
                       const is26년4월 = col.startsWith('26년4월'); // 당월 강조
                       
@@ -2007,23 +2024,24 @@ export default function FinancialTable({
                 {showRemarks && (() => {
                   const remarkValue = getRemarkValue(row.account, remarkKey);
                   const displayRemarkValue = translateRemarkText(remarkValue);
-                  const remarkRows = getRemarkRows(displayRemarkValue);
-                  const isSingleLine = isSingleLineRemark(remarkValue) && remarkRows === 1;
 
                   return (
                   <td
-                    className={`border border-gray-300 px-0 py-0 ${isSingleLine ? 'align-middle' : 'align-top'} overflow-visible ${getHighlightClass(row.isHighlight)}`}
+                    className={`border border-gray-300 px-0 py-0 align-top overflow-visible ${getHighlightClass(row.isHighlight)}`}
                     style={{ width: remarksColumnWidth, minWidth: remarksColumnWidth, maxWidth: remarksColumnWidth }}
                   >
-                    <div className={`${denseBody ? 'px-2' : 'px-3'} ${isSingleLine ? `flex ${denseBody ? 'min-h-[42px]' : 'min-h-[72px]'} items-center` : (denseBody ? 'py-1.5' : 'py-2.5')}`}>
+                    <div className={`flex items-center ${denseBody ? 'px-2 py-1 min-h-[34px]' : 'px-3 py-1.5 min-h-[44px]'}`}>
                     <textarea
+                      data-remark
+                      ref={autoSizeRemark}
                       value={displayRemarkValue}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setDraftRemarks(prev => ({
                           ...prev,
                           [remarkKey]: e.target.value,
-                        }))
-                      }
+                        }));
+                        autoSizeRemark(e.currentTarget);
+                      }}
                       onBlur={() => commitRemark(row.account, remarkKey)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -2031,9 +2049,8 @@ export default function FinancialTable({
                         }
                       }}
                       placeholder=""
-                      rows={isSingleLine ? 1 : remarkRows}
-                      className={`block w-full resize-none whitespace-pre-wrap break-words rounded bg-transparent px-2 text-left text-[12px] ${denseBody ? 'leading-[17px]' : 'leading-5'} focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300 ${isSingleLine ? `${denseBody ? 'h-[24px] min-h-[24px] py-0.5' : 'h-[32px] min-h-[32px] py-1.5'} overflow-hidden` : 'overflow-hidden py-1.5'}`}
-                      style={!isSingleLine ? { minHeight: `${remarkRows * (denseBody ? 17 : 20) + (denseBody ? 8 : 14)}px` } : undefined}
+                      rows={1}
+                      className={`block w-full resize-none overflow-hidden whitespace-pre-wrap break-words rounded bg-transparent px-2 py-0.5 text-left text-[12px] ${denseBody ? 'leading-[17px]' : 'leading-5'} focus:bg-white/50 focus:outline-none focus:ring-1 focus:ring-blue-300`}
                     />
                     </div>
                   </td>

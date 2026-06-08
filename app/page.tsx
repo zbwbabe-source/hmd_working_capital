@@ -40,26 +40,26 @@ const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
       {
         label: '재고자산',
         previous: 102404,
-        plan: 100652,
+        plan: 101428,
         current: 101734,
-        delta: 1082,
-        remark: '계획비 재고입고 동일(3.1m), 계획비 매출감소로 출고 △1.1m',
+        delta: 306,
+        remark: '계획비 재고입고 0.1m 증가(3.8m), 계획비 0.8m 매출감소로 출고감소',
       },
       {
         label: '매출채권',
         previous: 435,
-        plan: 435,
-        current: 422,
-        delta: -13,
-        remark: '전월 당월 컷오프 1일로 동일',
+        plan: 1175,
+        current: 1057,
+        delta: -117,
+        remark: '전월 컷오프 1일(목), 당월 컷오프 3일(금~일)',
       },
       {
         label: '매입채무',
-        previous: 88676,
-        plan: 86369,
-        current: 85060,
-        delta: -1309,
-        remark: '계획비 입고동일(3.1m), 당월 계획비 상환 +1.3m',
+        previous: 85416,
+        plan: 79829,
+        current: 83737,
+        delta: 3908,
+        remark: '계획비 입고 0.1m 증가, 당월 계획비 상환 △3.8m(계획비 매출수금 △2.1m)',
       },
     ],
   },
@@ -69,34 +69,34 @@ const MONTHLY_WC_SECTIONS: Record<'HK' | 'TW', MonthlyWcSection> = {
     items: [
       {
         label: '재고자산',
-        previous: 50518,
-        plan: 53418,
-        current: 52169,
-        delta: -1249,
-        remark: '계획비 재고입고 △1.9m(전월계획비 +4.6m), 계획비 매출증가로 출고 +3.1m',
+        previous: 50763,
+        plan: 53742,
+        current: 52422,
+        delta: -1320,
+        remark: '계획비 재고입고 △3.7m, 계획비 매출감소(△4.0m)로 출고 △1.6m',
       },
       {
         label: '매출채권',
-        previous: 21071,
-        plan: 15966,
-        current: 16744,
-        delta: 778,
-        remark: '계획대비 매출 0.3m 감소로 매출채권 감소',
+        previous: 21173,
+        plan: 17821,
+        current: 16825,
+        delta: -996,
+        remark: '계획대비 매출감소(△4.0m)로 계획대비 매출채권 감소',
       },
       {
         label: '매입채무',
-        previous: 30315,
-        plan: 25279,
-        current: 21485,
-        delta: -3794,
-        remark: '계획비 입고감소로 채무 △1.9m, 계획비 상환 +1.3m',
+        previous: 21589,
+        plan: 19001,
+        current: 18079,
+        delta: -922,
+        remark: '계획비 입고감소로 채무 △3.7m, 계획비 상환 동일',
       },
     ],
   },
 };
 
 const CF_DEFAULT_EXPANDED_ACCOUNTS = ['영업활동'];
-const BASE_SALES_YOY_RATE = 122;
+const BASE_SALES_YOY_RATE = 121;
 
 function NavIcon({ kind }: { kind: 'bs' | 'pl' | 'cf' | 'inventory' | 'fund' | 'perf' }) {
   const props = {
@@ -161,7 +161,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [locale, setLocale] = useState<'ko' | 'en'>('ko');
   const [bsView, setBsView] = useState<'BS' | 'PL' | 'CF' | 'INVENTORY'>('PL');
-  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('PERFORMANCE');
+  const [reportMode, setReportMode] = useState<'FUND_MONTHLY' | 'PERFORMANCE'>('FUND_MONTHLY');
   const [wcYear, setWcYear] = useState<number>(2026);
   const [salesYoYRate, setSalesYoYRate] = useState<number>(BASE_SALES_YOY_RATE);
   const [workingCapitalMonthsCollapsed, setWorkingCapitalMonthsCollapsed] = useState<boolean>(true);
@@ -201,7 +201,7 @@ export default function Home() {
   const tabTypes: TabType[] = ['CF'];
   const unitLabel = isEnglish ? 'Unit: 1,000 HKD' : '단위: 1,000 HKD';
   const smallUnitLabel = isEnglish ? '(Unit: 1k HKD)' : '(단위: 1k HKD)';
-  const currentClosingMonth = 4;
+  const currentClosingMonth = 5;
   const headerTitle = isEnglish
     ? `FNF HK Financial Report (${String(wcYear).slice(-2)}.${currentClosingMonth})`
     : `FNF HK 재무실적보고 (${String(wcYear).slice(-2)}. ${currentClosingMonth}월)`;
@@ -1773,12 +1773,12 @@ export default function Home() {
       const rolling = row.rollingValue ?? row.values[12] ?? null;
       const accountKey = isEnglish ? 'Account' : '계정과목';
       const previousKey = isEnglish ? '25 Total' : '25년';
-      const planKey = 'RF2603';
+      const planKey = 'RF2604';
       const rollingKey = isEnglish ? '26 Annual' : '26년 연간';
       const rollingGapKey = isEnglish ? 'Prev Gap Annual' : '전년대비 연간';
       const rollingYoYKey = isEnglish ? '26 Annual YoY' : '26년 연간 YoY';
-      const deltaKey = isEnglish ? 'vs RF2603' : 'RF2603 대비';
-      const deltaRateKey = isEnglish ? 'vs RF2603%' : 'RF2603 대비%';
+      const deltaKey = isEnglish ? 'vs RF2604' : 'RF2604 대비';
+      const deltaRateKey = isEnglish ? 'vs RF2604%' : 'RF2604 대비%';
       const remarksKey = isEnglish ? 'Remarks' : '비고';
 
       return {

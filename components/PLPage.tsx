@@ -410,7 +410,7 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
   const [isScenarioPanelOpen, setIsScenarioPanelOpen] = useState<boolean>(false);
   const scenarioPanelRef = useRef<HTMLDivElement | null>(null);
   const [selectedYear, setSelectedYear] = useState<Year>(2026);
-  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(4);
+  const [baseMonthIndex, setBaseMonthIndex] = useState<number>(5);
   const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
   const [showMonthly, setShowMonthly] = useState<boolean>(false);
   const [showYTD, setShowYTD] = useState<boolean>(true);
@@ -420,56 +420,80 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
   const [trees2026, setTrees2026] = useState<TreeMap>(EMPTY_TREE_MAP);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [rawUpdateMsg, setRawUpdateMsg] = useState<string | null>(null);
+
+  const reloadTrees = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const responses = await Promise.all(
+        [2025, 2026].flatMap((year) =>
+          ALL_SOURCES.map(async (source) => {
+            const response = await fetch(`/api/fs/pl?year=${year}&source=${source}`, {
+              cache: 'no-store',
+            });
+            const data = await response.json();
+            return { year: year as Year, source, tree: (data.tree ?? []) as Node[] };
+          })
+        )
+      );
+
+      const next2025: TreeMap = { ...EMPTY_TREE_MAP };
+      const next2026: TreeMap = { ...EMPTY_TREE_MAP };
+
+      responses.forEach(({ year, source, tree }) => {
+        if (year === 2025) next2025[source] = tree;
+        if (year === 2026) next2026[source] = tree;
+      });
+
+      setTrees2025(next2025);
+      setTrees2026(next2026);
+    } catch (err) {
+      console.error('PL load failed:', err);
+      setError(isEnglish ? 'Failed to load P/L data.' : '손익 데이터를 불러오지 못했습니다.');
+      setTrees2025({ ...EMPTY_TREE_MAP });
+      setTrees2026({ ...EMPTY_TREE_MAP });
+    } finally {
+      setLoading(false);
+    }
+  }, [isEnglish]);
 
   useEffect(() => {
-    let cancelled = false;
+    void reloadTrees();
+  }, [reloadTrees]);
 
-    const loadData = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const responses = await Promise.all(
-          [2025, 2026].flatMap((year) =>
-            ALL_SOURCES.map(async (source) => {
-              const response = await fetch(`/api/fs/pl?year=${year}&source=${source}`, {
-                cache: 'no-store',
-              });
-              const data = await response.json();
-              return { year: year as Year, source, tree: (data.tree ?? []) as Node[] };
-            })
-          )
-        );
-
-        if (cancelled) return;
-
-        const next2025: TreeMap = { ...EMPTY_TREE_MAP };
-        const next2026: TreeMap = { ...EMPTY_TREE_MAP };
-
-        responses.forEach(({ year, source, tree }) => {
-          if (year === 2025) next2025[source] = tree;
-          if (year === 2026) next2026[source] = tree;
-        });
-
-        setTrees2025(next2025);
-        setTrees2026(next2026);
-      } catch (err) {
-        if (cancelled) return;
-        console.error('PL load failed:', err);
-        setError(isEnglish ? 'Failed to load P/L data.' : '손익 데이터를 불러오지 못했습니다.');
-        setTrees2025({ ...EMPTY_TREE_MAP });
-        setTrees2026({ ...EMPTY_TREE_MAP });
-      } finally {
-        if (!cancelled) setLoading(false);
+  // "Rawdata update" — Raw pl-data.json 을 다시 읽어 CSV 재생성 후 PL 트리 새로고침
+  const handleRawdataUpdate = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setRawUpdateMsg(null);
+    try {
+      const res = await fetch('/api/fs/pl/refresh', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
       }
-    };
-
-    loadData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      await reloadTrees();
+      const when = new Date().toLocaleTimeString(isEnglish ? 'en-US' : 'ko-KR');
+      const srcLabel = data.source ?? (data.pulledFrom ? 'external' : 'local');
+      setRawUpdateMsg(
+        isEnglish
+          ? `Updated from ${srcLabel} · ${data.files?.length ?? 0} files · ${when}`
+          : `Raw 반영 완료 (${srcLabel}) · ${data.files?.length ?? 0}개 파일 · ${when}`,
+      );
+    } catch (err) {
+      console.error('Rawdata update failed:', err);
+      setRawUpdateMsg(
+        isEnglish
+          ? `Update failed: ${(err as Error).message}`
+          : `업데이트 실패: ${(err as Error).message}`,
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  }, [isEnglish, refreshing, reloadTrees]);
 
   useEffect(() => {
     if (!isScenarioPanelOpen) return;
@@ -916,7 +940,37 @@ export default function PLPage({ locale = 'ko' }: PLPageProps) {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {rawUpdateMsg && (
+              <span className="max-w-[260px] truncate text-xs font-medium text-slate-500" title={rawUpdateMsg}>
+                {rawUpdateMsg}
+              </span>
+            )}
+            <button
+              onClick={handleRawdataUpdate}
+              disabled={refreshing}
+              title={isEnglish ? 'Re-import Raw PL (pl-data.json) and rebuild P/L' : 'Raw PL(pl-data.json)을 다시 읽어 PL을 재생성'}
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-indigo-300 bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={refreshing ? 'animate-spin' : ''}
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v5h-5" />
+              </svg>
+              {refreshing
+                ? (isEnglish ? 'Updating…' : '업데이트 중…')
+                : (isEnglish ? 'Rawdata update' : 'Rawdata 업데이트')}
+            </button>
             <button
               onClick={handleExportExcel}
               className="px-4 py-2 rounded font-medium border border-blue-300 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
