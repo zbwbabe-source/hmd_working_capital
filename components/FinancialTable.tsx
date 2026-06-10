@@ -1139,8 +1139,8 @@ export default function FinancialTable({
                     {isEnglish ? '2025 Total' : '2025년(합계)'}
                   </th>
                   <th
-                    colSpan={1}
-                    className="border border-gray-300 bg-slate-500 px-4 py-3 text-center text-base font-extrabold text-white"
+                    rowSpan={2}
+                    className="border border-gray-300 bg-slate-500 px-4 py-3 text-center align-middle text-base font-extrabold text-white"
                   >
                     RF04
                   </th>
@@ -1161,14 +1161,14 @@ export default function FinancialTable({
                   )}
                 </tr>
                 <tr>
-                  {displayColumns.slice(2).map((col, index) => {
-                    const isPrevPlanGroup = index < 1;
+                  {/* RF04(전월계획)는 위 그룹헤더가 rowSpan=2로 병합했으므로 여기선 2026년 그룹 컬럼만 렌더 */}
+                  {displayColumns.slice(3).map((col) => {
                     const isRateCol = col.includes('%') || col.includes('비%');
                     return (
                       <th
                         key={col}
                         className={`border border-gray-300 px-4 py-3 text-center text-[13px] font-extrabold leading-tight text-white ${
-                          isPrevPlanGroup ? 'bg-slate-500' : isRateCol ? 'bg-slate-600' : 'bg-navy-light'
+                          isRateCol ? 'bg-slate-600' : 'bg-navy-light'
                         }`}
                       >
                         {formatHeaderLabel(translateColumnLabel(col))}
