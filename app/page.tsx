@@ -1773,12 +1773,12 @@ export default function Home() {
       const rolling = row.rollingValue ?? row.values[12] ?? null;
       const accountKey = isEnglish ? 'Account' : '계정과목';
       const previousKey = isEnglish ? '25 Total' : '25년';
-      const planKey = 'RF2604';
+      const planKey = 'RF04';
       const rollingKey = isEnglish ? '26 Annual' : '26년 연간';
       const rollingGapKey = isEnglish ? 'Prev Gap Annual' : '전년대비 연간';
       const rollingYoYKey = isEnglish ? '26 Annual YoY' : '26년 연간 YoY';
-      const deltaKey = isEnglish ? 'vs RF2604' : 'RF2604 대비';
-      const deltaRateKey = isEnglish ? 'vs RF2604%' : 'RF2604 대비%';
+      const deltaKey = isEnglish ? 'vs RF04' : 'RF04 대비';
+      const deltaRateKey = isEnglish ? 'vs RF04%' : 'RF04 대비%';
       const remarksKey = isEnglish ? 'Remarks' : '비고';
 
       return {

@@ -272,10 +272,10 @@ export default function FinancialTable({
       .replace(/기말/g, 'Year-end')
       .replace(/합계/g, 'Total')
       .replace(/롤링/g, 'Rolling')
-      .replace(/RF2604 대비%/g, 'vs RF2604 %')
-      .replace(/RF2604 대비/g, 'vs RF2604')
-      .replace(/전월계획대비%/g, 'vs RF2604 %')
-      .replace(/전월계획대비/g, 'vs RF2604')
+      .replace(/RF04 대비%/g, 'vs RF04 %')
+      .replace(/RF04 대비/g, 'vs RF04')
+      .replace(/전월계획대비%/g, 'vs RF04 %')
+      .replace(/전월계획대비/g, 'vs RF04')
       .replace(/전월계획/g, 'Prev Plan')
       .replace(/연간/g, 'Annual')
       .replace(/월/g, 'M');
@@ -287,15 +287,15 @@ export default function FinancialTable({
       '전년대비 전월계획': '전년대비\n전월계획',
       '26년 전월계획 YoY': '26년 전월계획\nYoY',
       '26년 연간 YoY': '26년 연간\nYoY',
-      'RF2604 대비': 'RF2604\n대비',
-      'RF2604 대비%': 'RF2604\n대비%',
+      'RF04 대비': 'RF04\n대비',
+      'RF04 대비%': 'RF04\n대비%',
       '전년대비연간': '전년대비\n연간',
       '26 Prev Plan': '26\nPrev Plan',
       'Prev Gap Plan': 'Prev Gap\nPlan',
       '26 Prev Plan YoY': '26 Prev Plan\nYoY',
       '26 Annual YoY': '26 Annual\nYoY',
-      'vs RF2604': 'vs\nRF2604',
-      'vs RF2604 %': 'vs RF2604\n%',
+      'vs RF04': 'vs\nRF04',
+      'vs RF04 %': 'vs RF04\n%',
       'Annual Prev Gap': 'Prev Gap\nAnnual',
     };
 
@@ -849,7 +849,7 @@ export default function FinancialTable({
           return [
             ...accountCol,
             `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년(${valueLabel})`}`,
-            'RF2604',
+            'RF04',
             `${currentYearShort}${isEnglish ? ' Annual' : '년 연간'}`,
             isEnglish ? 'vs Prev Year' : '전년비',
             isEnglish ? 'vs Plan' : '계획 대비',
@@ -861,13 +861,13 @@ export default function FinancialTable({
         return [
           ...accountCol,
           `${prevYearShort}${isEnglish ? ` ${translateColumnLabel(valueLabel)}` : `년 ${valueLabel}`}`,
-          'RF2604',
+          'RF04',
           ...monthCols,
           `${currentYearShort}${isEnglish ? ` ${translateColumnLabel(annualLabel)}` : `년 ${annualLabel}`}`,
           isEnglish ? 'Annual Prev Gap' : '전년대비연간',
           isEnglish ? `${currentYearShort} Annual YoY` : `${currentYearShort}년 연간 YoY`,
-          isEnglish ? 'vs RF2604' : 'RF2604 대비',
-          isEnglish ? 'vs RF2604%' : 'RF2604 대비%',
+          isEnglish ? 'vs RF04' : 'RF04 대비',
+          isEnglish ? 'vs RF04%' : 'RF04 대비%',
         ];
       }
       if (monthsCollapsed) {
@@ -909,11 +909,11 @@ export default function FinancialTable({
             isEnglish ? '24 Year-end' : '24년(기말)',
             isEnglish ? '25 Year-end' : '25년(기말)',
             isEnglish ? '26 (Apr)' : '26년(4월)',
-            'RF2604',
+            'RF04',
             isEnglish ? '26 Annual' : '26년 연간',
             'YoY',
-            isEnglish ? 'vs RF2604' : 'RF2604 대비',
-            isEnglish ? 'vs RF2604%' : 'RF2604 대비%',
+            isEnglish ? 'vs RF04' : 'RF04 대비',
+            isEnglish ? 'vs RF04%' : 'RF04 대비%',
           ];
         }
 
@@ -922,11 +922,11 @@ export default function FinancialTable({
           isEnglish ? '24 Year-end' : '24년(기말)',
           isEnglish ? '25 Year-end' : '25년(기말)',
           ...columns.slice(1, 13),
-          'RF2604',
+          'RF04',
           isEnglish ? '26 Annual' : '26년 연간',
           'YoY',
-          isEnglish ? 'vs RF2604' : 'RF2604 대비',
-          isEnglish ? 'vs RF2604%' : 'RF2604 대비%',
+          isEnglish ? 'vs RF04' : 'RF04 대비',
+          isEnglish ? 'vs RF04%' : 'RF04 대비%',
         ];
       }
       // B/S 전용: 24년말, 25년말, 2601~2612
@@ -1142,7 +1142,7 @@ export default function FinancialTable({
                     colSpan={1}
                     className="border border-gray-300 bg-slate-500 px-4 py-3 text-center text-base font-extrabold text-white"
                   >
-                    RF2604
+                    RF04
                   </th>
                   <th
                     colSpan={4}
@@ -1237,24 +1237,24 @@ export default function FinancialTable({
                 
                 const translatedCol = translateColumnLabel(col);
                 const headerLabel = formatHeaderLabel(translatedCol);
-                const isPrevPlanHeader = isCashFlow && (col === 'RF2604' || col.includes('전월계획'));
+                const isPrevPlanHeader = isCashFlow && (col === 'RF04' || col.includes('전월계획'));
                 const isPrevPlanYoYHeader =
                   isCashFlow &&
                   col === 'YoY' &&
-                  (displayColumns[index - 1] === 'RF2604' || (displayColumns[index - 1]?.includes('전월계획') ?? false));
+                  (displayColumns[index - 1] === 'RF04' || (displayColumns[index - 1]?.includes('전월계획') ?? false));
                 const isMutedHeader = isPrevPlanHeader || isPrevPlanYoYHeader;
                 const isCfPlanMetricHeader =
                   isCashFlow &&
-                  (col === 'RF2604' || col === '26년 전월계획' || col === '26 Prev Plan');
+                  (col === 'RF04' || col === '26년 전월계획' || col === '26 Prev Plan');
                 const isCfRollingMetricHeader =
                   isCashFlow &&
-                  (col === '26년 연간' || col === '26 Annual' || col === '전년대비연간' || col === 'Annual Prev Gap' || col === '26년 연간 YoY' || col === '26 Annual YoY' || col === 'RF2604 대비' || col === 'vs RF2604' || col === 'RF2604 대비%' || col === 'vs RF2604%');
+                  (col === '26년 연간' || col === '26 Annual' || col === '전년대비연간' || col === 'Annual Prev Gap' || col === '26년 연간 YoY' || col === '26 Annual YoY' || col === 'RF04 대비' || col === 'vs RF04' || col === 'RF04 대비%' || col === 'vs RF04%');
                 const isCfYoYMetricHeader =
                   isCashFlow &&
-                  (col.includes('YoY') || col.includes('전년대비') || col === 'RF2604 대비%' || col === 'vs RF2604%');
+                  (col.includes('YoY') || col.includes('전년대비') || col === 'RF04 대비%' || col === 'vs RF04%');
                 const isBsPrevPlanHeader =
                   isBalanceSheet &&
-                  (col === 'RF2604' || col === 'RF04' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs RF2604' || col === 'vs RF2604%' || col === 'RF2604 대비' || col === 'RF2604 대비%');
+                  (col === 'RF04' || col === 'RF04' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'vs RF04' || col === 'vs RF04%' || col === 'RF04 대비' || col === 'RF04 대비%');
                 const isBsYoYHeader = isBalanceSheet && col === 'YoY';
                 const isBsCurrentHeader =
                   isBalanceSheet &&
@@ -1621,11 +1621,11 @@ export default function FinancialTable({
                           valueIndex = parseInt(reportMonthMatch[1], 10) + 1;
                         } else if (normalizedColLower === '26(apr)') {
                           valueIndex = 5;
-                        } else if (normalizedCol === 'RF2604' || normalizedCol === 'RF04' || normalizedCol === '26년말전월계획' || normalizedColLower === '26prevplan') {
+                        } else if (normalizedCol === 'RF04' || normalizedCol === 'RF04' || normalizedCol === '26년말전월계획' || normalizedColLower === '26prevplan') {
                           valueIndex = 15;
-                        } else if (normalizedCol === 'RF2604대비' || normalizedCol === '전월계획대비' || normalizedColLower === 'vsrf2603' || normalizedColLower === 'vsprevplan') {
+                        } else if (normalizedCol === 'RF04대비' || normalizedCol === '전월계획대비' || normalizedColLower === 'vsrf2603' || normalizedColLower === 'vsprevplan') {
                           valueIndex = 16;
-                        } else if (normalizedCol === 'RF2604대비%' || normalizedCol === '전월계획대비%' || normalizedColLower === 'vsrf2603%' || normalizedColLower === 'vsprevplan%') {
+                        } else if (normalizedCol === 'RF04대비%' || normalizedCol === '전월계획대비%' || normalizedColLower === 'vsrf2603%' || normalizedColLower === 'vsprevplan%') {
                           valueIndex = 17;
                         } else if (/^26년?(연간|\((기말|말)\)|기말|말)$/.test(normalizedCol) || normalizedColLower === '26annual') {
                           valueIndex = 13;
@@ -1660,11 +1660,11 @@ export default function FinancialTable({
                       const value = row.values[valueIndex];
                       const isBsPlanMetricCol =
                         isBalanceSheet &&
-                        (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === 'RF2604' || col === 'RF04' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'RF2604 대비' || col === 'RF2604 대비%' || col === 'vs RF2604' || col === 'vs RF2604%');
+                        (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === 'RF04' || col === 'RF04' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'RF04 대비' || col === 'RF04 대비%' || col === 'vs RF04' || col === 'vs RF04%');
                       const isBsCurrentMetricCol =
                         isBalanceSheet &&
                         (col === '26년(4월)' || col === '26 (Apr)' || col === '26년 연간' || col === '26 Annual');
-                      const isPlanRateCol = valueIndex === 17 || col === 'RF2604 대비%' || col === 'vs RF2604%';
+                      const isPlanRateCol = valueIndex === 17 || col === 'RF04 대비%' || col === 'vs RF04%';
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
                       const is26년4월 = col.startsWith('26년4월'); // 당월 강조
                       
