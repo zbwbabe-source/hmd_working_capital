@@ -332,6 +332,32 @@ function buildHierarchy(tempRows: TempRow[]): TableRow[] {
     });
   }
 
+  // 대차검증 행: 자산 − 부채 − 자본 (각 컬럼 0이면 대차일치). FinancialTable이 ✓/녹·적색으로 표시.
+  const 자산Row = result.find((r) => r.account === '자산');
+  const 부채Row = result.find((r) => r.account === '부채');
+  const 자본Row = result.find((r) => r.account === '자본');
+  if (자산Row && 부채Row && 자본Row) {
+    const len = 자산Row.values.length;
+    const balanceValues: (number | null)[] = new Array(len).fill(null);
+    for (let i = 0; i < len; i++) {
+      const a = 자산Row.values[i];
+      const l = 부채Row.values[i];
+      const e = 자본Row.values[i];
+      balanceValues[i] = a == null || l == null || e == null ? null : a - l - e;
+    }
+    balanceValues[len - 1] = null; // YoY 컬럼 검증 제외
+    result.push({
+      account: 'Balance Check',
+      level: 0,
+      isGroup: false,
+      isCalculated: true,
+      isBold: true,
+      isHighlight: 'none',
+      values: balanceValues,
+      format: 'number',
+    });
+  }
+
   return result;
 }
 

@@ -144,6 +144,7 @@ export default function FinancialTable({
   };
 
   const translateAccountLabel = (label: string) => {
+    if (label === 'Balance Check') return isEnglish ? 'Balance Check (A−L−E)' : '검증 (자산=부채+자본)';
     if (!isEnglish) return label;
     const translated = translateFinanceLabel(label, 'full');
     if (translated !== label) return translated;
@@ -1669,7 +1670,7 @@ export default function FinancialTable({
                       const is26년4월 = col.startsWith('26년4월'); // 당월 강조
                       
                       // Balance Check일 때 각 셀별로 체크 (YoY 제외)
-                      const isCellOk = isBalanceCheck && !isYoYCol && (value === null || Math.abs(value) < 1000);
+                      const isCellOk = isBalanceCheck && !isYoYCol && (value === null || Math.abs(value) < 10);
                       const showCheckMark = isBalanceCheck && !isYoYCol && isCellOk;
                       
                       return (
