@@ -908,7 +908,7 @@ export default function FinancialTable({
             columns[0],
             isEnglish ? '24 Year-end' : '24년(기말)',
             isEnglish ? '25 Year-end' : '25년(기말)',
-            isEnglish ? '26 (Apr)' : '26년(4월)',
+            isEnglish ? '26 (May)' : '26년(5월)',
             'RF04',
             isEnglish ? '26 Annual' : '26년 연간',
             'YoY',
@@ -1258,7 +1258,7 @@ export default function FinancialTable({
                 const isBsYoYHeader = isBalanceSheet && col === 'YoY';
                 const isBsCurrentHeader =
                   isBalanceSheet &&
-                  (col === '26년(4월)' || col === '26 (Apr)' || col === '26년 연간' || col === '26 Annual');
+                  (col === '26년(5월)' || col === '26 (May)' || col === '26년 연간' || col === '26 Annual');
                 const bsHeaderToneClass = isBsCurrentHeader
                   ? '!bg-blue-500'
                   : isBsYoYHeader
@@ -1619,8 +1619,8 @@ export default function FinancialTable({
                         const monthOnlyMatch = normalizedCol.match(/^(\d+)월$/);
                         if (reportMonthMatch) {
                           valueIndex = parseInt(reportMonthMatch[1], 10) + 1;
-                        } else if (normalizedColLower === '26(apr)') {
-                          valueIndex = 5;
+                        } else if (normalizedColLower === '26(may)') {
+                          valueIndex = 6;
                         } else if (normalizedCol === 'RF04' || normalizedCol === 'RF04' || normalizedCol === '26년말전월계획' || normalizedColLower === '26prevplan') {
                           valueIndex = 15;
                         } else if (normalizedCol === 'RF04대비' || normalizedCol === '전월계획대비' || normalizedColLower === 'vsrf2603' || normalizedColLower === 'vsprevplan') {
@@ -1663,7 +1663,7 @@ export default function FinancialTable({
                         (valueIndex === 15 || valueIndex === 16 || valueIndex === 17 || col === 'RF04' || col === 'RF04' || col === '26년말 전월계획' || col === '26 Prev Plan' || col === 'RF04 대비' || col === 'RF04 대비%' || col === 'vs RF04' || col === 'vs RF04%');
                       const isBsCurrentMetricCol =
                         isBalanceSheet &&
-                        (col === '26년(4월)' || col === '26 (Apr)' || col === '26년 연간' || col === '26 Annual');
+                        (col === '26년(5월)' || col === '26 (May)' || col === '26년 연간' || col === '26 Annual');
                       const isPlanRateCol = valueIndex === 17 || col === 'RF04 대비%' || col === 'vs RF04%';
                       const isYoYCol = col === 'YoY' || col === 'YoY(증감)';
                       const is26년4월 = col.startsWith('26년4월'); // 당월 강조
