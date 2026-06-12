@@ -183,6 +183,7 @@ export default function Home() {
   const [bsPlanData, setBsPlanData] = useState<TableRow[] | null>(null);
   const [bsMonthsCollapsed, setBsMonthsCollapsed] = useState<boolean>(true);
   const [bsFinancialCollapsed, setBsFinancialCollapsed] = useState<boolean>(true);
+  const [showBsRf04, setShowBsRf04] = useState<boolean>(false); // BS RF04(전월계획) 컬럼 표시 여부 (기본 숨김)
   const [bsRemarks, setBsRemarks] = useState<Map<string, string>>(new Map());
   
   // 운전자본표 비고
@@ -2224,19 +2225,30 @@ export default function Home() {
                         <span className="text-xs font-medium text-slate-500">{smallUnitLabel}</span>
                       </div>
                       <button
+                        onClick={() => setShowBsRf04((prev) => !prev)}
+                        className={`ml-auto rounded-xl border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                          showBsRf04
+                            ? 'border-slate-300 bg-slate-700 text-white hover:bg-slate-800'
+                            : 'border-white/50 bg-white/70 text-slate-700 hover:bg-white/90'
+                        }`}
+                      >
+                        {showBsRf04 ? (isEnglish ? 'Hide RF04' : 'RF04 숨기기') : (isEnglish ? 'Show RF04' : 'RF04 표시')}
+                      </button>
+                      <button
                         onClick={() => setBsFinancialCollapsed(!bsFinancialCollapsed)}
-                        className="ml-auto rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-white/90"
+                        className="rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-white/90"
                       >
                         {toggleRowsLabel(bsFinancialCollapsed)}
                       </button>
                     </div>
-                    <FinancialTable 
+                    <FinancialTable
                       data={withPlanMetrics.bs ?? bsFinancialData}
                       columns={[...monthColumns, isEnglish ? `${String(wcYear).slice(-2)} (Year-end)` : `${String(wcYear).slice(-2)}년(기말)`, 'YoY', isEnglish ? 'Remarks' : '비고']}
                       locale={locale}
                       showTotal
                       isBalanceSheet={true}
                       showPlanMetricsColumns={true}
+                      hidePlanColumns={!showBsRf04}
                       monthsCollapsed={bsMonthsCollapsed}
                       onMonthsToggle={() => setBsMonthsCollapsed(!bsMonthsCollapsed)}
                       currentYear={wcYear}

@@ -46,6 +46,7 @@ interface FinancialTableProps {
   autoRemarks?: { [key: string]: string }; // 자동 생성된 비고 (운전자본용)
   showBrandBreakdown?: boolean; // 브랜드별 손익 보기 모드 (법인 선택 시 항상 true)
   showPlanMetricsColumns?: boolean; // 전월계획/YoY/전월계획대비 컬럼 표시 여부
+  hidePlanColumns?: boolean; // (BS) RF04/RF04대비/RF04대비% 컬럼 숨김
   hideYtd?: boolean; // YTD 숨기기
   onHideYtdToggle?: () => void; // YTD 숨기기 토글 핸들러
   allRowsCollapsed?: boolean; // 모든 행 접기 상태 (외부 제어)
@@ -74,6 +75,7 @@ export default function FinancialTable({
   autoRemarks,
   showBrandBreakdown = false,
   showPlanMetricsColumns = true,
+  hidePlanColumns = false,
   hideYtd = false,
   onHideYtdToggle,
   allRowsCollapsed: externalAllRowsCollapsed,
@@ -904,8 +906,12 @@ export default function FinancialTable({
       }
     } else if (isBalanceSheet && !showComparisons) {
       if (shouldShowPlanMetrics && currentYear === 2026) {
+        // RF04(전월계획) 관련 컬럼 숨김 옵션
+        const RF04_COLS = ['RF04', 'vs RF04', 'RF04 대비', 'vs RF04%', 'RF04 대비%'];
+        const filterPlan = (cols: string[]) =>
+          hidePlanColumns ? cols.filter((c) => !RF04_COLS.includes(c)) : cols;
         if (monthsCollapsed) {
-          return [
+          return filterPlan([
             columns[0],
             isEnglish ? '24 Year-end' : '24년(기말)',
             isEnglish ? '25 Year-end' : '25년(기말)',
@@ -915,10 +921,10 @@ export default function FinancialTable({
             'YoY',
             isEnglish ? 'vs RF04' : 'RF04 대비',
             isEnglish ? 'vs RF04%' : 'RF04 대비%',
-          ];
+          ]);
         }
 
-        return [
+        return filterPlan([
           columns[0],
           isEnglish ? '24 Year-end' : '24년(기말)',
           isEnglish ? '25 Year-end' : '25년(기말)',
@@ -928,7 +934,7 @@ export default function FinancialTable({
           'YoY',
           isEnglish ? 'vs RF04' : 'RF04 대비',
           isEnglish ? 'vs RF04%' : 'RF04 대비%',
-        ];
+        ]);
       }
       // B/S 전용: 24년말, 25년말, 2601~2612
       // 접힌 상태: ['계정과목', '24년말', '25년말', '26년4월', '26년기말', 'YoY', '비고']
@@ -1223,7 +1229,9 @@ export default function FinancialTable({
                   // 합계/기말 컬럼 체크 (동적)
                   const isTotalCol = col.includes('년(합계)') || col.includes('년(기말)') || col.includes('년 연간');
                   const isPrevYearCol = col === '2024년' || col === '2025년';
-                  if (isPrevYearCol || isTotalCol || col === 'YoY') {
+                  // BS 접힌 상태의 당월 컬럼(26년(5월)/26 (May))도 합계 컬럼과 동일 폭으로 (혼자 좁아 보이는 문제)
+                  const isBsReportMonthCol = isBalanceSheet && (/^26년\(\d+월\)$/.test(col) || /^26 \([A-Za-z]+\)$/.test(col));
+                  if (isPrevYearCol || isTotalCol || col === 'YoY' || isBsReportMonthCol) {
                     return compactLayout ? { width: '132px', minWidth: '132px' } : { width: '92px', minWidth: '92px' };
                   }
                   if (isMonthCol) return compactLayout ? { width: '96px', minWidth: '96px' } : { width: '90px', minWidth: '90px' };
